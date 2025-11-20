@@ -9,10 +9,9 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name = "ai_chunks",
+        name = "ai_flashcards",
         indexes = {
-                @Index(name = "idx_chunks_file_id", columnList = "file_id"),
-                @Index(name = "idx_chunks_order_index", columnList = "order_index")
+                @Index(name = "idx_flashcards_file_id", columnList = "file_id")
         }
 )
 @Getter
@@ -20,7 +19,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AiChunk {
+public class AiFlashcard {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -28,14 +27,14 @@ public class AiChunk {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "file_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_chunks_file"))
+            foreignKey = @ForeignKey(name = "fk_flashcards_file"))
     private StoredFile file;
 
     @Column(nullable = false, columnDefinition = "text")
-    private String content;
+    private String question;
 
-    @Column(name = "order_index")
-    private Integer orderIndex;
+    @Column(nullable = false, columnDefinition = "text")
+    private String answer;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
