@@ -1,6 +1,6 @@
 package com.example.springboot_api.modules.file.entity;
 
-import com.example.springboot_api.modules.ai.entity.AiTask;
+import com.example.springboot_api.modules.ai_task.entity.AiTask;
 import com.example.springboot_api.modules.asset.entity.TtsAsset;
 import com.example.springboot_api.modules.asset.entity.VideoAsset;
 import com.example.springboot_api.modules.auth.entity.User;

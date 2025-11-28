@@ -1,14 +1,15 @@
 package com.example.springboot_api.modules.notebook.entity;
 
 import com.example.springboot_api.modules.activity.entity.NotebookActivityLog;
-import com.example.springboot_api.modules.ai.entity.AiTask;
+import com.example.springboot_api.modules.ai_task.entity.AiTask;
 import com.example.springboot_api.modules.asset.entity.TtsAsset;
 import com.example.springboot_api.modules.asset.entity.VideoAsset;
 import com.example.springboot_api.modules.auth.entity.User;
 import com.example.springboot_api.modules.chunk.entity.FileChunk;
 import com.example.springboot_api.modules.file.entity.NotebookFile;
-import com.example.springboot_api.modules.flashcard.entity.Flashcard;
 import com.example.springboot_api.modules.member.entity.NotebookMember;
+import com.example.springboot_api.modules.chat.entity.NotebookMessage;
+import com.example.springboot_api.modules.flashcard.entity.Flashcard;
 import com.example.springboot_api.modules.quiz.entity.Quiz;
 import com.example.springboot_api.modules.rag.entity.RagQuery;
 import jakarta.persistence.*;
