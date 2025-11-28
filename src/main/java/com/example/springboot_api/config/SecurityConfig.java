@@ -1,6 +1,6 @@
 package com.example.springboot_api.config;
 
-import com.example.springboot_api.auth.security.JwtAuthenticationFilter;
+import com.example.springboot_api.modules.auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
