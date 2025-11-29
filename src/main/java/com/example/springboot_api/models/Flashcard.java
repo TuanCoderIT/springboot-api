@@ -3,7 +3,6 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -22,23 +21,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = Flashcard.ENTITY_NAME)
-@Table(name = Flashcard.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Flashcard")
+@Table(name = "flashcards", schema = "public", indexes = {
         @Index(name = "idx_flashcards_notebook", columnList = "notebook_id")
 })
 public class Flashcard implements Serializable {
-    public static final String ENTITY_NAME = "Flashcard";
-    public static final String TABLE_NAME = "flashcards";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_FRONTTEXT_NAME = "front_text";
-    public static final String COLUMN_BACKTEXT_NAME = "back_text";
-    public static final String COLUMN_EXTRAMETADATA_NAME = "extra_metadata";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 1360811507491907999L;
-
-
+    private static final long serialVersionUID = -7696285719380330236L;
     private UUID id;
 
     private Notebook notebook;
@@ -59,7 +47,7 @@ public class Flashcard implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -87,18 +75,18 @@ public class Flashcard implements Serializable {
     }
 
     @NotNull
-    @Column(name = COLUMN_FRONTTEXT_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "front_text", nullable = false, length = Integer.MAX_VALUE)
     public String getFrontText() {
         return frontText;
     }
 
     @NotNull
-    @Column(name = COLUMN_BACKTEXT_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "back_text", nullable = false, length = Integer.MAX_VALUE)
     public String getBackText() {
         return backText;
     }
 
-    @Column(name = COLUMN_EXTRAMETADATA_NAME)
+    @Column(name = "extra_metadata")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getExtraMetadata() {
         return extraMetadata;
@@ -106,7 +94,7 @@ public class Flashcard implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

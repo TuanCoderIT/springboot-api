@@ -3,7 +3,6 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -20,27 +19,14 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = FileChunk.ENTITY_NAME)
-@Table(name = FileChunk.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "File_Chunk")
+@Table(name = "file_chunks", schema = "public", indexes = {
         @Index(name = "idx_file_chunks_notebook", columnList = "notebook_id"),
         @Index(name = "idx_file_chunks_file", columnList = "file_id"),
         @Index(name = "idx_file_chunks_embedding", columnList = "embedding")
 })
 public class FileChunk implements Serializable {
-    public static final String ENTITY_NAME = "File_Chunk";
-    public static final String TABLE_NAME = "file_chunks";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_PAGENUMBER_NAME = "page_number";
-    public static final String COLUMN_CHUNKINDEX_NAME = "chunk_index";
-    public static final String COLUMN_CONTENT_NAME = "content";
-    public static final String COLUMN_EMBEDDING_NAME = "embedding";
-    public static final String COLUMN_METADATA_NAME = "metadata";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 7429314984607649520L;
-
-
+    private static final long serialVersionUID = 8528951451508750720L;
     private UUID id;
 
     private Notebook notebook;
@@ -58,7 +44,7 @@ public class FileChunk implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -79,24 +65,24 @@ public class FileChunk implements Serializable {
         return file;
     }
 
-    @Column(name = COLUMN_PAGENUMBER_NAME)
+    @Column(name = "page_number")
     public Integer getPageNumber() {
         return pageNumber;
     }
 
     @NotNull
-    @Column(name = COLUMN_CHUNKINDEX_NAME, nullable = false)
+    @Column(name = "chunk_index", nullable = false)
     public Integer getChunkIndex() {
         return chunkIndex;
     }
 
     @NotNull
-    @Column(name = COLUMN_CONTENT_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "content", nullable = false, length = Integer.MAX_VALUE)
     public String getContent() {
         return content;
     }
 
-    @Column(name = COLUMN_METADATA_NAME)
+    @Column(name = "metadata")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
         return metadata;
@@ -104,7 +90,7 @@ public class FileChunk implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -18,25 +17,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = VideoAsset.ENTITY_NAME)
-@Table(name = VideoAsset.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Video_Asset")
+@Table(name = "video_assets", schema = "public", indexes = {
         @Index(name = "idx_video_assets_notebook", columnList = "notebook_id, created_at")
 })
 public class VideoAsset implements Serializable {
-    public static final String ENTITY_NAME = "Video_Asset";
-    public static final String TABLE_NAME = "video_assets";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_LANGUAGE_NAME = "language";
-    public static final String COLUMN_STYLE_NAME = "style";
-    public static final String COLUMN_TEXTSOURCE_NAME = "text_source";
-    public static final String COLUMN_VIDEOURL_NAME = "video_url";
-    public static final String COLUMN_DURATIONSECONDS_NAME = "duration_seconds";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -2931307406650378673L;
-
-
+    private static final long serialVersionUID = -1811671709588289599L;
     private UUID id;
 
     private Notebook notebook;
@@ -59,7 +45,7 @@ public class VideoAsset implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -87,36 +73,36 @@ public class VideoAsset implements Serializable {
     }
 
     @Size(max = 16)
-    @Column(name = COLUMN_LANGUAGE_NAME, length = 16)
+    @Column(name = "language", length = 16)
     public String getLanguage() {
         return language;
     }
 
     @Size(max = 64)
-    @Column(name = COLUMN_STYLE_NAME, length = 64)
+    @Column(name = "style", length = 64)
     public String getStyle() {
         return style;
     }
 
-    @Column(name = COLUMN_TEXTSOURCE_NAME, length = Integer.MAX_VALUE)
+    @Column(name = "text_source", length = Integer.MAX_VALUE)
     public String getTextSource() {
         return textSource;
     }
 
     @NotNull
-    @Column(name = COLUMN_VIDEOURL_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "video_url", nullable = false, length = Integer.MAX_VALUE)
     public String getVideoUrl() {
         return videoUrl;
     }
 
-    @Column(name = COLUMN_DURATIONSECONDS_NAME)
+    @Column(name = "duration_seconds")
     public Integer getDurationSeconds() {
         return durationSeconds;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
