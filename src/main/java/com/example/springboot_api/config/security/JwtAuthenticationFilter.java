@@ -1,6 +1,7 @@
 package com.example.springboot_api.config.security;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,10 +47,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Optional<User> opt = userRepository.findById(UUID.fromString(userId));
 
             if (opt.isPresent() && SecurityContextHolder.getContext().getAuthentication() == null) {
+
                 User user = opt.get();
 
+                UserPrincipal principal = new UserPrincipal(
+                        user,
+                        List.of(() -> user.getRole()));
+
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        user, null, null);
+                        principal,
+                        null,
+                        principal.getAuthorities());
 
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
@@ -57,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(request, response); // hết
     }
 
     private String extractToken(HttpServletRequest request) {
