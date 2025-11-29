@@ -1,6 +1,8 @@
 package com.example.springboot_api.modules.member.entity;
 
 import com.example.springboot_api.modules.auth.entity.User;
+import com.example.springboot_api.modules.member.entity.enums.NotebookMemberRole;
+import com.example.springboot_api.modules.member.entity.enums.NotebookMemberStatus;
 import com.example.springboot_api.modules.notebook.entity.Notebook;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -47,18 +49,33 @@ public class NotebookMember {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-/*
- TODO [Reverse Engineering] create field to map the 'role' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @ColumnDefault("'member'")
-    @Column(name = "role", columnDefinition = "notebook_member_role not null")
-    private Object role;
-*/
-/*
- TODO [Reverse Engineering] create field to map the 'status' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @ColumnDefault("'pending'")
-    @Column(name = "status", columnDefinition = "notebook_member_status not null")
-    private Object status;
-*/
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private NotebookMemberRole role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private NotebookMemberStatus status;
+
+    /*
+     * TODO [Reverse Engineering] create field to map the 'role' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * 
+     * @ColumnDefault("'member'")
+     * 
+     * @Column(name = "role", columnDefinition = "notebook_member_role not null")
+     * private Object role;
+     */
+    /*
+     * TODO [Reverse Engineering] create field to map the 'status' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * 
+     * @ColumnDefault("'pending'")
+     * 
+     * @Column(name = "status", columnDefinition =
+     * "notebook_member_status not null")
+     * private Object status;
+     */
 }

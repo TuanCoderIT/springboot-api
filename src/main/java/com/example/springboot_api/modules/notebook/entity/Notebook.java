@@ -8,6 +8,8 @@ import com.example.springboot_api.modules.auth.entity.User;
 import com.example.springboot_api.modules.chunk.entity.FileChunk;
 import com.example.springboot_api.modules.file.entity.NotebookFile;
 import com.example.springboot_api.modules.member.entity.NotebookMember;
+import com.example.springboot_api.modules.notebook.entity.enums.NotebookType;
+import com.example.springboot_api.modules.notebook.entity.enums.NotebookVisibility;
 import com.example.springboot_api.modules.chat.entity.NotebookMessage;
 import com.example.springboot_api.modules.flashcard.entity.Flashcard;
 import com.example.springboot_api.modules.quiz.entity.Quiz;
@@ -70,6 +72,16 @@ public class Notebook {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    // enum mapping
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private NotebookType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false)
+    private NotebookVisibility visibility;
+
+    // liên kết
     @OneToMany(mappedBy = "notebook")
     private Set<AiTask> aiTasks = new LinkedHashSet<>();
 
@@ -101,18 +113,25 @@ public class Notebook {
     @OneToMany(mappedBy = "notebook")
     private Set<VideoAsset> videoAssets = new LinkedHashSet<>();
 
-/*
- TODO [Reverse Engineering] create field to map the 'type' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @ColumnDefault("'personal'")
-    @Column(name = "type", columnDefinition = "notebook_type not null")
-    private Object type;
-*/
-/*
- TODO [Reverse Engineering] create field to map the 'visibility' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @ColumnDefault("'private'")
-    @Column(name = "visibility", columnDefinition = "notebook_visibility not null")
-    private Object visibility;
-*/
+    /*
+     * TODO [Reverse Engineering] create field to map the 'type' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * 
+     * @ColumnDefault("'personal'")
+     * 
+     * @Column(name = "type", columnDefinition = "notebook_type not null")
+     * private Object type;
+     */
+    /*
+     * TODO [Reverse Engineering] create field to map the 'visibility' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * 
+     * @ColumnDefault("'private'")
+     * 
+     * @Column(name = "visibility", columnDefinition =
+     * "notebook_visibility not null")
+     * private Object visibility;
+     */
 }

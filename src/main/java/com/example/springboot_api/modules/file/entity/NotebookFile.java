@@ -5,6 +5,7 @@ import com.example.springboot_api.modules.asset.entity.TtsAsset;
 import com.example.springboot_api.modules.asset.entity.VideoAsset;
 import com.example.springboot_api.modules.auth.entity.User;
 import com.example.springboot_api.modules.chunk.entity.FileChunk;
+import com.example.springboot_api.modules.file.entity.enums.NotebookFileStatus;
 import com.example.springboot_api.modules.flashcard.entity.Flashcard;
 import com.example.springboot_api.modules.notebook.entity.Notebook;
 import com.example.springboot_api.modules.page.entity.FilePage;
@@ -76,6 +77,10 @@ public class NotebookFile {
     @Column(name = "embedding_done", nullable = false)
     private Boolean embeddingDone = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private NotebookFileStatus status;
+
     @Column(name = "extra_metadata")
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> extraMetadata;
@@ -110,11 +115,14 @@ public class NotebookFile {
     @OneToMany(mappedBy = "file")
     private Set<VideoAsset> videoAssets = new LinkedHashSet<>();
 
-/*
- TODO [Reverse Engineering] create field to map the 'status' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @ColumnDefault("'pending'")
-    @Column(name = "status", columnDefinition = "notebook_file_status not null")
-    private Object status;
-*/
+    /*
+     * TODO [Reverse Engineering] create field to map the 'status' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * 
+     * @ColumnDefault("'pending'")
+     * 
+     * @Column(name = "status", columnDefinition = "notebook_file_status not null")
+     * private Object status;
+     */
 }

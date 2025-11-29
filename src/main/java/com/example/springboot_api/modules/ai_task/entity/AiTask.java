@@ -1,5 +1,7 @@
 package com.example.springboot_api.modules.ai_task.entity;
 
+import com.example.springboot_api.modules.ai_task.entity.enums.AiTaskStatus;
+import com.example.springboot_api.modules.ai_task.entity.enums.AiTaskType;
 import com.example.springboot_api.modules.auth.entity.User;
 import com.example.springboot_api.modules.file.entity.NotebookFile;
 import com.example.springboot_api.modules.notebook.entity.Notebook;
@@ -62,17 +64,30 @@ public class AiTask {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-/*
- TODO [Reverse Engineering] create field to map the 'task_type' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @Column(name = "task_type", columnDefinition = "ai_task_type not null")
-    private Object taskType;
-*/
-/*
- TODO [Reverse Engineering] create field to map the 'status' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @ColumnDefault("'queued'")
-    @Column(name = "status", columnDefinition = "ai_task_status not null")
-    private Object status;
-*/
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_type", nullable = false)
+    private AiTaskType taskType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private AiTaskStatus status;
+
+    /*
+     * TODO [Reverse Engineering] create field to map the 'task_type' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * 
+     * @Column(name = "task_type", columnDefinition = "ai_task_type not null")
+     * private Object taskType;
+     */
+    /*
+     * TODO [Reverse Engineering] create field to map the 'status' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * 
+     * @ColumnDefault("'queued'")
+     * 
+     * @Column(name = "status", columnDefinition = "ai_task_status not null")
+     * private Object status;
+     */
 }

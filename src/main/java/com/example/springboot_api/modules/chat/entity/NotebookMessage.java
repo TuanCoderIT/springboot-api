@@ -1,6 +1,7 @@
 package com.example.springboot_api.modules.chat.entity;
 
 import com.example.springboot_api.modules.auth.entity.User;
+import com.example.springboot_api.modules.chat.entity.enums.NotebookMessageType;
 import com.example.springboot_api.modules.notebook.entity.Notebook;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -57,16 +58,23 @@ public class NotebookMessage {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private NotebookMessageType type;
+
     @OneToMany(mappedBy = "message")
     private Set<MessageReaction> messageReactions = new LinkedHashSet<>();
     @OneToMany(mappedBy = "replyToMessage")
     private Set<NotebookMessage> notebookMessages = new LinkedHashSet<>();
 
-/*
- TODO [Reverse Engineering] create field to map the 'type' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    @ColumnDefault("'user'")
-    @Column(name = "type", columnDefinition = "notebook_message_type not null")
-    private Object type;
-*/
+    /*
+     * TODO [Reverse Engineering] create field to map the 'type' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * 
+     * @ColumnDefault("'user'")
+     * 
+     * @Column(name = "type", columnDefinition = "notebook_message_type not null")
+     * private Object type;
+     */
 }
