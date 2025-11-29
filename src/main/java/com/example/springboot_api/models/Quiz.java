@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -23,22 +22,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = Quiz.ENTITY_NAME)
-@Table(name = Quiz.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Quiz")
+@Table(name = "quizzes", schema = "public", indexes = {
         @Index(name = "idx_quizzes_notebook", columnList = "notebook_id")
 })
 public class Quiz implements Serializable {
-    public static final String ENTITY_NAME = "Quiz";
-    public static final String TABLE_NAME = "quizzes";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_TITLE_NAME = "title";
-    public static final String COLUMN_METADATA_NAME = "metadata";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -244312216371163278L;
-
-
+    private static final long serialVersionUID = -5607538392310487323L;
     private UUID id;
 
     private Notebook notebook;
@@ -59,7 +48,7 @@ public class Quiz implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -81,7 +70,7 @@ public class Quiz implements Serializable {
 
     @Size(max = 255)
     @NotNull
-    @Column(name = COLUMN_TITLE_NAME, nullable = false)
+    @Column(name = "title", nullable = false)
     public String getTitle() {
         return title;
     }
@@ -93,7 +82,7 @@ public class Quiz implements Serializable {
         return createdBy;
     }
 
-    @Column(name = COLUMN_METADATA_NAME)
+    @Column(name = "metadata")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
         return metadata;
@@ -101,7 +90,7 @@ public class Quiz implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
