@@ -41,7 +41,7 @@ public class AuthService {
                 .email(req.getEmail())
                 .passwordHash(encoder.encode(req.getPassword()))
                 .fullName(req.getFullName())
-                .role("User")
+                .role("STUDENT")
                 .build();
 
         userRepository.save(user);
