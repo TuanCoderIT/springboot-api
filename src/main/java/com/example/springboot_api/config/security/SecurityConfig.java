@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -42,6 +41,7 @@ public class SecurityConfig {
 
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/db-test").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
 
                 .anyRequest().authenticated());
 
@@ -54,11 +54,29 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of("http://localhost:3000")); // Next.js dev
-        config.setAllowCredentials(true);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Origin pattern không bao gồm path, chỉ domain
+        config.setAllowedOriginPatterns(List.of(
+            "http://localhost:*",
+            "https://localhost:*",
+            "http://127.0.0.1:*",
+            "https://127.0.0.1:*",
+            "http://*.ngrok-free.dev",
+            "https://*.ngrok-free.dev",
+            "http://*.ngrok-free.app",
+            "https://*.ngrok-free.app",
+            "http://*.ngrok.io",
+            "https://*.ngrok.io",
+            "http://*.ngrok.app",
+            "https://*.ngrok.app",
+            // Domain cụ thể nếu cần
+            "https://unshapen-splenetically-cheyenne.ngrok-free.dev"
+        ));
+
+        config.setAllowCredentials(true); // BẮT BUỘC PHẢI TRUE nếu dùng cookie JWT
+
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("*")); // Cho phép Next.js đọc header JWT nếu cần
+        config.setExposedHeaders(List.of("*"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
