@@ -43,7 +43,7 @@ public class FileStorageService {
         Path filePath = uploadPath.resolve(filename);
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-        // Trả về URL để truy cập file (giả sử file được serve từ /uploads/)
+        // Trả về relative path để lưu vào database (không lưu full URL)
         return "/uploads/" + filename;
     }
 
@@ -53,8 +53,20 @@ public class FileStorageService {
         }
 
         try {
-            // Loại bỏ prefix /uploads/ nếu có
-            String filename = fileUrl.replaceFirst("^/uploads/", "");
+            // Xử lý cả full URL và relative path
+            String path = fileUrl;
+            
+            // Nếu là full URL, extract relative path
+            if (path.startsWith("http://") || path.startsWith("https://")) {
+                // Extract path sau domain (ví dụ: /uploads/filename)
+                int pathStart = path.indexOf("/", path.indexOf("://") + 3);
+                if (pathStart > 0) {
+                    path = path.substring(pathStart);
+                }
+            }
+            
+            // Loại bỏ prefix /uploads/ để lấy filename
+            String filename = path.replaceFirst("^/uploads/", "");
             Path filePath = Paths.get(uploadDir).resolve(filename);
             
             if (Files.exists(filePath)) {
