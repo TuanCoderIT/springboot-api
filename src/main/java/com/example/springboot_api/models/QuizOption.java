@@ -3,7 +3,6 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -16,21 +15,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = QuizOption.ENTITY_NAME)
-@Table(name = QuizOption.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Quiz_Option")
+@Table(name = "quiz_options", schema = "public", indexes = {
         @Index(name = "idx_quiz_options_question", columnList = "question_id")
 })
 public class QuizOption implements Serializable {
-    public static final String ENTITY_NAME = "Quiz_Option";
-    public static final String TABLE_NAME = "quiz_options";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_OPTIONTEXT_NAME = "option_text";
-    public static final String COLUMN_ISCORRECT_NAME = "is_correct";
-    private static final long serialVersionUID = -4746968287642515725L;
-
-
+    private static final long serialVersionUID = -4392414011039934806L;
     private UUID id;
 
     private QuizQuestion question;
@@ -41,7 +31,7 @@ public class QuizOption implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -55,14 +45,14 @@ public class QuizOption implements Serializable {
     }
 
     @NotNull
-    @Column(name = COLUMN_OPTIONTEXT_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "option_text", nullable = false, length = Integer.MAX_VALUE)
     public String getOptionText() {
         return optionText;
     }
 
     @NotNull
     @ColumnDefault("false")
-    @Column(name = COLUMN_ISCORRECT_NAME, nullable = false)
+    @Column(name = "is_correct", nullable = false)
     public Boolean getIsCorrect() {
         return isCorrect;
     }

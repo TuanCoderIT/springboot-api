@@ -3,7 +3,6 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -20,23 +19,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = QuizSubmission.ENTITY_NAME)
-@Table(name = QuizSubmission.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Quiz_Submission")
+@Table(name = "quiz_submissions", schema = "public", indexes = {
         @Index(name = "idx_quiz_submissions_quiz", columnList = "quiz_id, created_at"),
         @Index(name = "idx_quiz_submissions_user", columnList = "user_id, created_at")
 })
 public class QuizSubmission implements Serializable {
-    public static final String ENTITY_NAME = "Quiz_Submission";
-    public static final String TABLE_NAME = "quiz_submissions";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_SCORE_NAME = "score";
-    public static final String COLUMN_ANSWERS_NAME = "answers";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 8858487206364576795L;
-
-
+    private static final long serialVersionUID = 7618378689261539878L;
     private UUID id;
 
     private Quiz quiz;
@@ -51,7 +40,7 @@ public class QuizSubmission implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -72,12 +61,12 @@ public class QuizSubmission implements Serializable {
         return user;
     }
 
-    @Column(name = COLUMN_SCORE_NAME)
+    @Column(name = "score")
     public Double getScore() {
         return score;
     }
 
-    @Column(name = COLUMN_ANSWERS_NAME)
+    @Column(name = "answers")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getAnswers() {
         return answers;
@@ -85,7 +74,7 @@ public class QuizSubmission implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

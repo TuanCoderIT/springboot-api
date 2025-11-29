@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -22,22 +21,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = QuizQuestion.ENTITY_NAME)
-@Table(name = QuizQuestion.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Quiz_Question")
+@Table(name = "quiz_questions", schema = "public", indexes = {
         @Index(name = "idx_quiz_questions_quiz", columnList = "quiz_id")
 })
 public class QuizQuestion implements Serializable {
-    public static final String ENTITY_NAME = "Quiz_Question";
-    public static final String TABLE_NAME = "quiz_questions";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_QUESTIONTEXT_NAME = "question_text";
-    public static final String COLUMN_QUESTIONTYPE_NAME = "question_type";
-    public static final String COLUMN_METADATA_NAME = "metadata";
-    private static final long serialVersionUID = -7892795159350329277L;
-
-
+    private static final long serialVersionUID = 8852590243672807604L;
     private UUID id;
 
     private Quiz quiz;
@@ -52,7 +41,7 @@ public class QuizQuestion implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -66,7 +55,7 @@ public class QuizQuestion implements Serializable {
     }
 
     @NotNull
-    @Column(name = COLUMN_QUESTIONTEXT_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "question_text", nullable = false, length = Integer.MAX_VALUE)
     public String getQuestionText() {
         return questionText;
     }
@@ -74,12 +63,12 @@ public class QuizQuestion implements Serializable {
     @Size(max = 32)
     @NotNull
     @ColumnDefault("'multiple_choice'")
-    @Column(name = COLUMN_QUESTIONTYPE_NAME, nullable = false, length = 32)
+    @Column(name = "question_type", nullable = false, length = 32)
     public String getQuestionType() {
         return questionType;
     }
 
-    @Column(name = COLUMN_METADATA_NAME)
+    @Column(name = "metadata")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
         return metadata;

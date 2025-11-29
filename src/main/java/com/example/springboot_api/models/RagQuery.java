@@ -3,7 +3,6 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -20,25 +19,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = RagQuery.ENTITY_NAME)
-@Table(name = RagQuery.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Rag_Query")
+@Table(name = "rag_queries", schema = "public", indexes = {
         @Index(name = "idx_rag_queries_notebook", columnList = "notebook_id, created_at"),
         @Index(name = "idx_rag_queries_user", columnList = "user_id, created_at")
 })
 public class RagQuery implements Serializable {
-    public static final String ENTITY_NAME = "Rag_Query";
-    public static final String TABLE_NAME = "rag_queries";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_QUESTION_NAME = "question";
-    public static final String COLUMN_ANSWER_NAME = "answer";
-    public static final String COLUMN_SOURCECHUNKS_NAME = "source_chunks";
-    public static final String COLUMN_LATENCYMS_NAME = "latency_ms";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 5069042247389849153L;
-
-
+    private static final long serialVersionUID = 5664365710151332112L;
     private UUID id;
 
     private Notebook notebook;
@@ -57,7 +44,7 @@ public class RagQuery implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -78,30 +65,30 @@ public class RagQuery implements Serializable {
     }
 
     @NotNull
-    @Column(name = COLUMN_QUESTION_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "question", nullable = false, length = Integer.MAX_VALUE)
     public String getQuestion() {
         return question;
     }
 
-    @Column(name = COLUMN_ANSWER_NAME, length = Integer.MAX_VALUE)
+    @Column(name = "answer", length = Integer.MAX_VALUE)
     public String getAnswer() {
         return answer;
     }
 
-    @Column(name = COLUMN_SOURCECHUNKS_NAME)
+    @Column(name = "source_chunks")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getSourceChunks() {
         return sourceChunks;
     }
 
-    @Column(name = COLUMN_LATENCYMS_NAME)
+    @Column(name = "latency_ms")
     public Integer getLatencyMs() {
         return latencyMs;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

@@ -73,13 +73,14 @@ public class UserService {
       throw new ConflictException("Email đã tồn tại");
     }
 
-    User u = new User()
-        .setEmail(req.getEmail())
-        .setFullName(req.getFullName())
-        .setRole("STUDENT")
-        .setPasswordHash(encoder.encode(req.getPassword()))
-        .setCreatedAt(java.time.Instant.now())
-        .setUpdatedAt(java.time.Instant.now());
+    User u = User.builder()
+        .email(req.getEmail())
+        .fullName(req.getFullName())
+        .role("STUDENT")
+        .passwordHash(encoder.encode(req.getPassword()))
+        .createdAt(java.time.Instant.now())
+        .updatedAt(java.time.Instant.now())
+        .build();
 
     userRepo.save(u);
     return map(u);
