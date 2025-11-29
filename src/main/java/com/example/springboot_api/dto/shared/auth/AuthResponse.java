@@ -5,14 +5,12 @@ import lombok.Data;
 
 import java.util.UUID;
 
-import com.example.springboot_api.models.Role;
-
 @Data
 @AllArgsConstructor
 public class AuthResponse {
     private UUID id;
     private String fullName;
     private String email;
-    private Role role;
+    private String role;
     private String avatarUrl;
 }
