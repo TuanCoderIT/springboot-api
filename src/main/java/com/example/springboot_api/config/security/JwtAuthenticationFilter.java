@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.example.springboot_api.models.User;
-import com.example.springboot_api.repositories.shared.UserRepository;
+import com.example.springboot_api.repositories.shared.AuthRepository;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -25,9 +25,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public static final String AUTH_COOKIE = "AUTH-TOKEN";
 
     private final JwtProvider jwtProvider;
-    private final UserRepository userRepository;
+    private final AuthRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtProvider jwtProvider, UserRepository userRepository) {
+    public JwtAuthenticationFilter(JwtProvider jwtProvider, AuthRepository userRepository) {
         this.jwtProvider = jwtProvider;
         this.userRepository = userRepository;
     }
