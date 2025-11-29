@@ -3,7 +3,6 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -17,24 +16,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = FilePage.ENTITY_NAME)
-@Table(name = FilePage.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "File_Page")
+@Table(name = "file_pages", schema = "public", indexes = {
         @Index(name = "uq_file_pages_file_page", columnList = "file_id, page_number", unique = true),
         @Index(name = "idx_file_pages_file_id", columnList = "file_id")
 })
 public class FilePage implements Serializable {
-    public static final String ENTITY_NAME = "File_Page";
-    public static final String TABLE_NAME = "file_pages";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_PAGENUMBER_NAME = "page_number";
-    public static final String COLUMN_TEXTCONTENT_NAME = "text_content";
-    public static final String COLUMN_TOKENCOUNT_NAME = "token_count";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -6846664035903864271L;
-
-
+    private static final long serialVersionUID = -6263618522524636L;
     private UUID id;
 
     private NotebookFile file;
@@ -49,7 +37,7 @@ public class FilePage implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -63,24 +51,24 @@ public class FilePage implements Serializable {
     }
 
     @NotNull
-    @Column(name = COLUMN_PAGENUMBER_NAME, nullable = false)
+    @Column(name = "page_number", nullable = false)
     public Integer getPageNumber() {
         return pageNumber;
     }
 
-    @Column(name = COLUMN_TEXTCONTENT_NAME, length = Integer.MAX_VALUE)
+    @Column(name = "text_content", length = Integer.MAX_VALUE)
     public String getTextContent() {
         return textContent;
     }
 
-    @Column(name = COLUMN_TOKENCOUNT_NAME)
+    @Column(name = "token_count")
     public Integer getTokenCount() {
         return tokenCount;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

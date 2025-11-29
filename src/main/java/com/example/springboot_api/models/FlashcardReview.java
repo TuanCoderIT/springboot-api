@@ -3,7 +3,6 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -17,23 +16,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = FlashcardReview.ENTITY_NAME)
-@Table(name = FlashcardReview.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Flashcard_Review")
+@Table(name = "flashcard_reviews", schema = "public", indexes = {
         @Index(name = "idx_flashcard_reviews_user", columnList = "user_id, review_at")
 })
 public class FlashcardReview implements Serializable {
-    public static final String ENTITY_NAME = "Flashcard_Review";
-    public static final String TABLE_NAME = "flashcard_reviews";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_EASEFACTOR_NAME = "ease_factor";
-    public static final String COLUMN_INTERVALDAYS_NAME = "interval_days";
-    public static final String COLUMN_QUALITY_NAME = "quality";
-    public static final String COLUMN_REVIEWAT_NAME = "review_at";
-    private static final long serialVersionUID = -698727470390811126L;
-
-
+    private static final long serialVersionUID = 1146723971813767511L;
     private UUID id;
 
     private Flashcard flashcard;
@@ -50,7 +38,7 @@ public class FlashcardReview implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -71,24 +59,24 @@ public class FlashcardReview implements Serializable {
         return user;
     }
 
-    @Column(name = COLUMN_EASEFACTOR_NAME)
+    @Column(name = "ease_factor")
     public Double getEaseFactor() {
         return easeFactor;
     }
 
-    @Column(name = COLUMN_INTERVALDAYS_NAME)
+    @Column(name = "interval_days")
     public Integer getIntervalDays() {
         return intervalDays;
     }
 
-    @Column(name = COLUMN_QUALITY_NAME)
+    @Column(name = "quality")
     public Integer getQuality() {
         return quality;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_REVIEWAT_NAME, nullable = false)
+    @Column(name = "review_at", nullable = false)
     public OffsetDateTime getReviewAt() {
         return reviewAt;
     }

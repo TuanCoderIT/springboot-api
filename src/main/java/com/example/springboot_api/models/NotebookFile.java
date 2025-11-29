@@ -1,16 +1,5 @@
 package com.example.springboot_api.models;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.*;
-import lombok.experimental.Accessors;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.type.SqlTypes;
-
 import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
@@ -18,37 +7,44 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = NotebookFile.ENTITY_NAME)
-@Table(name = NotebookFile.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Notebook_File")
+@Table(name = "notebook_files", schema = "public", indexes = {
         @Index(name = "idx_notebook_files_notebook", columnList = "notebook_id"),
         @Index(name = "idx_notebook_files_uploaded_by", columnList = "uploaded_by"),
         @Index(name = "idx_notebook_files_status", columnList = "status")
 })
 public class NotebookFile implements Serializable {
-    public static final String ENTITY_NAME = "Notebook_File";
-    public static final String TABLE_NAME = "notebook_files";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_ORIGINALFILENAME_NAME = "original_filename";
-    public static final String COLUMN_MIMETYPE_NAME = "mime_type";
-    public static final String COLUMN_FILESIZE_NAME = "file_size";
-    public static final String COLUMN_STORAGEURL_NAME = "storage_url";
-    public static final String COLUMN_STATUS_NAME = "status";
-    public static final String COLUMN_PAGESCOUNT_NAME = "pages_count";
-    public static final String COLUMN_OCRDONE_NAME = "ocr_done";
-    public static final String COLUMN_EMBEDDINGDONE_NAME = "embedding_done";
-    public static final String COLUMN_EXTRAMETADATA_NAME = "extra_metadata";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = -4660902087269919238L;
-
-
+    private static final long serialVersionUID = 5942172068451284162L;
     private UUID id;
 
     private Notebook notebook;
@@ -62,6 +58,8 @@ public class NotebookFile implements Serializable {
     private Long fileSize;
 
     private String storageUrl;
+
+    private String status;
 
     private Integer pagesCount;
 
@@ -86,11 +84,12 @@ public class NotebookFile implements Serializable {
     private Set<Quiz> quizzes = new LinkedHashSet<>();
 
     private Set<TtsAsset> ttsAssets = new LinkedHashSet<>();
+
     private Set<VideoAsset> videoAssets = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -112,48 +111,55 @@ public class NotebookFile implements Serializable {
     }
 
     @NotNull
-    @Column(name = COLUMN_ORIGINALFILENAME_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "original_filename", nullable = false, length = Integer.MAX_VALUE)
     public String getOriginalFilename() {
         return originalFilename;
     }
 
     @Size(max = 255)
-    @Column(name = COLUMN_MIMETYPE_NAME)
+    @Column(name = "mime_type")
     public String getMimeType() {
         return mimeType;
     }
 
-    @Column(name = COLUMN_FILESIZE_NAME)
+    @Column(name = "file_size")
     public Long getFileSize() {
         return fileSize;
     }
 
     @NotNull
-    @Column(name = COLUMN_STORAGEURL_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "storage_url", nullable = false, length = Integer.MAX_VALUE)
     public String getStorageUrl() {
         return storageUrl;
     }
 
-    @Column(name = COLUMN_PAGESCOUNT_NAME)
+    @Size(max = 50)
+    @NotNull
+    @Column(name = "status", nullable = false, length = 50)
+    public String getStatus() {
+        return status;
+    }
+
+    @Column(name = "pages_count")
     public Integer getPagesCount() {
         return pagesCount;
     }
 
     @NotNull
     @ColumnDefault("false")
-    @Column(name = COLUMN_OCRDONE_NAME, nullable = false)
+    @Column(name = "ocr_done", nullable = false)
     public Boolean getOcrDone() {
         return ocrDone;
     }
 
     @NotNull
     @ColumnDefault("false")
-    @Column(name = COLUMN_EMBEDDINGDONE_NAME, nullable = false)
+    @Column(name = "embedding_done", nullable = false)
     public Boolean getEmbeddingDone() {
         return embeddingDone;
     }
 
-    @Column(name = COLUMN_EXTRAMETADATA_NAME)
+    @Column(name = "extra_metadata")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getExtraMetadata() {
         return extraMetadata;
@@ -161,14 +167,14 @@ public class NotebookFile implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_UPDATEDAT_NAME, nullable = false)
+    @Column(name = "updated_at", nullable = false)
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -208,9 +214,4 @@ public class NotebookFile implements Serializable {
         return videoAssets;
     }
 
-/*
- TODO [Reverse Engineering] create field to map the 'status' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    private Object status;
-*/
 }

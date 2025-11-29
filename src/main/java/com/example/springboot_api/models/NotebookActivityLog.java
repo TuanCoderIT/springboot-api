@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -21,25 +20,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = NotebookActivityLog.ENTITY_NAME)
-@Table(name = NotebookActivityLog.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Notebook_Activity_Log")
+@Table(name = "notebook_activity_logs", schema = "public", indexes = {
         @Index(name = "idx_notebook_activity_notebook", columnList = "notebook_id, created_at"),
         @Index(name = "idx_notebook_activity_user", columnList = "user_id, created_at")
 })
 public class NotebookActivityLog implements Serializable {
-    public static final String ENTITY_NAME = "Notebook_Activity_Log";
-    public static final String TABLE_NAME = "notebook_activity_logs";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_ACTION_NAME = "action";
-    public static final String COLUMN_TARGETID_NAME = "target_id";
-    public static final String COLUMN_TARGETTYPE_NAME = "target_type";
-    public static final String COLUMN_METADATA_NAME = "metadata";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -5427554431748727081L;
-
-
+    private static final long serialVersionUID = 8570574930383324193L;
     private UUID id;
 
     private Notebook notebook;
@@ -58,7 +45,7 @@ public class NotebookActivityLog implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -80,23 +67,23 @@ public class NotebookActivityLog implements Serializable {
 
     @Size(max = 64)
     @NotNull
-    @Column(name = COLUMN_ACTION_NAME, nullable = false, length = 64)
+    @Column(name = "action", nullable = false, length = 64)
     public String getAction() {
         return action;
     }
 
-    @Column(name = COLUMN_TARGETID_NAME)
+    @Column(name = "target_id")
     public UUID getTargetId() {
         return targetId;
     }
 
     @Size(max = 64)
-    @Column(name = COLUMN_TARGETTYPE_NAME, length = 64)
+    @Column(name = "target_type", length = 64)
     public String getTargetType() {
         return targetType;
     }
 
-    @Column(name = COLUMN_METADATA_NAME)
+    @Column(name = "metadata")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
         return metadata;
@@ -104,7 +91,7 @@ public class NotebookActivityLog implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

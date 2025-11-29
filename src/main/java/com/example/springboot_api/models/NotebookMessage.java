@@ -2,8 +2,8 @@ package com.example.springboot_api.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -22,29 +22,20 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString(onlyExplicitlyIncluded = true)
-@Accessors(chain = true)
-@Entity(name = NotebookMessage.ENTITY_NAME)
-@Table(name = NotebookMessage.TABLE_NAME, schema = "public", indexes = {
+@Entity(name = "Notebook_Message")
+@Table(name = "notebook_messages", schema = "public", indexes = {
         @Index(name = "idx_notebook_messages_notebook_created", columnList = "notebook_id, created_at"),
         @Index(name = "idx_notebook_messages_user", columnList = "user_id")
 })
 public class NotebookMessage implements Serializable {
-    public static final String ENTITY_NAME = "Notebook_Message";
-    public static final String TABLE_NAME = "notebook_messages";
-    public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_TYPE_NAME = "type";
-    public static final String COLUMN_CONTENT_NAME = "content";
-    public static final String COLUMN_AICONTEXT_NAME = "ai_context";
-    public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -7647041740109326382L;
-
-
+    private static final long serialVersionUID = -1182561080247186497L;
     private UUID id;
 
     private Notebook notebook;
 
     private User user;
+
+    private String type;
 
     private String content;
 
@@ -55,11 +46,12 @@ public class NotebookMessage implements Serializable {
     private OffsetDateTime createdAt;
 
     private Set<MessageReaction> messageReactions = new LinkedHashSet<>();
+
     private Set<NotebookMessage> notebookMessages = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = COLUMN_ID_NAME, nullable = false)
+    @Column(name = "id", nullable = false)
     public UUID getId() {
         return id;
     }
@@ -79,8 +71,15 @@ public class NotebookMessage implements Serializable {
         return user;
     }
 
+    @Size(max = 50)
     @NotNull
-    @Column(name = COLUMN_CONTENT_NAME, nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "type", nullable = false, length = 50)
+    public String getType() {
+        return type;
+    }
+
+    @NotNull
+    @Column(name = "content", nullable = false, length = Integer.MAX_VALUE)
     public String getContent() {
         return content;
     }
@@ -92,7 +91,7 @@ public class NotebookMessage implements Serializable {
         return replyToMessage;
     }
 
-    @Column(name = COLUMN_AICONTEXT_NAME)
+    @Column(name = "ai_context")
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getAiContext() {
         return aiContext;
@@ -100,7 +99,7 @@ public class NotebookMessage implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = "created_at", nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -115,9 +114,4 @@ public class NotebookMessage implements Serializable {
         return notebookMessages;
     }
 
-/*
- TODO [Reverse Engineering] create field to map the 'type' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    private Object type;
-*/
 }
