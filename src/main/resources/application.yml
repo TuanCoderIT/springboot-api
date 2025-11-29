@@ -12,9 +12,9 @@ spring:
     name: springboot-api
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/notebook
-    username: postgres
-    password: 88888888
+    url: jdbc:postgresql://localhost:5432/notebooks
+    username: admin
+    password: Admin1234
 
   jpa:
     show-sql: true
@@ -28,6 +28,12 @@ spring:
             non_contextual_creation: true
         format_sql: true
 
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+
 # ==============================
 # Custom properties cho pgvector
 # ==============================
@@ -39,3 +45,10 @@ vector:
 # ==============================
 server:
   port: 8386
+
+# ==============================
+# File upload configuration
+# ==============================
+file:
+  upload-dir: uploads
+  base-url: http://localhost:8386

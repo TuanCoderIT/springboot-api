@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,9 @@ public class AdminCommunityService {
     private final NotebookMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+
+    @Value("${file.base-url}")
+    private String baseUrl;
 
     @Transactional
     public NotebookResponse createCommunity(NotebookCreateRequest req, MultipartFile thumbnail, UUID adminId) {
@@ -76,7 +80,7 @@ public class AdminCommunityService {
             if (nb.getThumbnailUrl() != null) {
                 fileStorageService.deleteFile(nb.getThumbnailUrl());
             }
-            
+
             try {
                 String thumbnailUrl = fileStorageService.storeFile(thumbnail);
                 nb.setThumbnailUrl(thumbnailUrl);
@@ -93,12 +97,12 @@ public class AdminCommunityService {
     public void delete(UUID id) {
         Notebook nb = notebookRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Community not found"));
-        
+
         // Xóa thumbnail nếu có
         if (nb.getThumbnailUrl() != null) {
             fileStorageService.deleteFile(nb.getThumbnailUrl());
         }
-        
+
         notebookRepository.deleteById(id);
     }
 
@@ -120,28 +124,27 @@ public class AdminCommunityService {
             // Lấy tất cả communities (không phân trang) để sort theo memberCount
             Pageable allPageable = PageRequest.of(0, Integer.MAX_VALUE);
             Page<Notebook> allResult = notebookRepository.findCommunities(keyword, visibility, allPageable);
-            
+
             // Map và sort theo memberCount
             var sortedList = allResult.getContent().stream()
                     .map(this::mapToResponse)
                     .sorted((a, b) -> {
                         int compare = Long.compare(
-                            a.memberCount() != null ? a.memberCount() : 0L,
-                            b.memberCount() != null ? b.memberCount() : 0L
-                        );
+                                a.memberCount() != null ? a.memberCount() : 0L,
+                                b.memberCount() != null ? b.memberCount() : 0L);
                         return sortDir.equalsIgnoreCase("asc") ? compare : -compare;
                     })
                     .toList();
-            
+
             // Phân trang thủ công
             int start = req.getPage() * req.getSize();
             int end = Math.min(start + req.getSize(), sortedList.size());
-            java.util.List<NotebookResponse> pagedList = start < sortedList.size() 
-                ? sortedList.subList(start, end)
-                : new java.util.ArrayList<>();
-            
+            java.util.List<NotebookResponse> pagedList = start < sortedList.size()
+                    ? sortedList.subList(start, end)
+                    : new java.util.ArrayList<>();
+
             int totalPages = (int) Math.ceil((double) sortedList.size() / req.getSize());
-            
+
             return new PagedResponse<>(
                     pagedList,
                     new PagedResponse.Meta(
@@ -170,13 +173,33 @@ public class AdminCommunityService {
 
     private NotebookResponse mapToResponse(Notebook nb) {
         Long memberCount = memberRepository.countByNotebookIdAndStatus(nb.getId(), "approved");
+
+        // Convert relative path to full URL if needed
+        String thumbnailUrl = nb.getThumbnailUrl();
+        if (thumbnailUrl != null) {
+            // Normalize URL: convert /files/notebooks/ hoặc /files/ thành /uploads/
+            if (thumbnailUrl.contains("/files/notebooks/")) {
+                thumbnailUrl = thumbnailUrl.replace("/files/notebooks/", "/uploads/");
+            } else if (thumbnailUrl.contains("/files/")) {
+                thumbnailUrl = thumbnailUrl.replace("/files/", "/uploads/");
+            }
+
+            // Nếu đã là full URL (bắt đầu bằng http:// hoặc https://) thì giữ nguyên
+            if (!thumbnailUrl.startsWith("http://") && !thumbnailUrl.startsWith("https://")) {
+                // Nếu là relative path (bắt đầu bằng /) thì thêm baseUrl
+                if (thumbnailUrl.startsWith("/")) {
+                    thumbnailUrl = baseUrl + thumbnailUrl;
+                }
+            }
+        }
+
         return new NotebookResponse(
                 nb.getId(),
                 nb.getTitle(),
                 nb.getDescription(),
                 nb.getType(),
                 nb.getVisibility(),
-                nb.getThumbnailUrl(),
+                thumbnailUrl,
                 memberCount,
                 nb.getCreatedAt(),
                 nb.getUpdatedAt());
