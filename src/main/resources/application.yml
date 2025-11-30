@@ -12,9 +12,9 @@ spring:
     name: springboot-api
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/notebooks
-    username: admin
-    password: Admin1234
+    url: jdbc:postgresql://localhost:5432/notebook
+    username: postgres
+    password: 88888888
 
   jpa:
     show-sql: true
@@ -52,3 +52,12 @@ server:
 file:
   upload-dir: uploads
   base-url: http://localhost:8386
+
+# ==============================
+# Springdoc configuration
+# ==============================
+springdoc:
+  swagger-ui:
+    use-root-path: true
+  api-docs:
+    enabled: true

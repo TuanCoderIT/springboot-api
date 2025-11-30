@@ -13,16 +13,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.common.exceptions.NotFoundException;
+import com.example.springboot_api.dto.admin.notebook.ApproveRejectBlockRequest;
 import com.example.springboot_api.dto.admin.notebook.ListCommunityRequest;
 import com.example.springboot_api.dto.admin.notebook.NotebookCreateRequest;
 import com.example.springboot_api.dto.admin.notebook.NotebookResponse;
+import com.example.springboot_api.dto.admin.notebook.PendingRequestResponse;
 import com.example.springboot_api.dto.shared.PagedResponse;
+import com.example.springboot_api.dto.shared.community.NotebookDetailResponse;
 import com.example.springboot_api.models.Notebook;
+import com.example.springboot_api.models.NotebookFile;
+import com.example.springboot_api.models.NotebookMember;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.admin.NotebookMemberRepository;
 import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.admin.UserRepository;
+import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +41,7 @@ public class AdminCommunityService {
     private final NotebookRepository notebookRepository;
     private final NotebookMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final NotebookFileRepository fileRepository;
     private final FileStorageService fileStorageService;
 
     @Value("${file.base-url}")
@@ -203,5 +211,151 @@ public class AdminCommunityService {
                 memberCount,
                 nb.getCreatedAt(),
                 nb.getUpdatedAt());
+    }
+
+    public PagedResponse<PendingRequestResponse> getPendingRequests(UUID notebookId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<NotebookMember> result = memberRepository.findPendingRequests(notebookId, pageable);
+
+        return new PagedResponse<>(
+                result.map(this::mapToPendingRequest).getContent(),
+                new PagedResponse.Meta(
+                        result.getNumber(),
+                        result.getSize(),
+                        result.getTotalElements(),
+                        result.getTotalPages()));
+    }
+
+    @Transactional
+    public void approveRejectBlockMember(ApproveRejectBlockRequest req) {
+        NotebookMember member = memberRepository
+                .findByNotebookIdAndUserId(req.notebookId(), req.userId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+        String action = req.action().toLowerCase();
+        String newStatus;
+
+        switch (action) {
+            case "approve":
+                newStatus = "approved";
+                if (member.getJoinedAt() == null) {
+                    member.setJoinedAt(java.time.OffsetDateTime.now());
+                }
+                break;
+            case "reject":
+                newStatus = "rejected";
+                break;
+            case "block":
+                newStatus = "blocked";
+                break;
+            default:
+                throw new BadRequestException("Action không hợp lệ. Chỉ chấp nhận: approve, reject, block");
+        }
+
+        member.setStatus(newStatus);
+        member.setUpdatedAt(java.time.OffsetDateTime.now());
+        memberRepository.save(member);
+    }
+
+    public NotebookDetailResponse getNotebookDetail(UUID notebookId) {
+        Notebook notebook = notebookRepository.findById(notebookId)
+                .orElseThrow(() -> new NotFoundException("Nhóm không tồn tại"));
+
+        // Lấy danh sách thành viên đã approved
+        var approvedMembers = memberRepository.findApprovedMembers(notebookId);
+        var memberItems = approvedMembers.stream()
+                .map(m -> new NotebookDetailResponse.MemberItem(
+                        m.getUser().getId(),
+                        m.getUser().getFullName(),
+                        m.getUser().getEmail(),
+                        m.getRole(),
+                        m.getStatus(),
+                        m.getJoinedAt()))
+                .toList();
+
+        // Lấy danh sách files
+        var files = fileRepository.findByNotebookId(notebookId);
+        var fileItems = files.stream()
+                .map(f -> new NotebookDetailResponse.FileItem(
+                        f.getId(),
+                        f.getOriginalFilename(),
+                        f.getMimeType(),
+                        f.getFileSize(),
+                        normalizeFileUrl(f.getStorageUrl()),
+                        f.getStatus(),
+                        f.getCreatedAt()))
+                .toList();
+
+        String thumbnailUrl = normalizeThumbnailUrl(notebook.getThumbnailUrl());
+
+        return new NotebookDetailResponse(
+                notebook.getId(),
+                notebook.getTitle(),
+                notebook.getDescription(),
+                notebook.getType(),
+                notebook.getVisibility(),
+                thumbnailUrl,
+                notebook.getCreatedBy().getId(),
+                notebook.getCreatedBy().getFullName(),
+                notebook.getCreatedAt(),
+                notebook.getUpdatedAt(),
+                new NotebookDetailResponse.MemberInfo(
+                        (long) memberItems.size(),
+                        memberItems),
+                new NotebookDetailResponse.FileInfo(
+                        (long) fileItems.size(),
+                        fileItems));
+    }
+
+    private PendingRequestResponse mapToPendingRequest(NotebookMember nm) {
+        return new PendingRequestResponse(
+                nm.getId(),
+                nm.getNotebook().getId(),
+                nm.getNotebook().getTitle(),
+                nm.getUser().getId(),
+                nm.getUser().getFullName(),
+                nm.getUser().getEmail(),
+                nm.getStatus(),
+                nm.getCreatedAt());
+    }
+
+    private String normalizeFileUrl(String storageUrl) {
+        if (storageUrl == null) {
+            return null;
+        }
+
+        if (storageUrl.contains("/files/notebooks/")) {
+            storageUrl = storageUrl.replace("/files/notebooks/", "/uploads/");
+        } else if (storageUrl.contains("/files/")) {
+            storageUrl = storageUrl.replace("/files/", "/uploads/");
+        }
+
+        if (!storageUrl.startsWith("http://") && !storageUrl.startsWith("https://")) {
+            if (storageUrl.startsWith("/")) {
+                storageUrl = baseUrl + storageUrl;
+            }
+        }
+
+        return storageUrl;
+    }
+
+    private String normalizeThumbnailUrl(String thumbnailUrl) {
+        if (thumbnailUrl == null) {
+            return null;
+        }
+
+        if (thumbnailUrl.contains("/files/notebooks/")) {
+            thumbnailUrl = thumbnailUrl.replace("/files/notebooks/", "/uploads/");
+        } else if (thumbnailUrl.contains("/files/")) {
+            thumbnailUrl = thumbnailUrl.replace("/files/", "/uploads/");
+        }
+
+        if (!thumbnailUrl.startsWith("http://") && !thumbnailUrl.startsWith("https://")) {
+            if (thumbnailUrl.startsWith("/")) {
+                thumbnailUrl = baseUrl + thumbnailUrl;
+            }
+        }
+
+        return thumbnailUrl;
     }
 }
