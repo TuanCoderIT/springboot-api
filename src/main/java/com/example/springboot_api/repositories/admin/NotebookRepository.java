@@ -26,4 +26,23 @@ public interface NotebookRepository extends JpaRepository<Notebook, UUID> {
         @Param("visibility") String visibility,
         Pageable pageable
     );
+
+    @Query("""
+        SELECT n FROM Notebook n
+        WHERE n.type = 'community'
+        AND n.id NOT IN (
+            SELECT nm.notebook.id FROM Notebook_Member nm
+            WHERE nm.user.id = :userId
+            AND nm.status IN ('approved', 'pending')
+        )
+        AND (:q IS NULL OR :q = '' OR LOWER(n.title) LIKE LOWER(CONCAT('%', :q, '%'))
+             OR LOWER(n.description) LIKE LOWER(CONCAT('%', :q, '%')))
+        AND (:visibility IS NULL OR :visibility = '' OR n.visibility = :visibility)
+        """)
+    Page<Notebook> findAvailableCommunities(
+        @Param("userId") UUID userId,
+        @Param("q") String keyword,
+        @Param("visibility") String visibility,
+        Pageable pageable
+    );
 }
