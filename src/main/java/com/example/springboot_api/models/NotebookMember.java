@@ -17,14 +17,21 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Notebook_Member")
-@Table(name = "notebook_members", schema = "public", indexes = {
-        @Index(name = "uq_notebook_members_notebook_user", columnList = "notebook_id, user_id", unique = true),
-        @Index(name = "idx_notebook_members_user", columnList = "user_id"),
-        @Index(name = "idx_notebook_members_status", columnList = "status")
-})
+@ToString
+@Entity(name = NotebookMember.ENTITY_NAME)
+@Table(name = NotebookMember.TABLE_NAME)
 public class NotebookMember implements Serializable {
-    private static final long serialVersionUID = -8293171859453161881L;
+    public static final String ENTITY_NAME = "Notebook_Member";
+    public static final String TABLE_NAME = "notebook_members";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_ROLE_NAME = "role";
+    public static final String COLUMN_STATUS_NAME = "status";
+    public static final String COLUMN_JOINEDAT_NAME = "joined_at";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
+    private static final long serialVersionUID = -9025341847916926994L;
+
+
     private UUID id;
 
     private Notebook notebook;
@@ -43,7 +50,7 @@ public class NotebookMember implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -66,33 +73,33 @@ public class NotebookMember implements Serializable {
 
     @Size(max = 50)
     @NotNull
-    @Column(name = "role", nullable = false, length = 50)
+    @Column(name = COLUMN_ROLE_NAME, nullable = false, length = 50)
     public String getRole() {
         return role;
     }
 
     @Size(max = 50)
     @NotNull
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = COLUMN_STATUS_NAME, nullable = false, length = 50)
     public String getStatus() {
         return status;
     }
 
-    @Column(name = "joined_at")
+    @Column(name = COLUMN_JOINEDAT_NAME)
     public OffsetDateTime getJoinedAt() {
         return joinedAt;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = COLUMN_UPDATEDAT_NAME, nullable = false)
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }

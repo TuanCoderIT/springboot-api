@@ -19,13 +19,19 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Quiz_Submission")
-@Table(name = "quiz_submissions", schema = "public", indexes = {
-        @Index(name = "idx_quiz_submissions_quiz", columnList = "quiz_id, created_at"),
-        @Index(name = "idx_quiz_submissions_user", columnList = "user_id, created_at")
-})
+@ToString
+@Entity(name = QuizSubmission.ENTITY_NAME)
+@Table(name = QuizSubmission.TABLE_NAME)
 public class QuizSubmission implements Serializable {
-    private static final long serialVersionUID = 7618378689261539878L;
+    public static final String ENTITY_NAME = "Quiz_Submission";
+    public static final String TABLE_NAME = "quiz_submissions";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_SCORE_NAME = "score";
+    public static final String COLUMN_ANSWERS_NAME = "answers";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    private static final long serialVersionUID = 1644625225971325846L;
+
+
     private UUID id;
 
     private Quiz quiz;
@@ -40,7 +46,7 @@ public class QuizSubmission implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -61,12 +67,12 @@ public class QuizSubmission implements Serializable {
         return user;
     }
 
-    @Column(name = "score")
+    @Column(name = COLUMN_SCORE_NAME)
     public Double getScore() {
         return score;
     }
 
-    @Column(name = "answers")
+    @Column(name = COLUMN_ANSWERS_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getAnswers() {
         return answers;
@@ -74,7 +80,7 @@ public class QuizSubmission implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

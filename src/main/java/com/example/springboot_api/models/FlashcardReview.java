@@ -16,12 +16,20 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Flashcard_Review")
-@Table(name = "flashcard_reviews", schema = "public", indexes = {
-        @Index(name = "idx_flashcard_reviews_user", columnList = "user_id, review_at")
-})
+@ToString
+@Entity(name = FlashcardReview.ENTITY_NAME)
+@Table(name = FlashcardReview.TABLE_NAME)
 public class FlashcardReview implements Serializable {
-    private static final long serialVersionUID = 1146723971813767511L;
+    public static final String ENTITY_NAME = "Flashcard_Review";
+    public static final String TABLE_NAME = "flashcard_reviews";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_EASEFACTOR_NAME = "ease_factor";
+    public static final String COLUMN_INTERVALDAYS_NAME = "interval_days";
+    public static final String COLUMN_QUALITY_NAME = "quality";
+    public static final String COLUMN_REVIEWAT_NAME = "review_at";
+    private static final long serialVersionUID = -603113857338555937L;
+
+
     private UUID id;
 
     private Flashcard flashcard;
@@ -38,7 +46,7 @@ public class FlashcardReview implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -59,24 +67,24 @@ public class FlashcardReview implements Serializable {
         return user;
     }
 
-    @Column(name = "ease_factor")
+    @Column(name = COLUMN_EASEFACTOR_NAME)
     public Double getEaseFactor() {
         return easeFactor;
     }
 
-    @Column(name = "interval_days")
+    @Column(name = COLUMN_INTERVALDAYS_NAME)
     public Integer getIntervalDays() {
         return intervalDays;
     }
 
-    @Column(name = "quality")
+    @Column(name = COLUMN_QUALITY_NAME)
     public Integer getQuality() {
         return quality;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "review_at", nullable = false)
+    @Column(name = COLUMN_REVIEWAT_NAME, nullable = false)
     public OffsetDateTime getReviewAt() {
         return reviewAt;
     }

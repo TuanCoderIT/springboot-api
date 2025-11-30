@@ -19,13 +19,21 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Rag_Query")
-@Table(name = "rag_queries", schema = "public", indexes = {
-        @Index(name = "idx_rag_queries_notebook", columnList = "notebook_id, created_at"),
-        @Index(name = "idx_rag_queries_user", columnList = "user_id, created_at")
-})
+@ToString
+@Entity(name = RagQuery.ENTITY_NAME)
+@Table(name = RagQuery.TABLE_NAME)
 public class RagQuery implements Serializable {
-    private static final long serialVersionUID = 5664365710151332112L;
+    public static final String ENTITY_NAME = "Rag_Query";
+    public static final String TABLE_NAME = "rag_queries";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_QUESTION_NAME = "question";
+    public static final String COLUMN_ANSWER_NAME = "answer";
+    public static final String COLUMN_SOURCECHUNKS_NAME = "source_chunks";
+    public static final String COLUMN_LATENCYMS_NAME = "latency_ms";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    private static final long serialVersionUID = 4545290807690008791L;
+
+
     private UUID id;
 
     private Notebook notebook;
@@ -44,7 +52,7 @@ public class RagQuery implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -65,30 +73,30 @@ public class RagQuery implements Serializable {
     }
 
     @NotNull
-    @Column(name = "question", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_QUESTION_NAME, nullable = false, length = Integer.MAX_VALUE)
     public String getQuestion() {
         return question;
     }
 
-    @Column(name = "answer", length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_ANSWER_NAME, length = Integer.MAX_VALUE)
     public String getAnswer() {
         return answer;
     }
 
-    @Column(name = "source_chunks")
+    @Column(name = COLUMN_SOURCECHUNKS_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getSourceChunks() {
         return sourceChunks;
     }
 
-    @Column(name = "latency_ms")
+    @Column(name = COLUMN_LATENCYMS_NAME)
     public Integer getLatencyMs() {
         return latencyMs;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
