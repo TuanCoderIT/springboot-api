@@ -53,24 +53,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-
+        
+        config.addAllowedOriginPattern("*");  // CHÌA KHOÁ: cho mọi origin
         // Origin pattern không bao gồm path, chỉ domain
-        config.setAllowedOriginPatterns(List.of(
-            "http://localhost:*",
-            "https://localhost:*",
-            "http://127.0.0.1:*",
-            "https://127.0.0.1:*",
-            "http://*.ngrok-free.dev",
-            "https://*.ngrok-free.dev",
-            "http://*.ngrok-free.app",
-            "https://*.ngrok-free.app",
-            "http://*.ngrok.io",
-            "https://*.ngrok.io",
-            "http://*.ngrok.app",
-            "https://*.ngrok.app",
-            // Domain cụ thể nếu cần
-            "https://unshapen-splenetically-cheyenne.ngrok-free.dev"
-        ));
+        // config.setAllowedOriginPatterns(List.of(
+        //     "http://localhost:*",
+        //     "https://localhost:*",
+        //     "http://*.ngrok-free.dev",
+        //     "https://*.ngrok-free.dev",
+        //     // Domain cụ thể nếu cần
+        //     "https://unshapen-splenetically-cheyenne.ngrok-free.dev"
+        // ));
 
         config.setAllowCredentials(true); // BẮT BUỘC PHẢI TRUE nếu dùng cookie JWT
 
