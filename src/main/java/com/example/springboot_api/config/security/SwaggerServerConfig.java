@@ -12,6 +12,8 @@ public class SwaggerServerConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .addServersItem(new Server()
-                        .url("https://unshapen-splenetically-cheyenne.ngrok-free.dev"));
+                        .url("https://unshapen-splenetically-cheyenne.ngrok-free.dev"))
+                .addServersItem(new Server()
+                        .url("http://localhost:8386"));
     }
 }

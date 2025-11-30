@@ -1,0 +1,92 @@
+package com.example.springboot_api.services.shared;
+
+import java.io.IOException;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.example.springboot_api.common.exceptions.NotFoundException;
+import com.example.springboot_api.dto.shared.auth.AuthResponse;
+import com.example.springboot_api.dto.shared.profile.UpdateProfileRequest;
+import com.example.springboot_api.models.User;
+import com.example.springboot_api.repositories.shared.AuthRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class ProfileService {
+
+    private final AuthRepository userRepository;
+    private final FileStorageService fileStorageService;
+
+    @Value("${file.base-url}")
+    private String baseUrl;
+
+    @Transactional
+    public AuthResponse updateProfile(UUID userId, UpdateProfileRequest req, MultipartFile avatar) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Người dùng không tồn tại"));
+
+        // Cập nhật fullName nếu có
+        if (req.getFullName() != null && !req.getFullName().trim().isEmpty()) {
+            user.setFullName(req.getFullName().trim());
+        }
+
+        // Xử lý upload avatar
+        if (avatar != null && !avatar.isEmpty()) {
+            try {
+                // Xóa avatar cũ nếu có
+                if (user.getAvatarUrl() != null) {
+                    fileStorageService.deleteFile(user.getAvatarUrl());
+                }
+
+                // Lưu avatar mới
+                String avatarUrl = fileStorageService.storeFile(avatar);
+                user.setAvatarUrl(avatarUrl);
+            } catch (IOException e) {
+                throw new RuntimeException("Không thể upload avatar", e);
+            }
+        }
+
+        user.setUpdatedAt(java.time.Instant.now());
+        userRepository.save(user);
+
+        // Trả về response với avatarUrl đã normalize
+        String avatarUrl = normalizeAvatarUrl(user.getAvatarUrl());
+        return new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(), avatarUrl);
+    }
+
+    public AuthResponse getProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Người dùng không tồn tại"));
+
+        String avatarUrl = normalizeAvatarUrl(user.getAvatarUrl());
+        return new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(), avatarUrl);
+    }
+
+    private String normalizeAvatarUrl(String avatarUrl) {
+        if (avatarUrl == null) {
+            return null;
+        }
+
+        // Normalize URL: convert /files/ thành /uploads/
+        if (avatarUrl.contains("/files/")) {
+            avatarUrl = avatarUrl.replace("/files/", "/uploads/");
+        }
+
+        // Nếu đã là full URL (bắt đầu bằng http:// hoặc https://) thì giữ nguyên
+        if (!avatarUrl.startsWith("http://") && !avatarUrl.startsWith("https://")) {
+            // Nếu là relative path (bắt đầu bằng /) thì thêm baseUrl
+            if (avatarUrl.startsWith("/")) {
+                avatarUrl = baseUrl + avatarUrl;
+            }
+        }
+
+        return avatarUrl;
+    }
+}
+
