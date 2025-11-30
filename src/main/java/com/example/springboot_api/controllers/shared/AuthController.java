@@ -5,19 +5,25 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.springboot_api.config.security.JwtAuthenticationFilter;
+import com.example.springboot_api.config.security.UserPrincipal;
 import com.example.springboot_api.dto.shared.auth.AuthResponse;
 import com.example.springboot_api.dto.shared.auth.LoginRequest;
 import com.example.springboot_api.dto.shared.auth.RegisterRequest;
+import com.example.springboot_api.dto.shared.profile.UpdateProfileRequest;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.services.shared.AuthService;
+import com.example.springboot_api.services.shared.ProfileService;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/auth")
@@ -25,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final ProfileService profileService;
 
     private ResponseCookie makeCookie(String token) {
         return ResponseCookie.from(JwtAuthenticationFilter.AUTH_COOKIE, token)
@@ -71,12 +78,27 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<AuthResponse> me(@AuthenticationPrincipal User user) {
+    public ResponseEntity<AuthResponse> me(@AuthenticationPrincipal UserPrincipal user) {
         if (user == null)
             return ResponseEntity.status(401).build();
 
-        AuthResponse info = new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(),
-                user.getAvatarUrl());
+        AuthResponse info = profileService.getProfile(user.getId());
         return ResponseEntity.ok(info);
+    }
+
+    @PutMapping(value = "/profile", consumes = {"multipart/form-data"})
+    public ResponseEntity<AuthResponse> updateProfile(
+            @RequestParam(value = "fullName", required = false) String fullName,
+            @RequestParam(value = "avatar", required = false) MultipartFile avatar,
+            @AuthenticationPrincipal UserPrincipal user) {
+
+        if (user == null)
+            return ResponseEntity.status(401).build();
+
+        UpdateProfileRequest req = new UpdateProfileRequest();
+        req.setFullName(fullName);
+
+        AuthResponse response = profileService.updateProfile(user.getId(), req, avatar);
+        return ResponseEntity.ok(response);
     }
 }
