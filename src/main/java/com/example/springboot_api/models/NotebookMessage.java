@@ -22,13 +22,20 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Notebook_Message")
-@Table(name = "notebook_messages", schema = "public", indexes = {
-        @Index(name = "idx_notebook_messages_notebook_created", columnList = "notebook_id, created_at"),
-        @Index(name = "idx_notebook_messages_user", columnList = "user_id")
-})
+@ToString
+@Entity(name = NotebookMessage.ENTITY_NAME)
+@Table(name = NotebookMessage.TABLE_NAME)
 public class NotebookMessage implements Serializable {
-    private static final long serialVersionUID = -1182561080247186497L;
+    public static final String ENTITY_NAME = "Notebook_Message";
+    public static final String TABLE_NAME = "notebook_messages";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_TYPE_NAME = "type";
+    public static final String COLUMN_CONTENT_NAME = "content";
+    public static final String COLUMN_AICONTEXT_NAME = "ai_context";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    private static final long serialVersionUID = -6253951088553566561L;
+
+
     private UUID id;
 
     private Notebook notebook;
@@ -51,7 +58,7 @@ public class NotebookMessage implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -73,13 +80,13 @@ public class NotebookMessage implements Serializable {
 
     @Size(max = 50)
     @NotNull
-    @Column(name = "type", nullable = false, length = 50)
+    @Column(name = COLUMN_TYPE_NAME, nullable = false, length = 50)
     public String getType() {
         return type;
     }
 
     @NotNull
-    @Column(name = "content", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_CONTENT_NAME, nullable = false, length = Integer.MAX_VALUE)
     public String getContent() {
         return content;
     }
@@ -91,7 +98,7 @@ public class NotebookMessage implements Serializable {
         return replyToMessage;
     }
 
-    @Column(name = "ai_context")
+    @Column(name = COLUMN_AICONTEXT_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getAiContext() {
         return aiContext;
@@ -99,7 +106,7 @@ public class NotebookMessage implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

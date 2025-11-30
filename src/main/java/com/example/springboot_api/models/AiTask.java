@@ -20,14 +20,23 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Ai_Task")
-@Table(name = "ai_tasks", schema = "public", indexes = {
-        @Index(name = "idx_ai_tasks_notebook", columnList = "notebook_id, created_at"),
-        @Index(name = "idx_ai_tasks_type_status", columnList = "task_type, status"),
-        @Index(name = "idx_ai_tasks_status", columnList = "status")
-})
+@ToString
+@Entity(name = AiTask.ENTITY_NAME)
+@Table(name = AiTask.TABLE_NAME)
 public class AiTask implements Serializable {
-    private static final long serialVersionUID = -2698470328924756312L;
+    public static final String ENTITY_NAME = "Ai_Task";
+    public static final String TABLE_NAME = "ai_tasks";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_TASKTYPE_NAME = "task_type";
+    public static final String COLUMN_STATUS_NAME = "status";
+    public static final String COLUMN_INPUTCONFIG_NAME = "input_config";
+    public static final String COLUMN_OUTPUTDATA_NAME = "output_data";
+    public static final String COLUMN_ERRORMESSAGE_NAME = "error_message";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
+    private static final long serialVersionUID = 4047362116579128640L;
+
+
     private UUID id;
 
     private Notebook notebook;
@@ -52,7 +61,7 @@ public class AiTask implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -81,45 +90,45 @@ public class AiTask implements Serializable {
 
     @Size(max = 50)
     @NotNull
-    @Column(name = "task_type", nullable = false, length = 50)
+    @Column(name = COLUMN_TASKTYPE_NAME, nullable = false, length = 50)
     public String getTaskType() {
         return taskType;
     }
 
     @Size(max = 50)
     @NotNull
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = COLUMN_STATUS_NAME, nullable = false, length = 50)
     public String getStatus() {
         return status;
     }
 
-    @Column(name = "input_config")
+    @Column(name = COLUMN_INPUTCONFIG_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getInputConfig() {
         return inputConfig;
     }
 
-    @Column(name = "output_data")
+    @Column(name = COLUMN_OUTPUTDATA_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getOutputData() {
         return outputData;
     }
 
-    @Column(name = "error_message", length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_ERRORMESSAGE_NAME, length = Integer.MAX_VALUE)
     public String getErrorMessage() {
         return errorMessage;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = COLUMN_UPDATEDAT_NAME, nullable = false)
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
