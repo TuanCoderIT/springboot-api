@@ -22,17 +22,22 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Quiz")
-@Table(name = "quizzes", schema = "public", indexes = {
-        @Index(name = "idx_quizzes_notebook", columnList = "notebook_id")
-})
+@ToString
+@Entity(name = Quiz.ENTITY_NAME)
+@Table(name = Quiz.TABLE_NAME)
 public class Quiz implements Serializable {
-    private static final long serialVersionUID = -5607538392310487323L;
+    public static final String ENTITY_NAME = "Quiz";
+    public static final String TABLE_NAME = "quizzes";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_TITLE_NAME = "title";
+    public static final String COLUMN_METADATA_NAME = "metadata";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    private static final long serialVersionUID = 7290977021731423992L;
+
+
     private UUID id;
 
     private Notebook notebook;
-
-    private NotebookFile file;
 
     private String title;
 
@@ -42,13 +47,15 @@ public class Quiz implements Serializable {
 
     private OffsetDateTime createdAt;
 
+    private Set<QuizFile> quizFiles = new LinkedHashSet<>();
+
     private Set<QuizQuestion> quizQuestions = new LinkedHashSet<>();
 
     private Set<QuizSubmission> quizSubmissions = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -61,16 +68,9 @@ public class Quiz implements Serializable {
         return notebook;
     }
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "file_id")
-    public NotebookFile getFile() {
-        return file;
-    }
-
     @Size(max = 255)
     @NotNull
-    @Column(name = "title", nullable = false)
+    @Column(name = COLUMN_TITLE_NAME, nullable = false)
     public String getTitle() {
         return title;
     }
@@ -82,7 +82,7 @@ public class Quiz implements Serializable {
         return createdBy;
     }
 
-    @Column(name = "metadata")
+    @Column(name = COLUMN_METADATA_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
         return metadata;
@@ -90,9 +90,14 @@ public class Quiz implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    @OneToMany(mappedBy = "quiz")
+    public Set<QuizFile> getQuizFiles() {
+        return quizFiles;
     }
 
     @OneToMany(mappedBy = "quiz")

@@ -23,7 +23,6 @@ import com.example.springboot_api.dto.admin.notebook.PendingRequestResponse;
 import com.example.springboot_api.dto.shared.PagedResponse;
 import com.example.springboot_api.dto.shared.community.NotebookDetailResponse;
 import com.example.springboot_api.models.Notebook;
-import com.example.springboot_api.models.NotebookFile;
 import com.example.springboot_api.models.NotebookMember;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.admin.NotebookMemberRepository;

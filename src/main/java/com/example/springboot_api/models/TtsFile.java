@@ -2,7 +2,6 @@ package com.example.springboot_api.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
@@ -18,24 +17,21 @@ import java.util.UUID;
 @Getter
 @Setter
 @ToString
-@Entity(name = MessageReaction.ENTITY_NAME)
-@Table(name = MessageReaction.TABLE_NAME)
-public class MessageReaction implements Serializable {
-    public static final String ENTITY_NAME = "Message_Reaction";
-    public static final String TABLE_NAME = "message_reactions";
+@Entity(name = TtsFile.ENTITY_NAME)
+@Table(name = TtsFile.TABLE_NAME)
+public class TtsFile implements Serializable {
+    public static final String ENTITY_NAME = "Tts_File";
+    public static final String TABLE_NAME = "tts_files";
     public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_EMOJI_NAME = "emoji";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 6471341152999010735L;
+    private static final long serialVersionUID = 6771184132635978895L;
 
 
     private UUID id;
 
-    private NotebookMessage message;
+    private TtsAsset tts;
 
-    private User user;
-
-    private String emoji;
+    private NotebookFile file;
 
     private OffsetDateTime createdAt;
 
@@ -49,29 +45,21 @@ public class MessageReaction implements Serializable {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "message_id", nullable = false)
-    public NotebookMessage getMessage() {
-        return message;
+    @JoinColumn(name = "tts_id", nullable = false)
+    public TtsAsset getTts() {
+        return tts;
     }
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "user_id", nullable = false)
-    public User getUser() {
-        return user;
+    @JoinColumn(name = "file_id", nullable = false)
+    public NotebookFile getFile() {
+        return file;
     }
 
-    @Size(max = 32)
-    @NotNull
-    @Column(name = COLUMN_EMOJI_NAME, nullable = false, length = 32)
-    public String getEmoji() {
-        return emoji;
-    }
-
-    @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

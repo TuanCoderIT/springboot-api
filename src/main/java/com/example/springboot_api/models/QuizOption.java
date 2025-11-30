@@ -15,12 +15,18 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Quiz_Option")
-@Table(name = "quiz_options", schema = "public", indexes = {
-        @Index(name = "idx_quiz_options_question", columnList = "question_id")
-})
+@ToString
+@Entity(name = QuizOption.ENTITY_NAME)
+@Table(name = QuizOption.TABLE_NAME)
 public class QuizOption implements Serializable {
-    private static final long serialVersionUID = -4392414011039934806L;
+    public static final String ENTITY_NAME = "Quiz_Option";
+    public static final String TABLE_NAME = "quiz_options";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_OPTIONTEXT_NAME = "option_text";
+    public static final String COLUMN_ISCORRECT_NAME = "is_correct";
+    private static final long serialVersionUID = 2994751429448678340L;
+
+
     private UUID id;
 
     private QuizQuestion question;
@@ -31,7 +37,7 @@ public class QuizOption implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -45,14 +51,14 @@ public class QuizOption implements Serializable {
     }
 
     @NotNull
-    @Column(name = "option_text", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_OPTIONTEXT_NAME, nullable = false, length = Integer.MAX_VALUE)
     public String getOptionText() {
         return optionText;
     }
 
     @NotNull
     @ColumnDefault("false")
-    @Column(name = "is_correct", nullable = false)
+    @Column(name = COLUMN_ISCORRECT_NAME, nullable = false)
     public Boolean getIsCorrect() {
         return isCorrect;
     }

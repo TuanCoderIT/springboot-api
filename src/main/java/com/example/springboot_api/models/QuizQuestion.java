@@ -21,12 +21,19 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Quiz_Question")
-@Table(name = "quiz_questions", schema = "public", indexes = {
-        @Index(name = "idx_quiz_questions_quiz", columnList = "quiz_id")
-})
+@ToString
+@Entity(name = QuizQuestion.ENTITY_NAME)
+@Table(name = QuizQuestion.TABLE_NAME)
 public class QuizQuestion implements Serializable {
-    private static final long serialVersionUID = 8852590243672807604L;
+    public static final String ENTITY_NAME = "Quiz_Question";
+    public static final String TABLE_NAME = "quiz_questions";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_QUESTIONTEXT_NAME = "question_text";
+    public static final String COLUMN_QUESTIONTYPE_NAME = "question_type";
+    public static final String COLUMN_METADATA_NAME = "metadata";
+    private static final long serialVersionUID = 7801336045005285018L;
+
+
     private UUID id;
 
     private Quiz quiz;
@@ -41,7 +48,7 @@ public class QuizQuestion implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -55,7 +62,7 @@ public class QuizQuestion implements Serializable {
     }
 
     @NotNull
-    @Column(name = "question_text", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_QUESTIONTEXT_NAME, nullable = false, length = Integer.MAX_VALUE)
     public String getQuestionText() {
         return questionText;
     }
@@ -63,12 +70,12 @@ public class QuizQuestion implements Serializable {
     @Size(max = 32)
     @NotNull
     @ColumnDefault("'multiple_choice'")
-    @Column(name = "question_type", nullable = false, length = 32)
+    @Column(name = COLUMN_QUESTIONTYPE_NAME, nullable = false, length = 32)
     public String getQuestionType() {
         return questionType;
     }
 
-    @Column(name = "metadata")
+    @Column(name = COLUMN_METADATA_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
         return metadata;

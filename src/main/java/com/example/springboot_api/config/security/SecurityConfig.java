@@ -39,7 +39,8 @@ public class SecurityConfig {
                         "/webjars/**")
                 .permitAll()
 
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
+                .requestMatchers("/auth/me").authenticated()
                 .requestMatchers("/db-test").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
 
@@ -53,16 +54,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        
-        config.addAllowedOriginPattern("*");  // CHÌA KHOÁ: cho mọi origin
+
+        config.addAllowedOriginPattern("*"); // CHÌA KHOÁ: cho mọi origin
         // Origin pattern không bao gồm path, chỉ domain
         // config.setAllowedOriginPatterns(List.of(
-        //     "http://localhost:*",
-        //     "https://localhost:*",
-        //     "http://*.ngrok-free.dev",
-        //     "https://*.ngrok-free.dev",
-        //     // Domain cụ thể nếu cần
-        //     "https://unshapen-splenetically-cheyenne.ngrok-free.dev"
+        // "http://localhost:*",
+        // "https://localhost:*",
+        // "http://*.ngrok-free.dev",
+        // "https://*.ngrok-free.dev",
+        // // Domain cụ thể nếu cần
+        // "https://unshapen-splenetically-cheyenne.ngrok-free.dev"
         // ));
 
         config.setAllowCredentials(true); // BẮT BUỘC PHẢI TRUE nếu dùng cookie JWT

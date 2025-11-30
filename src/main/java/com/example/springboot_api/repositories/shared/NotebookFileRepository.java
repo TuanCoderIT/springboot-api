@@ -12,12 +12,23 @@ import com.example.springboot_api.models.NotebookFile;
 
 @Repository
 public interface NotebookFileRepository extends JpaRepository<NotebookFile, UUID> {
-    
-    @Query("""
-        SELECT nf FROM Notebook_File nf
-        WHERE nf.notebook.id = :notebookId
-        ORDER BY nf.createdAt DESC
-        """)
-    List<NotebookFile> findByNotebookId(@Param("notebookId") UUID notebookId);
-}
 
+    @Query("""
+            SELECT nf FROM Notebook_File nf
+            WHERE nf.notebook.id = :notebookId
+            ORDER BY nf.createdAt DESC
+            """)
+    List<NotebookFile> findByNotebookId(@Param("notebookId") UUID notebookId);
+
+    @Query("""
+            SELECT nf FROM Notebook_File nf
+            WHERE nf.notebook.id = :notebookId
+            AND nf.status = 'approved'
+            ORDER BY nf.createdAt DESC
+            """)
+    List<NotebookFile> findApprovedByNotebookId(@Param("notebookId") UUID notebookId);
+
+    long countByNotebookId(UUID notebookId);
+
+    long countByNotebookIdAndStatus(UUID notebookId, String status);
+}

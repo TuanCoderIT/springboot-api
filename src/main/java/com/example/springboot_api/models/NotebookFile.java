@@ -1,5 +1,15 @@
 package com.example.springboot_api.models;
 
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
+
 import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
@@ -7,44 +17,34 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.type.SqlTypes;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Notebook_File")
-@Table(name = "notebook_files", schema = "public", indexes = {
-        @Index(name = "idx_notebook_files_notebook", columnList = "notebook_id"),
-        @Index(name = "idx_notebook_files_uploaded_by", columnList = "uploaded_by"),
-        @Index(name = "idx_notebook_files_status", columnList = "status")
-})
+@ToString
+@Entity(name = NotebookFile.ENTITY_NAME)
+@Table(name = NotebookFile.TABLE_NAME)
 public class NotebookFile implements Serializable {
-    private static final long serialVersionUID = 5942172068451284162L;
+    public static final String ENTITY_NAME = "Notebook_File";
+    public static final String TABLE_NAME = "notebook_files";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_ORIGINALFILENAME_NAME = "original_filename";
+    public static final String COLUMN_MIMETYPE_NAME = "mime_type";
+    public static final String COLUMN_FILESIZE_NAME = "file_size";
+    public static final String COLUMN_STORAGEURL_NAME = "storage_url";
+    public static final String COLUMN_STATUS_NAME = "status";
+    public static final String COLUMN_PAGESCOUNT_NAME = "pages_count";
+    public static final String COLUMN_OCRDONE_NAME = "ocr_done";
+    public static final String COLUMN_EMBEDDINGDONE_NAME = "embedding_done";
+    public static final String COLUMN_EXTRAMETADATA_NAME = "extra_metadata";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
+    public static final String COLUMN_CHUNKSIZE_NAME = "chunk_size";
+    public static final String COLUMN_CHUNKOVERLAP_NAME = "chunk_overlap";
+    private static final long serialVersionUID = 615764158541884196L;
+
+
     private UUID id;
 
     private Notebook notebook;
@@ -73,23 +73,25 @@ public class NotebookFile implements Serializable {
 
     private OffsetDateTime updatedAt;
 
+    private Integer chunkSize;
+
+    private Integer chunkOverlap;
+
     private Set<AiTask> aiTasks = new LinkedHashSet<>();
 
     private Set<FileChunk> fileChunks = new LinkedHashSet<>();
 
-    private Set<FilePage> filePages = new LinkedHashSet<>();
+    private Set<FlashcardFile> flashcardFiles = new LinkedHashSet<>();
 
-    private Set<Flashcard> flashcards = new LinkedHashSet<>();
+    private Set<QuizFile> quizFiles = new LinkedHashSet<>();
 
-    private Set<Quiz> quizzes = new LinkedHashSet<>();
+    private Set<TtsFile> ttsFiles = new LinkedHashSet<>();
 
-    private Set<TtsAsset> ttsAssets = new LinkedHashSet<>();
-
-    private Set<VideoAsset> videoAssets = new LinkedHashSet<>();
+    private Set<VideoAssetFile> videoAssetFiles = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -111,55 +113,55 @@ public class NotebookFile implements Serializable {
     }
 
     @NotNull
-    @Column(name = "original_filename", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_ORIGINALFILENAME_NAME, nullable = false, length = Integer.MAX_VALUE)
     public String getOriginalFilename() {
         return originalFilename;
     }
 
     @Size(max = 255)
-    @Column(name = "mime_type")
+    @Column(name = COLUMN_MIMETYPE_NAME)
     public String getMimeType() {
         return mimeType;
     }
 
-    @Column(name = "file_size")
+    @Column(name = COLUMN_FILESIZE_NAME)
     public Long getFileSize() {
         return fileSize;
     }
 
     @NotNull
-    @Column(name = "storage_url", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_STORAGEURL_NAME, nullable = false, length = Integer.MAX_VALUE)
     public String getStorageUrl() {
         return storageUrl;
     }
 
     @Size(max = 50)
     @NotNull
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = COLUMN_STATUS_NAME, nullable = false, length = 50)
     public String getStatus() {
         return status;
     }
 
-    @Column(name = "pages_count")
+    @Column(name = COLUMN_PAGESCOUNT_NAME)
     public Integer getPagesCount() {
         return pagesCount;
     }
 
     @NotNull
     @ColumnDefault("false")
-    @Column(name = "ocr_done", nullable = false)
+    @Column(name = COLUMN_OCRDONE_NAME, nullable = false)
     public Boolean getOcrDone() {
         return ocrDone;
     }
 
     @NotNull
     @ColumnDefault("false")
-    @Column(name = "embedding_done", nullable = false)
+    @Column(name = COLUMN_EMBEDDINGDONE_NAME, nullable = false)
     public Boolean getEmbeddingDone() {
         return embeddingDone;
     }
 
-    @Column(name = "extra_metadata")
+    @Column(name = COLUMN_EXTRAMETADATA_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getExtraMetadata() {
         return extraMetadata;
@@ -167,16 +169,28 @@ public class NotebookFile implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = COLUMN_UPDATEDAT_NAME, nullable = false)
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    @ColumnDefault("800")
+    @Column(name = COLUMN_CHUNKSIZE_NAME)
+    public Integer getChunkSize() {
+        return chunkSize;
+    }
+
+    @ColumnDefault("120")
+    @Column(name = COLUMN_CHUNKOVERLAP_NAME)
+    public Integer getChunkOverlap() {
+        return chunkOverlap;
     }
 
     @OneToMany(mappedBy = "file")
@@ -190,28 +204,23 @@ public class NotebookFile implements Serializable {
     }
 
     @OneToMany(mappedBy = "file")
-    public Set<FilePage> getFilePages() {
-        return filePages;
+    public Set<FlashcardFile> getFlashcardFiles() {
+        return flashcardFiles;
     }
 
     @OneToMany(mappedBy = "file")
-    public Set<Flashcard> getFlashcards() {
-        return flashcards;
+    public Set<QuizFile> getQuizFiles() {
+        return quizFiles;
     }
 
     @OneToMany(mappedBy = "file")
-    public Set<Quiz> getQuizzes() {
-        return quizzes;
+    public Set<TtsFile> getTtsFiles() {
+        return ttsFiles;
     }
 
     @OneToMany(mappedBy = "file")
-    public Set<TtsAsset> getTtsAssets() {
-        return ttsAssets;
-    }
-
-    @OneToMany(mappedBy = "file")
-    public Set<VideoAsset> getVideoAssets() {
-        return videoAssets;
+    public Set<VideoAssetFile> getVideoAssetFiles() {
+        return videoAssetFiles;
     }
 
 }
