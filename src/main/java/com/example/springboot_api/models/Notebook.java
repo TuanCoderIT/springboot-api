@@ -1,5 +1,15 @@
 package com.example.springboot_api.models;
 
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
+
 import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
@@ -7,45 +17,29 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.type.SqlTypes;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Notebook")
-@Table(name = "notebooks", schema = "public", indexes = {
-        @Index(name = "idx_notebooks_type_visibility", columnList = "type, visibility"),
-        @Index(name = "idx_notebooks_created_by", columnList = "created_by")
-})
+@ToString
+@Entity(name = Notebook.ENTITY_NAME)
+@Table(name = Notebook.TABLE_NAME)
 public class Notebook implements Serializable {
-    private static final long serialVersionUID = 5745865187383193291L;
+    public static final String ENTITY_NAME = "Notebook";
+    public static final String TABLE_NAME = "notebooks";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_TITLE_NAME = "title";
+    public static final String COLUMN_DESCRIPTION_NAME = "description";
+    public static final String COLUMN_TYPE_NAME = "type";
+    public static final String COLUMN_VISIBILITY_NAME = "visibility";
+    public static final String COLUMN_THUMBNAILURL_NAME = "thumbnail_url";
+    public static final String COLUMN_METADATA_NAME = "metadata";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
+    private static final long serialVersionUID = 476093270514110870L;
+
+
     private UUID id;
 
     private String title;
@@ -90,33 +84,33 @@ public class Notebook implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
 
     @Size(max = 255)
     @NotNull
-    @Column(name = "title", nullable = false)
+    @Column(name = COLUMN_TITLE_NAME, nullable = false)
     public String getTitle() {
         return title;
     }
 
-    @Column(name = "description", length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_DESCRIPTION_NAME, length = Integer.MAX_VALUE)
     public String getDescription() {
         return description;
     }
 
     @Size(max = 50)
     @NotNull
-    @Column(name = "type", nullable = false, length = 50)
+    @Column(name = COLUMN_TYPE_NAME, nullable = false, length = 50)
     public String getType() {
         return type;
     }
 
     @Size(max = 50)
     @NotNull
-    @Column(name = "visibility", nullable = false, length = 50)
+    @Column(name = COLUMN_VISIBILITY_NAME, nullable = false, length = 50)
     public String getVisibility() {
         return visibility;
     }
@@ -129,12 +123,12 @@ public class Notebook implements Serializable {
         return createdBy;
     }
 
-    @Column(name = "thumbnail_url", length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_THUMBNAILURL_NAME, length = Integer.MAX_VALUE)
     public String getThumbnailUrl() {
         return thumbnailUrl;
     }
 
-    @Column(name = "metadata")
+    @Column(name = COLUMN_METADATA_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
         return metadata;
@@ -142,14 +136,14 @@ public class Notebook implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = COLUMN_UPDATEDAT_NAME, nullable = false)
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -207,18 +201,6 @@ public class Notebook implements Serializable {
     @OneToMany(mappedBy = "notebook")
     public Set<VideoAsset> getVideoAssets() {
         return videoAssets;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        OffsetDateTime now = OffsetDateTime.now();
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
     }
 
 }

@@ -20,13 +20,21 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Notebook_Activity_Log")
-@Table(name = "notebook_activity_logs", schema = "public", indexes = {
-        @Index(name = "idx_notebook_activity_notebook", columnList = "notebook_id, created_at"),
-        @Index(name = "idx_notebook_activity_user", columnList = "user_id, created_at")
-})
+@ToString
+@Entity(name = NotebookActivityLog.ENTITY_NAME)
+@Table(name = NotebookActivityLog.TABLE_NAME)
 public class NotebookActivityLog implements Serializable {
-    private static final long serialVersionUID = 8570574930383324193L;
+    public static final String ENTITY_NAME = "Notebook_Activity_Log";
+    public static final String TABLE_NAME = "notebook_activity_logs";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_ACTION_NAME = "action";
+    public static final String COLUMN_TARGETID_NAME = "target_id";
+    public static final String COLUMN_TARGETTYPE_NAME = "target_type";
+    public static final String COLUMN_METADATA_NAME = "metadata";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    private static final long serialVersionUID = -4857596769998217200L;
+
+
     private UUID id;
 
     private Notebook notebook;
@@ -44,8 +52,8 @@ public class NotebookActivityLog implements Serializable {
     private OffsetDateTime createdAt;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @ColumnDefault("uuid_generate_v4()")
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -67,23 +75,23 @@ public class NotebookActivityLog implements Serializable {
 
     @Size(max = 64)
     @NotNull
-    @Column(name = "action", nullable = false, length = 64)
+    @Column(name = COLUMN_ACTION_NAME, nullable = false, length = 64)
     public String getAction() {
         return action;
     }
 
-    @Column(name = "target_id")
+    @Column(name = COLUMN_TARGETID_NAME)
     public UUID getTargetId() {
         return targetId;
     }
 
     @Size(max = 64)
-    @Column(name = "target_type", length = 64)
+    @Column(name = COLUMN_TARGETTYPE_NAME, length = 64)
     public String getTargetType() {
         return targetType;
     }
 
-    @Column(name = "metadata")
+    @Column(name = COLUMN_METADATA_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
         return metadata;
@@ -91,7 +99,7 @@ public class NotebookActivityLog implements Serializable {
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

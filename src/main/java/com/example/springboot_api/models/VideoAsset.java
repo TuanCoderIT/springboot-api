@@ -10,6 +10,8 @@ import org.hibernate.annotations.OnDeleteAction;
 
 import java.io.Serializable;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Builder
@@ -17,17 +19,25 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity(name = "Video_Asset")
-@Table(name = "video_assets", schema = "public", indexes = {
-        @Index(name = "idx_video_assets_notebook", columnList = "notebook_id, created_at")
-})
+@ToString
+@Entity(name = VideoAsset.ENTITY_NAME)
+@Table(name = VideoAsset.TABLE_NAME)
 public class VideoAsset implements Serializable {
-    private static final long serialVersionUID = -1811671709588289599L;
+    public static final String ENTITY_NAME = "Video_Asset";
+    public static final String TABLE_NAME = "video_assets";
+    public static final String COLUMN_ID_NAME = "id";
+    public static final String COLUMN_LANGUAGE_NAME = "language";
+    public static final String COLUMN_STYLE_NAME = "style";
+    public static final String COLUMN_TEXTSOURCE_NAME = "text_source";
+    public static final String COLUMN_VIDEOURL_NAME = "video_url";
+    public static final String COLUMN_DURATIONSECONDS_NAME = "duration_seconds";
+    public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    private static final long serialVersionUID = 1358579455246993418L;
+
+
     private UUID id;
 
     private Notebook notebook;
-
-    private NotebookFile file;
 
     private User createdBy;
 
@@ -43,9 +53,11 @@ public class VideoAsset implements Serializable {
 
     private OffsetDateTime createdAt;
 
+    private Set<VideoAssetFile> videoAssetFiles = new LinkedHashSet<>();
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", nullable = false)
+    @Column(name = COLUMN_ID_NAME, nullable = false)
     public UUID getId() {
         return id;
     }
@@ -60,51 +72,49 @@ public class VideoAsset implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "file_id")
-    public NotebookFile getFile() {
-        return file;
-    }
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "created_by")
     public User getCreatedBy() {
         return createdBy;
     }
 
     @Size(max = 16)
-    @Column(name = "language", length = 16)
+    @Column(name = COLUMN_LANGUAGE_NAME, length = 16)
     public String getLanguage() {
         return language;
     }
 
     @Size(max = 64)
-    @Column(name = "style", length = 64)
+    @Column(name = COLUMN_STYLE_NAME, length = 64)
     public String getStyle() {
         return style;
     }
 
-    @Column(name = "text_source", length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_TEXTSOURCE_NAME, length = Integer.MAX_VALUE)
     public String getTextSource() {
         return textSource;
     }
 
     @NotNull
-    @Column(name = "video_url", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = COLUMN_VIDEOURL_NAME, nullable = false, length = Integer.MAX_VALUE)
     public String getVideoUrl() {
         return videoUrl;
     }
 
-    @Column(name = "duration_seconds")
+    @Column(name = COLUMN_DURATIONSECONDS_NAME)
     public Integer getDurationSeconds() {
         return durationSeconds;
     }
 
     @NotNull
     @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    @OneToMany(mappedBy = "videoAsset")
+    public Set<VideoAssetFile> getVideoAssetFiles() {
+        return videoAssetFiles;
     }
 
 }

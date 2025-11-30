@@ -10,10 +10,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.springboot_api.config.security.JwtAuthenticationFilter;
+import com.example.springboot_api.config.security.UserPrincipal;
 import com.example.springboot_api.dto.shared.auth.AuthResponse;
 import com.example.springboot_api.dto.shared.auth.LoginRequest;
 import com.example.springboot_api.dto.shared.auth.RegisterRequest;
-import com.example.springboot_api.models.User;
+import com.example.springboot_api.repositories.shared.AuthRepository;
 import com.example.springboot_api.services.shared.AuthService;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthRepository userRepository;
 
     private ResponseCookie makeCookie(String token) {
         return ResponseCookie.from(JwtAuthenticationFilter.AUTH_COOKIE, token)
@@ -71,10 +73,15 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<AuthResponse> me(@AuthenticationPrincipal User user) {
-        if (user == null)
+    public ResponseEntity<AuthResponse> me(@AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null)
             return ResponseEntity.status(401).build();
 
+        var userOpt = userRepository.findById(principal.getId());
+        if (userOpt.isEmpty())
+            return ResponseEntity.status(401).build();
+
+        var user = userOpt.get();
         AuthResponse info = new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(),
                 user.getAvatarUrl());
         return ResponseEntity.ok(info);
