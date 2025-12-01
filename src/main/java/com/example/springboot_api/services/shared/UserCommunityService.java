@@ -20,6 +20,7 @@ import com.example.springboot_api.dto.shared.community.AvailableGroupResponse;
 import com.example.springboot_api.dto.shared.community.CommunityPreviewResponse;
 import com.example.springboot_api.dto.shared.community.JoinGroupRequest;
 import com.example.springboot_api.dto.shared.community.JoinGroupResponse;
+import com.example.springboot_api.dto.shared.community.JoinedGroupResponse;
 import com.example.springboot_api.dto.shared.community.MembershipStatusResponse;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookMember;
@@ -125,7 +126,7 @@ public class UserCommunityService {
             UUID userId, String keyword, String sortBy, String sortDir, int page, int size) {
 
         String q = (keyword != null && !keyword.isEmpty()) ? keyword : null;
-        String visibility = "public";
+        String visibility = null;
 
         String sortByField = Optional.ofNullable(sortBy).orElse("createdAt");
         String sortDirection = Optional.ofNullable(sortDir).orElse("desc");
@@ -220,10 +221,6 @@ public class UserCommunityService {
             throw new BadRequestException("Đây không phải là nhóm cộng đồng");
         }
 
-        if (!"public".equals(notebook.getVisibility())) {
-            throw new BadRequestException("Chỉ có thể xem preview nhóm công khai");
-        }
-
         Long memberCount = memberRepository.countByNotebookIdAndStatus(notebookId, "approved");
         Long fileCount = fileRepository.countByNotebookIdAndStatus(notebookId, "approved");
         Long messageCount = messageRepository.countByNotebookId(notebookId);
@@ -275,6 +272,124 @@ public class UserCommunityService {
                 recentFiles);
     }
 
+    public PagedResponse<JoinedGroupResponse> getMyGroups(
+            UUID userId, String status, String keyword, String sortBy, String sortDir, int page, int size) {
+
+        String q = (keyword != null && !keyword.isEmpty()) ? keyword : null;
+        String statusFilter = (status != null && !status.isEmpty()) ? status : null;
+
+        String sortByField = Optional.ofNullable(sortBy).orElse("createdAt");
+        String sortDirection = Optional.ofNullable(sortDir).orElse("desc");
+
+        if ("memberCount".equals(sortByField)) {
+            Pageable allPageable = PageRequest.of(0, Integer.MAX_VALUE);
+            Page<NotebookMember> allResult = memberRepository.findByUserIdAndStatus(userId, statusFilter, q,
+                    allPageable);
+
+            var sortedList = allResult.getContent().stream()
+                    .map(m -> mapToJoinedGroup(m))
+                    .sorted((a, b) -> {
+                        int compare = Long.compare(
+                                a.memberCount() != null ? a.memberCount() : 0L,
+                                b.memberCount() != null ? b.memberCount() : 0L);
+                        return sortDirection.equalsIgnoreCase("asc") ? compare : -compare;
+                    })
+                    .toList();
+
+            int start = page * size;
+            int end = Math.min(start + size, sortedList.size());
+            java.util.List<JoinedGroupResponse> pagedList = start < sortedList.size()
+                    ? sortedList.subList(start, end)
+                    : new java.util.ArrayList<>();
+
+            int totalPages = (int) Math.ceil((double) sortedList.size() / size);
+
+            return new PagedResponse<>(
+                    pagedList,
+                    new PagedResponse.Meta(
+                            page,
+                            size,
+                            sortedList.size(),
+                            totalPages));
+        } else {
+            java.util.List<NotebookMember> allMembers = memberRepository.findByUserIdAndStatusForSorting(userId,
+                    statusFilter, q);
+
+            var sortedList = allMembers.stream()
+                    .map(this::mapToJoinedGroup)
+                    .sorted((a, b) -> {
+                        int compare = 0;
+
+                        switch (sortByField) {
+                            case "joinedAt":
+                                OffsetDateTime aJoined = a.joinedAt();
+                                OffsetDateTime bJoined = b.joinedAt();
+                                if (aJoined == null && bJoined == null)
+                                    compare = 0;
+                                else if (aJoined == null)
+                                    compare = 1;
+                                else if (bJoined == null)
+                                    compare = -1;
+                                else
+                                    compare = aJoined.compareTo(bJoined);
+                                break;
+                            case "title":
+                                compare = (a.title() != null && b.title() != null)
+                                        ? a.title().compareToIgnoreCase(b.title())
+                                        : 0;
+                                break;
+                            case "createdAt":
+                                compare = (a.createdAt() != null && b.createdAt() != null)
+                                        ? a.createdAt().compareTo(b.createdAt())
+                                        : 0;
+                                break;
+                            default:
+                                compare = (a.createdAt() != null && b.createdAt() != null)
+                                        ? a.createdAt().compareTo(b.createdAt())
+                                        : 0;
+                                break;
+                        }
+
+                        return sortDirection.equalsIgnoreCase("asc") ? compare : -compare;
+                    })
+                    .toList();
+
+            int start = page * size;
+            int end = Math.min(start + size, sortedList.size());
+            java.util.List<JoinedGroupResponse> pagedList = start < sortedList.size()
+                    ? sortedList.subList(start, end)
+                    : new java.util.ArrayList<>();
+
+            int totalPages = (int) Math.ceil((double) sortedList.size() / size);
+
+            return new PagedResponse<>(
+                    pagedList,
+                    new PagedResponse.Meta(
+                            page,
+                            size,
+                            sortedList.size(),
+                            totalPages));
+        }
+    }
+
+    private JoinedGroupResponse mapToJoinedGroup(NotebookMember member) {
+        Notebook notebook = member.getNotebook();
+        Long memberCount = memberRepository.countByNotebookIdAndStatus(notebook.getId(), "approved");
+        String thumbnailUrl = normalizeThumbnailUrl(notebook.getThumbnailUrl());
+
+        return new JoinedGroupResponse(
+                notebook.getId(),
+                notebook.getTitle(),
+                notebook.getDescription(),
+                notebook.getVisibility(),
+                thumbnailUrl,
+                memberCount,
+                member.getStatus(),
+                member.getRole(),
+                member.getJoinedAt(),
+                notebook.getCreatedAt());
+    }
+
     public MembershipStatusResponse checkMembershipStatus(UUID notebookId, UUID userId) {
         Notebook notebook = notebookRepository.findById(notebookId)
                 .orElseThrow(() -> new NotFoundException("Nhóm không tồn tại"));
@@ -284,6 +399,8 @@ public class UserCommunityService {
         }
 
         Optional<NotebookMember> memberOpt = memberRepository.findByNotebookIdAndUserId(notebookId, userId);
+        boolean isPrivate = "private".equals(notebook.getVisibility());
+        boolean requiresApproval = isPrivate;
 
         if (memberOpt.isEmpty()) {
             boolean canJoin = !"blocked".equals(notebook.getVisibility());
@@ -291,6 +408,7 @@ public class UserCommunityService {
                     notebookId,
                     false,
                     canJoin,
+                    requiresApproval,
                     null,
                     null,
                     null,
@@ -316,6 +434,7 @@ public class UserCommunityService {
                 notebookId,
                 isMember,
                 canJoin,
+                requiresApproval,
                 status,
                 member.getRole(),
                 member.getJoinedAt(),

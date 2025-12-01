@@ -23,5 +23,12 @@ public interface NotebookMessageRepository extends JpaRepository<NotebookMessage
     List<NotebookMessage> findRecentByNotebookId(@Param("notebookId") UUID notebookId, Pageable pageable);
     
     long countByNotebookId(UUID notebookId);
+
+    @Query("""
+            SELECT COUNT(nm) FROM Notebook_Message nm
+            WHERE nm.notebook.id = :notebookId
+            AND nm.user.id = :userId
+            """)
+    long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
 }
 

@@ -7,16 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.example.springboot_api.models.Quiz;
+import com.example.springboot_api.models.RagQuery;
 
 @Repository
-public interface QuizRepository extends JpaRepository<Quiz, UUID> {
-    long countByNotebookId(UUID notebookId);
-
+public interface RagQueryRepository extends JpaRepository<RagQuery, UUID> {
+    
     @Query("""
-            SELECT COUNT(q) FROM Quiz q
-            WHERE q.notebook.id = :notebookId
-            AND q.createdBy.id = :userId
+            SELECT COUNT(r) FROM Rag_Query r
+            WHERE r.notebook.id = :notebookId
+            AND r.user.id = :userId
             """)
     long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
 }
