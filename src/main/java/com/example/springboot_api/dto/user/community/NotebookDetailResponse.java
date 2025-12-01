@@ -1,4 +1,4 @@
-package com.example.springboot_api.dto.shared.community;
+package com.example.springboot_api.dto.user.community;
 
 import java.time.OffsetDateTime;
 import java.util.List;
