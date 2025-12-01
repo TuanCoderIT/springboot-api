@@ -18,6 +18,7 @@ public interface NotebookMessageRepository extends JpaRepository<NotebookMessage
         SELECT nm FROM Notebook_Message nm
         JOIN FETCH nm.user u
         WHERE nm.notebook.id = :notebookId
+        AND nm.type = 'user'
         ORDER BY nm.createdAt DESC
         """)
     List<NotebookMessage> findRecentByNotebookId(@Param("notebookId") UUID notebookId, Pageable pageable);
