@@ -55,7 +55,7 @@ public class FileStorageService {
         try {
             // Xử lý cả full URL và relative path
             String path = fileUrl;
-            
+
             // Nếu là full URL, extract relative path
             if (path.startsWith("http://") || path.startsWith("https://")) {
                 // Extract path sau domain (ví dụ: /uploads/filename)
@@ -64,11 +64,11 @@ public class FileStorageService {
                     path = path.substring(pathStart);
                 }
             }
-            
+
             // Loại bỏ prefix /uploads/ để lấy filename
             String filename = path.replaceFirst("^/uploads/", "");
             Path filePath = Paths.get(uploadDir).resolve(filename);
-            
+
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
             }
@@ -77,4 +77,3 @@ public class FileStorageService {
         }
     }
 }
-

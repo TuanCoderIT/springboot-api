@@ -25,7 +25,7 @@ import com.example.springboot_api.dto.admin.notebook.NotebookCreateRequest;
 import com.example.springboot_api.dto.admin.notebook.NotebookResponse;
 import com.example.springboot_api.dto.admin.notebook.PendingRequestResponse;
 import com.example.springboot_api.dto.shared.PagedResponse;
-import com.example.springboot_api.dto.shared.community.NotebookDetailResponse;
+import com.example.springboot_api.dto.user.community.NotebookDetailResponse;
 import com.example.springboot_api.services.admin.AdminCommunityService;
 
 import lombok.RequiredArgsConstructor;

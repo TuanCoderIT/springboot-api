@@ -20,7 +20,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'com.google.genai:google-genai:1.28.0'
 
+    // Apache POI cho Word (.docx)
+    implementation 'org.apache.poi:poi-ooxml:5.2.5' // Hoặc phiên bản mới nhất
+    implementation 'org.apache.poi:poi:5.2.5' // Cần thiết cho các cấu trúc cơ bản
 
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
 
