@@ -4,11 +4,12 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record MembershipStatusResponse(
-        UUID notebookId,
-        boolean isMember,
-        boolean canJoin,
-        String status,
-        String role,
-        OffsetDateTime joinedAt,
-        OffsetDateTime requestedAt) {
+                UUID notebookId,
+                boolean isMember,
+                boolean canJoin,
+                boolean requiresApproval,
+                String status,
+                String role,
+                OffsetDateTime joinedAt,
+                OffsetDateTime requestedAt) {
 }

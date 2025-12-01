@@ -7,16 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.example.springboot_api.models.Quiz;
+import com.example.springboot_api.models.TtsAsset;
 
 @Repository
-public interface QuizRepository extends JpaRepository<Quiz, UUID> {
-    long countByNotebookId(UUID notebookId);
-
+public interface TtsAssetRepository extends JpaRepository<TtsAsset, UUID> {
+    
     @Query("""
-            SELECT COUNT(q) FROM Quiz q
-            WHERE q.notebook.id = :notebookId
-            AND q.createdBy.id = :userId
+            SELECT COUNT(t) FROM Tts_Asset t
+            WHERE t.notebook.id = :notebookId
+            AND t.createdBy.id = :userId
             """)
     long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
 }

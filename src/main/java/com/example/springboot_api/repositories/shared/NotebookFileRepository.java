@@ -31,4 +31,11 @@ public interface NotebookFileRepository extends JpaRepository<NotebookFile, UUID
     long countByNotebookId(UUID notebookId);
 
     long countByNotebookIdAndStatus(UUID notebookId, String status);
+
+    @Query("""
+            SELECT COUNT(nf) FROM Notebook_File nf
+            WHERE nf.notebook.id = :notebookId
+            AND nf.uploadedBy.id = :userId
+            """)
+    long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
 }

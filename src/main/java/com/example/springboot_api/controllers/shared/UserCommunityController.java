@@ -17,6 +17,7 @@ import com.example.springboot_api.dto.shared.community.AvailableGroupResponse;
 import com.example.springboot_api.dto.shared.community.CommunityPreviewResponse;
 import com.example.springboot_api.dto.shared.community.JoinGroupRequest;
 import com.example.springboot_api.dto.shared.community.JoinGroupResponse;
+import com.example.springboot_api.dto.shared.community.JoinedGroupResponse;
 import com.example.springboot_api.dto.shared.community.MembershipStatusResponse;
 import com.example.springboot_api.services.shared.UserCommunityService;
 
@@ -45,6 +46,18 @@ public class UserCommunityController {
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserPrincipal user) {
         return service.getAvailableGroups(user.getId(), q, sortBy, sortDir, page, size);
+    }
+
+    @GetMapping("/my-groups")
+    public PagedResponse<JoinedGroupResponse> getMyGroups(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal UserPrincipal user) {
+        return service.getMyGroups(user.getId(), status, q, sortBy, sortDir, page, size);
     }
 
     @GetMapping("/{notebookId}/preview")

@@ -7,16 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.example.springboot_api.models.Quiz;
+import com.example.springboot_api.models.VideoAsset;
 
 @Repository
-public interface QuizRepository extends JpaRepository<Quiz, UUID> {
-    long countByNotebookId(UUID notebookId);
-
+public interface VideoAssetRepository extends JpaRepository<VideoAsset, UUID> {
+    
     @Query("""
-            SELECT COUNT(q) FROM Quiz q
-            WHERE q.notebook.id = :notebookId
-            AND q.createdBy.id = :userId
+            SELECT COUNT(v) FROM Video_Asset v
+            WHERE v.notebook.id = :notebookId
+            AND v.createdBy.id = :userId
             """)
     long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
 }
