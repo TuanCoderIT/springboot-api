@@ -34,30 +34,21 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
 
-# ==============================
-# Custom properties cho pgvector
-# ==============================
 vector:
   embedding-dimension: 1536
 
-# ==============================
-# Server port
-# ==============================
 server:
   port: 8386
 
-# ==============================
-# File upload configuration
-# ==============================
 file:
   upload-dir: uploads
   base-url: http://localhost:8386
 
-# ==============================
-# Springdoc configuration
-# ==============================
 springdoc:
   swagger-ui:
     use-root-path: true
   api-docs:
     enabled: true
+
+gemini:
+  api-key: "AIzaSyDSqhrOqhWNGeezPn78fCjnudd8-2_G2sI"

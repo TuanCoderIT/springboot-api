@@ -1,6 +1,8 @@
 package com.example.springboot_api.services.admin;
 
 import java.io.IOException;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +19,7 @@ import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.admin.notebook.ApproveRejectBlockRequest;
 import com.example.springboot_api.dto.admin.notebook.ListCommunityRequest;
+import com.example.springboot_api.dto.admin.notebook.MemberResponse;
 import com.example.springboot_api.dto.admin.notebook.NotebookCreateRequest;
 import com.example.springboot_api.dto.admin.notebook.NotebookResponse;
 import com.example.springboot_api.dto.admin.notebook.PendingRequestResponse;
@@ -28,7 +31,13 @@ import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.admin.NotebookMemberRepository;
 import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.admin.UserRepository;
+import com.example.springboot_api.repositories.shared.FlashcardRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
+import com.example.springboot_api.repositories.shared.NotebookMessageRepository;
+import com.example.springboot_api.repositories.shared.QuizRepository;
+import com.example.springboot_api.repositories.shared.RagQueryRepository;
+import com.example.springboot_api.repositories.shared.TtsAssetRepository;
+import com.example.springboot_api.repositories.shared.VideoAssetRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
 
 import lombok.RequiredArgsConstructor;
@@ -41,6 +50,12 @@ public class AdminCommunityService {
     private final NotebookMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final NotebookFileRepository fileRepository;
+    private final VideoAssetRepository videoAssetRepository;
+    private final FlashcardRepository flashcardRepository;
+    private final TtsAssetRepository ttsAssetRepository;
+    private final QuizRepository quizRepository;
+    private final NotebookMessageRepository messageRepository;
+    private final RagQueryRepository ragQueryRepository;
     private final FileStorageService fileStorageService;
 
     @Value("${file.base-url}")
@@ -69,6 +84,18 @@ public class AdminCommunityService {
         }
 
         Notebook saved = notebookRepository.save(nb);
+
+        NotebookMember ownerMember = NotebookMember.builder()
+                .notebook(saved)
+                .user(admin)
+                .role("owner")
+                .status("approved")
+                .joinedAt(OffsetDateTime.now())
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
+        memberRepository.save(ownerMember);
+
         return mapToResponse(saved);
     }
 
@@ -212,9 +239,20 @@ public class AdminCommunityService {
                 nb.getUpdatedAt());
     }
 
-    public PagedResponse<PendingRequestResponse> getPendingRequests(UUID notebookId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<NotebookMember> result = memberRepository.findPendingRequests(notebookId, pageable);
+    public PagedResponse<PendingRequestResponse> getPendingRequests(
+            UUID notebookId, String status, String keyword, String sortBy, String sortDir, int page, int size) {
+
+        String q = (keyword != null && !keyword.isEmpty()) ? keyword : null;
+        String statusFilter = (status != null && !status.isEmpty()) ? status : "pending";
+
+        String sortByField = Optional.ofNullable(sortBy).orElse("createdAt");
+        String sortDirection = Optional.ofNullable(sortDir).orElse("desc");
+
+        Sort sort = Sort.by(sortDirection.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC,
+                sortByField);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<NotebookMember> result = memberRepository.findMembersWithFilters(notebookId, statusFilter, q, pageable);
 
         return new PagedResponse<>(
                 result.map(this::mapToPendingRequest).getContent(),
@@ -230,6 +268,10 @@ public class AdminCommunityService {
         NotebookMember member = memberRepository
                 .findByNotebookIdAndUserId(req.notebookId(), req.userId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+        if ("owner".equals(member.getRole()) && "block".equals(req.action().toLowerCase())) {
+            throw new BadRequestException("Không thể chặn chủ sở hữu");
+        }
 
         String action = req.action().toLowerCase();
         String newStatus;
@@ -306,6 +348,162 @@ public class AdminCommunityService {
                         fileItems));
     }
 
+    public PagedResponse<MemberResponse> getNotebookMembers(
+            UUID notebookId, String status, String keyword, String sortBy, String sortDir, int page, int size) {
+
+        notebookRepository.findById(notebookId)
+                .orElseThrow(() -> new NotFoundException("Nhóm không tồn tại"));
+
+        String q = (keyword != null && !keyword.isEmpty()) ? keyword : null;
+        String statusFilter = (status != null && !status.isEmpty()) ? status : null;
+
+        String sortByField = Optional.ofNullable(sortBy).orElse("joinedAt");
+        String sortDirection = Optional.ofNullable(sortDir).orElse("desc");
+
+        Sort sort = Sort.by(sortDirection.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC,
+                sortByField);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<NotebookMember> result = memberRepository.findByNotebookIdWithFilters(notebookId, statusFilter, q,
+                pageable);
+
+        return new PagedResponse<>(
+                result.map(this::mapToMemberResponse).getContent(),
+                new PagedResponse.Meta(
+                        result.getNumber(),
+                        result.getSize(),
+                        result.getTotalElements(),
+                        result.getTotalPages()));
+    }
+
+    @Transactional
+    public void updateMemberRole(UUID memberId, String role) {
+        NotebookMember member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+        if ("owner".equals(member.getRole())) {
+            throw new BadRequestException("Không thể thay đổi role của chủ sở hữu");
+        }
+
+        if (!"admin".equals(role) && !"member".equals(role) && !"owner".equals(role)) {
+            throw new BadRequestException("Role không hợp lệ. Chỉ chấp nhận: admin, member, owner");
+        }
+
+        if ("owner".equals(role)) {
+            throw new BadRequestException("Không thể cấp role owner thông qua API này");
+        }
+
+        member.setRole(role);
+        member.setUpdatedAt(OffsetDateTime.now());
+        memberRepository.save(member);
+    }
+
+    @Transactional
+    public void deleteMember(UUID memberId) {
+        NotebookMember member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+        if ("owner".equals(member.getRole())) {
+            throw new BadRequestException("Không thể xóa chủ sở hữu. Chủ sở hữu không thể bị xóa khỏi notebook.");
+        }
+
+        UUID notebookId = member.getNotebook().getId();
+        UUID userId = member.getUser().getId();
+
+        Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long flashcardCount = flashcardRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long ragQueryCount = ragQueryRepository.countByNotebookIdAndUserId(notebookId, userId);
+
+        long totalContributions = fileCount + videoCount + flashcardCount + ttsCount + quizCount + messageCount
+                + ragQueryCount;
+
+        if (totalContributions > 0) {
+            throw new BadRequestException(
+                    "Không thể xóa thành viên đã có đóng góp. Vui lòng sử dụng chức năng chặn (block) để ẩn thành viên này.");
+        }
+
+        memberRepository.delete(member);
+    }
+
+    @Transactional
+    public void blockMember(UUID memberId) {
+        NotebookMember member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+        if ("owner".equals(member.getRole())) {
+            throw new BadRequestException("Không thể chặn chủ sở hữu. Chủ sở hữu không thể bị chặn.");
+        }
+
+        member.setStatus("blocked");
+        member.setUpdatedAt(OffsetDateTime.now());
+        memberRepository.save(member);
+    }
+
+    @Transactional
+    public void unblockMember(UUID memberId) {
+        NotebookMember member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+        if (!"blocked".equals(member.getStatus())) {
+            throw new BadRequestException(
+                    "Thành viên này không bị chặn. Chỉ có thể mở chặn cho thành viên đang bị chặn.");
+        }
+
+        member.setStatus("approved");
+        if (member.getJoinedAt() == null) {
+            member.setJoinedAt(OffsetDateTime.now());
+        }
+        member.setUpdatedAt(OffsetDateTime.now());
+        memberRepository.save(member);
+    }
+
+    @Transactional
+    public void approveMember(UUID memberId) {
+        NotebookMember member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+        if (!"pending".equals(member.getStatus())) {
+            throw new BadRequestException(
+                    "Chỉ có thể phê duyệt yêu cầu đang ở trạng thái pending. Trạng thái hiện tại: "
+                            + member.getStatus());
+        }
+
+        member.setStatus("approved");
+        if (member.getJoinedAt() == null) {
+            member.setJoinedAt(OffsetDateTime.now());
+        }
+        member.setUpdatedAt(OffsetDateTime.now());
+        memberRepository.save(member);
+    }
+
+    @Transactional
+    public int approveAllPendingRequests(UUID notebookId) {
+        List<NotebookMember> pendingMembers = memberRepository.findAllPendingRequests(notebookId);
+
+        if (pendingMembers.isEmpty()) {
+            return 0;
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+        int approvedCount = 0;
+
+        for (NotebookMember member : pendingMembers) {
+            member.setStatus("approved");
+            if (member.getJoinedAt() == null) {
+                member.setJoinedAt(now);
+            }
+            member.setUpdatedAt(now);
+            memberRepository.save(member);
+            approvedCount++;
+        }
+
+        return approvedCount;
+    }
+
     private PendingRequestResponse mapToPendingRequest(NotebookMember nm) {
         return new PendingRequestResponse(
                 nm.getId(),
@@ -314,8 +512,50 @@ public class AdminCommunityService {
                 nm.getUser().getId(),
                 nm.getUser().getFullName(),
                 nm.getUser().getEmail(),
+                nm.getRole(),
                 nm.getStatus(),
-                nm.getCreatedAt());
+                nm.getJoinedAt(),
+                nm.getCreatedAt(),
+                nm.getUpdatedAt());
+    }
+
+    private MemberResponse mapToMemberResponse(NotebookMember nm) {
+        UUID notebookId = nm.getNotebook().getId();
+        UUID userId = nm.getUser().getId();
+
+        Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long flashcardCount = flashcardRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long ragQueryCount = ragQueryRepository.countByNotebookIdAndUserId(notebookId, userId);
+
+        var statistics = new MemberResponse.UserStatistics(
+                fileCount,
+                videoCount,
+                flashcardCount,
+                ttsCount,
+                quizCount,
+                messageCount,
+                ragQueryCount);
+
+        String avatarUrl = normalizeThumbnailUrl(nm.getUser().getAvatarUrl());
+
+        return new MemberResponse(
+                nm.getId(),
+                nm.getNotebook().getId(),
+                nm.getNotebook().getTitle(),
+                nm.getUser().getId(),
+                nm.getUser().getFullName(),
+                nm.getUser().getEmail(),
+                avatarUrl,
+                nm.getRole(),
+                nm.getStatus(),
+                nm.getJoinedAt(),
+                nm.getCreatedAt(),
+                nm.getUpdatedAt(),
+                statistics);
     }
 
     private String normalizeFileUrl(String storageUrl) {
