@@ -1,20 +1,35 @@
 package com.example.springboot_api.models;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.type.SqlTypes;
-
 import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Builder
 @AllArgsConstructor
@@ -34,7 +49,6 @@ public class Flashcard implements Serializable {
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     private static final long serialVersionUID = -5958316842989249609L;
 
-
     private UUID id;
 
     private Notebook notebook;
@@ -48,10 +62,6 @@ public class Flashcard implements Serializable {
     private Map<String, Object> extraMetadata;
 
     private OffsetDateTime createdAt;
-
-    private Set<FlashcardFile> flashcardFiles = new LinkedHashSet<>();
-
-    private Set<FlashcardReview> flashcardReviews = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -100,14 +110,5 @@ public class Flashcard implements Serializable {
         return createdAt;
     }
 
-    @OneToMany(mappedBy = "flashcard")
-    public Set<FlashcardFile> getFlashcardFiles() {
-        return flashcardFiles;
-    }
-
-    @OneToMany(mappedBy = "flashcard")
-    public Set<FlashcardReview> getFlashcardReviews() {
-        return flashcardReviews;
-    }
 
 }

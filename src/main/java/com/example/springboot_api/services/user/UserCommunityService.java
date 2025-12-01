@@ -1,4 +1,4 @@
-package com.example.springboot_api.services.shared;
+package com.example.springboot_api.services.user;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -16,12 +16,12 @@ import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.common.exceptions.ConflictException;
 import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.shared.PagedResponse;
-import com.example.springboot_api.dto.shared.community.AvailableGroupResponse;
-import com.example.springboot_api.dto.shared.community.CommunityPreviewResponse;
-import com.example.springboot_api.dto.shared.community.JoinGroupRequest;
-import com.example.springboot_api.dto.shared.community.JoinGroupResponse;
-import com.example.springboot_api.dto.shared.community.JoinedGroupResponse;
-import com.example.springboot_api.dto.shared.community.MembershipStatusResponse;
+import com.example.springboot_api.dto.user.community.AvailableGroupResponse;
+import com.example.springboot_api.dto.user.community.CommunityPreviewResponse;
+import com.example.springboot_api.dto.user.community.JoinGroupRequest;
+import com.example.springboot_api.dto.user.community.JoinGroupResponse;
+import com.example.springboot_api.dto.user.community.JoinedGroupResponse;
+import com.example.springboot_api.dto.user.community.MembershipStatusResponse;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookMember;
 import com.example.springboot_api.models.User;

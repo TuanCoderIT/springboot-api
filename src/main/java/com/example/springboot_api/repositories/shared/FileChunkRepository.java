@@ -1,0 +1,26 @@
+package com.example.springboot_api.repositories.shared;
+
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.example.springboot_api.models.FileChunk;
+
+@Repository
+public interface FileChunkRepository extends JpaRepository<FileChunk, UUID> {
+
+    @Query("SELECT fc FROM File_Chunk fc WHERE fc.file.id = :fileId ORDER BY fc.chunkIndex")
+    List<FileChunk> findByFileId(@Param("fileId") UUID fileId);
+
+    @Modifying
+    @Query("DELETE FROM File_Chunk fc WHERE fc.file.id = :fileId")
+    void deleteByFileId(@Param("fileId") UUID fileId);
+
+    @Query("SELECT COUNT(fc) FROM File_Chunk fc WHERE fc.file.id = :fileId")
+    long countByFileId(@Param("fileId") UUID fileId);
+}

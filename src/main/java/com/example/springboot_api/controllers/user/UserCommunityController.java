@@ -1,4 +1,4 @@
-package com.example.springboot_api.controllers.shared;
+package com.example.springboot_api.controllers.user;
 
 import java.util.UUID;
 
@@ -13,13 +13,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.springboot_api.config.security.UserPrincipal;
 import com.example.springboot_api.dto.shared.PagedResponse;
-import com.example.springboot_api.dto.shared.community.AvailableGroupResponse;
-import com.example.springboot_api.dto.shared.community.CommunityPreviewResponse;
-import com.example.springboot_api.dto.shared.community.JoinGroupRequest;
-import com.example.springboot_api.dto.shared.community.JoinGroupResponse;
-import com.example.springboot_api.dto.shared.community.JoinedGroupResponse;
-import com.example.springboot_api.dto.shared.community.MembershipStatusResponse;
-import com.example.springboot_api.services.shared.UserCommunityService;
+import com.example.springboot_api.dto.user.community.AvailableGroupResponse;
+import com.example.springboot_api.dto.user.community.CommunityPreviewResponse;
+import com.example.springboot_api.dto.user.community.JoinGroupRequest;
+import com.example.springboot_api.dto.user.community.JoinGroupResponse;
+import com.example.springboot_api.dto.user.community.JoinedGroupResponse;
+import com.example.springboot_api.dto.user.community.MembershipStatusResponse;
+import com.example.springboot_api.services.user.UserCommunityService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -74,3 +74,4 @@ public class UserCommunityController {
         return service.checkMembershipStatus(notebookId, user.getId());
     }
 }
+
