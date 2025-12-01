@@ -43,6 +43,8 @@ public class SecurityConfig {
                 .requestMatchers("/auth/me").authenticated()
                 .requestMatchers("/db-test").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/ws/**").permitAll() // WebSocket handled by interceptor
+                .requestMatchers("/chat-test.html").permitAll() // Allow access to test page
 
                 .anyRequest().authenticated());
 
