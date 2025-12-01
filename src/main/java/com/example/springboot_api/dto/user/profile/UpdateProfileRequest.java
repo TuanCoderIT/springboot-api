@@ -1,4 +1,4 @@
-package com.example.springboot_api.dto.shared.profile;
+package com.example.springboot_api.dto.user.profile;
 
 import jakarta.validation.constraints.Size;
 import lombok.Data;

@@ -6,24 +6,22 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.springboot_api.config.security.JwtAuthenticationFilter;
 import com.example.springboot_api.config.security.UserPrincipal;
 import com.example.springboot_api.dto.shared.auth.AuthResponse;
 import com.example.springboot_api.dto.shared.auth.LoginRequest;
 import com.example.springboot_api.dto.shared.auth.RegisterRequest;
-import com.example.springboot_api.dto.shared.profile.UpdateProfileRequest;
-import com.example.springboot_api.models.User;
+import com.example.springboot_api.dto.user.profile.UpdateProfileRequest;
 import com.example.springboot_api.services.shared.AuthService;
-import com.example.springboot_api.services.shared.ProfileService;
+import com.example.springboot_api.services.user.ProfileService;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/auth")
@@ -36,9 +34,9 @@ public class AuthController {
     private ResponseCookie makeCookie(String token) {
         return ResponseCookie.from(JwtAuthenticationFilter.AUTH_COOKIE, token)
                 .httpOnly(true)
-                .secure(false) // set true khi dùng HTTPS
+                .secure(false)
                 .path("/")
-                .sameSite("Lax") // FE khác domain thì dùng "None"
+                .sameSite("Lax")
                 .maxAge(24 * 60 * 60)
                 .build();
     }
@@ -54,7 +52,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest req,
+    public ResponseEntity<AuthResponse> register(@org.springframework.web.bind.annotation.RequestBody RegisterRequest req,
             HttpServletResponse res) {
 
         var result = authService.register(req);
@@ -63,7 +61,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest req,
+    public ResponseEntity<AuthResponse> login(@org.springframework.web.bind.annotation.RequestBody LoginRequest req,
             HttpServletResponse res) {
 
         var result = authService.login(req);
@@ -102,3 +100,4 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 }
+

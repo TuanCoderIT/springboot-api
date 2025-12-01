@@ -1,4 +1,4 @@
-package com.example.springboot_api.dto.shared.community;
+package com.example.springboot_api.dto.user.community;
 
 import java.util.UUID;
 
