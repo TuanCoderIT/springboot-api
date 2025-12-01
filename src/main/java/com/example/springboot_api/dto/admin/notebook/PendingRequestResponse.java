@@ -10,7 +10,10 @@ public record PendingRequestResponse(
         UUID userId,
         String userFullName,
         String userEmail,
+        String role,
         String status,
-        OffsetDateTime createdAt
+        OffsetDateTime joinedAt,
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
 ) {}
 
