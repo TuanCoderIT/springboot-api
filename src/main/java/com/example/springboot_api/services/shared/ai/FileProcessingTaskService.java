@@ -2,11 +2,14 @@ package com.example.springboot_api.services.shared.ai;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.springboot_api.models.FileChunk;
+import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookFile;
 import com.example.springboot_api.repositories.shared.FileChunkRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
@@ -23,63 +26,77 @@ public class FileProcessingTaskService {
     private final FileChunkRepository fileChunkRepository;
 
     @Async
+    @Transactional
     public void startAIProcessing(NotebookFile file) {
-        System.out.println("=== START AI PROCESSING: " + file.getId());
+        System.out.println("🔥 RUNNING AI THREAD: " + Thread.currentThread().getName());
 
-        file.setStatus("processing");
-        fileRepository.save(file);
+        UUID fileId = file.getId();
+        System.out.println("=== START AI PROCESSING: " + fileId);
+
+        NotebookFile loadedFile = fileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File không tồn tại: " + fileId));
+
+        loadedFile.setStatus("processing");
+        fileRepository.save(loadedFile);
 
         try {
-            // 1. OCR
-            String text = ocrService.extractTextFromDocument(file.getStorageUrl(), file.getMimeType());
+            System.out.println("📄 Bắt đầu OCR...");
+            String text = ocrService.extractTextFromDocument(loadedFile.getStorageUrl(), loadedFile.getMimeType());
+            System.out.println("✅ OCR hoàn thành, độ dài text: " + (text != null ? text.length() : 0));
             if (text == null || text.trim().isEmpty()) {
                 throw new RuntimeException("OCR không đọc được nội dung.");
             }
 
-            int chunkSize = file.getChunkSize() != null ? file.getChunkSize() : 800;
-            int chunkOverlap = file.getChunkOverlap() != null ? file.getChunkOverlap() : 120;
+            int chunkSize = loadedFile.getChunkSize() != null ? loadedFile.getChunkSize() : 800;
+            int chunkOverlap = loadedFile.getChunkOverlap() != null ? loadedFile.getChunkOverlap() : 120;
 
-            // 2. Chunking thật sự
             List<String> chunks = splitTextIntoChunks(text, chunkSize, chunkOverlap);
+            System.out.println("📦 Số lượng chunks: " + chunks.size());
 
-            // Xóa chunk cũ nếu user re-upload
-            fileChunkRepository.deleteByFileId(file.getId());
+            fileChunkRepository.deleteByFileId(fileId);
 
+            Notebook notebook = loadedFile.getNotebook();
             int index = 0;
 
-            // 3. Embedding từng chunk → lưu DB
             for (String chunk : chunks) {
-                List<Double> vector = embeddingService.embedGoogleNormalized(chunk);
+                System.out.println("🔄 Embedding chunk " + (index + 1) + "/" + chunks.size() + "...");
+                try {
+                    List<Double> vector = embeddingService.embedGoogleNormalized(chunk);
 
-                if (vector == null || vector.isEmpty() || vector.size() != 1536) {
-                    String errorMsg = vector == null ? "null" : String.valueOf(vector.size());
-                    throw new RuntimeException("Embedding invalid: size=" + errorMsg);
+                    if (vector == null || vector.isEmpty() || vector.size() != 1536) {
+                        String errorMsg = vector == null ? "null" : String.valueOf(vector.size());
+                        throw new RuntimeException("Embedding invalid: size=" + errorMsg);
+                    }
+
+                    FileChunk fc = FileChunk.builder()
+                            .notebook(notebook)
+                            .file(loadedFile)
+                            .chunkIndex(index++)
+                            .content(chunk)
+                            .embedding(vector)
+                            .createdAt(OffsetDateTime.now())
+                            .build();
+
+                    fileChunkRepository.save(fc);
+                    System.out.println("✅ Đã lưu chunk " + index);
+                } catch (Exception e) {
+                    System.err.println("❌ LỖI Ở CHUNK " + (index + 1) + ": " + e.getMessage());
+                    throw e;
                 }
-
-                FileChunk fc = FileChunk.builder()
-                        .notebook(file.getNotebook())
-                        .file(file)
-                        .chunkIndex(index++)
-                        .content(chunk)
-                        .embedding(vector)
-                        .createdAt(OffsetDateTime.now())
-                        .build();
-
-                fileChunkRepository.save(fc);
             }
 
-            // 4. Update status
-            file.setOcrDone(true);
-            file.setEmbeddingDone(true);
-            file.setStatus("done");
+            loadedFile.setOcrDone(true);
+            loadedFile.setEmbeddingDone(true);
+            loadedFile.setStatus("done");
 
         } catch (Exception e) {
-            file.setStatus("failed");
+            loadedFile.setStatus("failed");
             System.err.println("LỖI AI PROCESS: " + e.getMessage());
+            e.printStackTrace();
         } finally {
-            file.setUpdatedAt(OffsetDateTime.now());
-            fileRepository.save(file);
-            System.out.println("=== END AI PROCESSING: " + file.getId() + " | status=" + file.getStatus());
+            loadedFile.setUpdatedAt(OffsetDateTime.now());
+            fileRepository.save(loadedFile);
+            System.out.println("=== END AI PROCESSING: " + fileId + " | status=" + loadedFile.getStatus());
         }
     }
 

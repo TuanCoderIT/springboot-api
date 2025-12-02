@@ -40,4 +40,101 @@ public interface NotebookFileRepository extends JpaRepository<NotebookFile, UUID
         long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
 
         List<NotebookFile> findByNotebookIdAndStatus(UUID notebookId, String status);
+
+        @Query("""
+                        SELECT nf FROM Notebook_File nf
+                        WHERE nf.status = 'pending'
+                        """)
+        List<NotebookFile> findAllPendingFiles();
+
+        @Query(value = """
+                        SELECT nf.* FROM notebook_files nf
+                        WHERE nf.notebook_id = CAST(:notebookId AS uuid)
+                        AND (:status IS NULL OR nf.status = :status)
+                        AND (:mimeType IS NULL OR nf.mime_type = :mimeType)
+                        AND (:ocrDone IS NULL OR nf.ocr_done = :ocrDone)
+                        AND (:embeddingDone IS NULL OR nf.embedding_done = :embeddingDone)
+                        AND (:uploadedBy IS NULL OR nf.uploaded_by = CAST(:uploadedBy AS uuid))
+                        AND (:search IS NULL OR nf.original_filename::text ILIKE '%' || :search || '%')
+                        """, countQuery = """
+                        SELECT COUNT(nf.*) FROM notebook_files nf
+                        WHERE nf.notebook_id = CAST(:notebookId AS uuid)
+                        AND (:status IS NULL OR nf.status = :status)
+                        AND (:mimeType IS NULL OR nf.mime_type = :mimeType)
+                        AND (:ocrDone IS NULL OR nf.ocr_done = :ocrDone)
+                        AND (:embeddingDone IS NULL OR nf.embedding_done = :embeddingDone)
+                        AND (:uploadedBy IS NULL OR nf.uploaded_by = CAST(:uploadedBy AS uuid))
+                        AND (:search IS NULL OR nf.original_filename::text ILIKE '%' || :search || '%')
+                        """, nativeQuery = true)
+        org.springframework.data.domain.Page<NotebookFile> findByNotebookIdWithFilters(
+                        @Param("notebookId") UUID notebookId,
+                        @Param("status") String status,
+                        @Param("mimeType") String mimeType,
+                        @Param("ocrDone") Boolean ocrDone,
+                        @Param("embeddingDone") Boolean embeddingDone,
+                        @Param("uploadedBy") UUID uploadedBy,
+                        @Param("search") String search,
+                        org.springframework.data.domain.Pageable pageable);
+
+        @Query(value = """
+                        SELECT COUNT(nf.*) FROM notebook_files nf
+                        WHERE nf.notebook_id = CAST(:notebookId AS uuid)
+                        AND (:status IS NULL OR nf.status = :status)
+                        AND (:mimeType IS NULL OR nf.mime_type = :mimeType)
+                        AND (:ocrDone IS NULL OR nf.ocr_done = :ocrDone)
+                        AND (:embeddingDone IS NULL OR nf.embedding_done = :embeddingDone)
+                        AND (:uploadedBy IS NULL OR nf.uploaded_by = CAST(:uploadedBy AS uuid))
+                        AND (:search IS NULL OR nf.original_filename::text ILIKE '%' || :search || '%')
+                        """, nativeQuery = true)
+        long countByNotebookIdWithFilters(
+                        @Param("notebookId") UUID notebookId,
+                        @Param("status") String status,
+                        @Param("mimeType") String mimeType,
+                        @Param("ocrDone") Boolean ocrDone,
+                        @Param("embeddingDone") Boolean embeddingDone,
+                        @Param("uploadedBy") UUID uploadedBy,
+                        @Param("search") String search);
+
+        @Query(value = """
+                        SELECT
+                            u.id,
+                            u.full_name,
+                            u.email,
+                            u.avatar_url,
+                            COUNT(nf.id) as files_count
+                        FROM notebook_files nf
+                        JOIN users u ON nf.uploaded_by = u.id
+                        WHERE nf.notebook_id = CAST(:notebookId AS uuid)
+                        AND (:search IS NULL OR LOWER(u.full_name) LIKE LOWER('%' || :search || '%')
+                             OR LOWER(u.email) LIKE LOWER('%' || :search || '%'))
+                        GROUP BY u.id, u.full_name, u.email, u.avatar_url
+                        ORDER BY files_count DESC, u.full_name ASC
+                        LIMIT :limit
+                        """, nativeQuery = true)
+        java.util.List<Object[]> findContributorsByNotebookId(
+                        @Param("notebookId") UUID notebookId,
+                        @Param("search") String search,
+                        @Param("limit") int limit);
+
+        @Query(value = """
+                        SELECT nf.* FROM notebook_files nf
+                        WHERE nf.status = 'pending'
+                        AND (:notebookId IS NULL OR nf.notebook_id = CAST(:notebookId AS uuid))
+                        AND (:mimeType IS NULL OR nf.mime_type = :mimeType)
+                        AND (:uploadedBy IS NULL OR nf.uploaded_by = CAST(:uploadedBy AS uuid))
+                        AND (:search IS NULL OR nf.original_filename::text ILIKE '%' || :search || '%')
+                        """, countQuery = """
+                        SELECT COUNT(nf.*) FROM notebook_files nf
+                        WHERE nf.status = 'pending'
+                        AND (:notebookId IS NULL OR nf.notebook_id = CAST(:notebookId AS uuid))
+                        AND (:mimeType IS NULL OR nf.mime_type = :mimeType)
+                        AND (:uploadedBy IS NULL OR nf.uploaded_by = CAST(:uploadedBy AS uuid))
+                        AND (:search IS NULL OR nf.original_filename::text ILIKE '%' || :search || '%')
+                        """, nativeQuery = true)
+        org.springframework.data.domain.Page<NotebookFile> findPendingFilesWithFilters(
+                        @Param("notebookId") UUID notebookId,
+                        @Param("mimeType") String mimeType,
+                        @Param("uploadedBy") UUID uploadedBy,
+                        @Param("search") String search,
+                        org.springframework.data.domain.Pageable pageable);
 }

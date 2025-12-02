@@ -1,36 +1,21 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -39,7 +24,10 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = NotebookMessage.ENTITY_NAME)
-@Table(name = NotebookMessage.TABLE_NAME)
+@Table(name = NotebookMessage.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "idx_notebook_messages_notebook_created", columnList = "notebook_id, created_at"),
+        @Index(name = "idx_notebook_messages_user", columnList = "user_id")
+})
 public class NotebookMessage implements Serializable {
     public static final String ENTITY_NAME = "Notebook_Message";
     public static final String TABLE_NAME = "notebook_messages";
@@ -48,7 +36,8 @@ public class NotebookMessage implements Serializable {
     public static final String COLUMN_CONTENT_NAME = "content";
     public static final String COLUMN_AICONTEXT_NAME = "ai_context";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -6253951088553566561L;
+    private static final long serialVersionUID = -3959942391465426624L;
+
 
     private UUID id;
 
