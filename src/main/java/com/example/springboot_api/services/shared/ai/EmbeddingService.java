@@ -60,10 +60,13 @@ public class EmbeddingService {
 
         } catch (NoSuchElementException e) {
             System.err.println("❌ Lỗi cấu trúc phản hồi API: Dữ liệu embedding bị thiếu. Chi tiết: " + e.getMessage());
+            e.printStackTrace();
             return createZeroVector(TARGET_DIMENSION);
         } catch (Exception e) {
-            System.err.println("❌ Lỗi khi embedding: " + e.getMessage());
-            return createZeroVector(TARGET_DIMENSION);
+            System.err.println("❌ Lỗi khi embedding tại EmbeddingService: " + e.getMessage());
+            System.err.println("❌ Exception type: " + e.getClass().getName());
+            e.printStackTrace();
+            throw new RuntimeException("Embedding failed: " + e.getMessage(), e);
         }
     }
 

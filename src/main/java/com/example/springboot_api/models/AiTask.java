@@ -1,33 +1,19 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.Map;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.Map;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -36,7 +22,11 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = AiTask.ENTITY_NAME)
-@Table(name = AiTask.TABLE_NAME)
+@Table(name = AiTask.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "idx_ai_tasks_notebook", columnList = "notebook_id, created_at"),
+        @Index(name = "idx_ai_tasks_type_status", columnList = "task_type, status"),
+        @Index(name = "idx_ai_tasks_status", columnList = "status")
+})
 public class AiTask implements Serializable {
     public static final String ENTITY_NAME = "Ai_Task";
     public static final String TABLE_NAME = "ai_tasks";
@@ -48,7 +38,8 @@ public class AiTask implements Serializable {
     public static final String COLUMN_ERRORMESSAGE_NAME = "error_message";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = 4047362116579128640L;
+    private static final long serialVersionUID = 7454011392209553171L;
+
 
     private UUID id;
 

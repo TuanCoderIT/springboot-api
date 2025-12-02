@@ -1,32 +1,18 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.Map;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.Map;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -35,7 +21,10 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = RagQuery.ENTITY_NAME)
-@Table(name = RagQuery.TABLE_NAME)
+@Table(name = RagQuery.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "idx_rag_queries_notebook", columnList = "notebook_id, created_at"),
+        @Index(name = "idx_rag_queries_user", columnList = "user_id, created_at")
+})
 public class RagQuery implements Serializable {
     public static final String ENTITY_NAME = "Rag_Query";
     public static final String TABLE_NAME = "rag_queries";
@@ -45,7 +34,8 @@ public class RagQuery implements Serializable {
     public static final String COLUMN_SOURCECHUNKS_NAME = "source_chunks";
     public static final String COLUMN_LATENCYMS_NAME = "latency_ms";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 4545290807690008791L;
+    private static final long serialVersionUID = -8706903890819196782L;
+
 
     private UUID id;
 

@@ -1,28 +1,14 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -31,14 +17,17 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = QuizOption.ENTITY_NAME)
-@Table(name = QuizOption.TABLE_NAME)
+@Table(name = QuizOption.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "idx_quiz_options_question", columnList = "question_id")
+})
 public class QuizOption implements Serializable {
     public static final String ENTITY_NAME = "Quiz_Option";
     public static final String TABLE_NAME = "quiz_options";
     public static final String COLUMN_ID_NAME = "id";
     public static final String COLUMN_OPTIONTEXT_NAME = "option_text";
     public static final String COLUMN_ISCORRECT_NAME = "is_correct";
-    private static final long serialVersionUID = 2994751429448678340L;
+    private static final long serialVersionUID = 7004834895793041545L;
+
 
     private UUID id;
 
