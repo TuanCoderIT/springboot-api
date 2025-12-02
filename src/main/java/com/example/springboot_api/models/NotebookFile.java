@@ -1,36 +1,21 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -39,7 +24,11 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = NotebookFile.ENTITY_NAME)
-@Table(name = NotebookFile.TABLE_NAME)
+@Table(name = NotebookFile.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "idx_notebook_files_notebook", columnList = "notebook_id"),
+        @Index(name = "idx_notebook_files_uploaded_by", columnList = "uploaded_by"),
+        @Index(name = "idx_notebook_files_status", columnList = "status")
+})
 public class NotebookFile implements Serializable {
     public static final String ENTITY_NAME = "Notebook_File";
     public static final String TABLE_NAME = "notebook_files";
@@ -57,7 +46,8 @@ public class NotebookFile implements Serializable {
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_CHUNKSIZE_NAME = "chunk_size";
     public static final String COLUMN_CHUNKOVERLAP_NAME = "chunk_overlap";
-    private static final long serialVersionUID = 615764158541884196L;
+    private static final long serialVersionUID = -1804503772143418487L;
+
 
     private UUID id;
 
