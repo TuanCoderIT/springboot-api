@@ -17,6 +17,7 @@ API này cho phép admin xóa một file cụ thể trong notebook. Khi xóa fil
 3. **Xóa record** từ database
 
 **Lưu ý quan trọng**:
+
 - Hành động xóa là **không thể hoàn tác** (irreversible)
 - Tất cả dữ liệu liên quan (chunks, embeddings) sẽ bị xóa vĩnh viễn
 - Nên có confirmation dialog trước khi xóa
@@ -34,6 +35,7 @@ DELETE /admin/notebooks/{notebookId}/files/{fileId}
 ### Mô tả
 
 Xóa một file cụ thể trong notebook. File sẽ bị xóa hoàn toàn khỏi hệ thống, bao gồm:
+
 - File chunks
 - File trong storage
 - Record trong database
@@ -48,9 +50,9 @@ Authorization: Bearer <token>
 
 ### Path Parameters
 
-| Parameter    | Type | Required | Description     |
-| ------------ | ---- | -------- | --------------- |
-| `notebookId` | UUID | Yes      | ID của notebook  |
+| Parameter    | Type | Required | Description         |
+| ------------ | ---- | -------- | ------------------- |
+| `notebookId` | UUID | Yes      | ID của notebook     |
 | `fileId`     | UUID | Yes      | ID của file cần xóa |
 
 ### Request Body
@@ -167,9 +169,7 @@ async function deleteFile(notebookId, fileId, token) {
     return { success: true };
   } catch (error) {
     if (error.response) {
-      throw new Error(
-        error.response.data.message || "Lỗi khi xóa file"
-      );
+      throw new Error(error.response.data.message || "Lỗi khi xóa file");
     }
     throw error;
   }
@@ -363,16 +363,13 @@ function DeleteFileButton({
 
       {showDialog && (
         <div className="modal-overlay" onClick={() => setShowDialog(false)}>
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Xác nhận xóa file</h3>
             <p>Bạn có chắc chắn muốn xóa file:</p>
             <p className="file-name">{fileName}</p>
             <p className="warning-text">
-              ⚠️ Cảnh báo: Hành động này không thể hoàn tác. Tất cả dữ liệu
-              liên quan (chunks, embeddings) sẽ bị xóa vĩnh viễn.
+              ⚠️ Cảnh báo: Hành động này không thể hoàn tác. Tất cả dữ liệu liên
+              quan (chunks, embeddings) sẽ bị xóa vĩnh viễn.
             </p>
             <div className="modal-actions">
               <button
@@ -521,23 +518,27 @@ interface DeleteFileError {
 
 ## Ghi chú quan trọng
 
-1. **Hành động không thể hoàn tác**: 
+1. **Hành động không thể hoàn tác**:
+
    - Khi xóa file, tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn
    - File chunks, embeddings, và file trong storage đều bị xóa
    - Không có cách nào khôi phục lại
 
 2. **Validation**:
+
    - File phải thuộc notebook được chỉ định
    - File phải tồn tại
    - Admin phải đã đăng nhập
 
 3. **Response Status**:
+
    - `204 No Content`: Xóa thành công (không có response body)
    - `400 Bad Request`: File không thuộc notebook
    - `404 Not Found`: File không tồn tại
    - `401 Unauthorized`: Chưa đăng nhập hoặc không có quyền
 
 4. **UI Best Practices**:
+
    - **Luôn hiển thị confirmation dialog** trước khi xóa
    - Hiển thị tên file trong confirmation để user biết chính xác file nào sẽ bị xóa
    - Cảnh báo rõ ràng về việc không thể hoàn tác
@@ -545,7 +546,8 @@ interface DeleteFileError {
    - Refresh danh sách files sau khi xóa thành công
    - Hiển thị thông báo thành công/thất bại
 
-5. **Error Handling**: 
+5. **Error Handling**:
+
    - Luôn xử lý lỗi khi gọi API
    - Hiển thị thông báo lỗi rõ ràng cho user
    - Không tự động đóng dialog nếu có lỗi
@@ -588,7 +590,7 @@ async function handleDeleteFile(
     if (response.status === 204 || response.ok) {
       // 4. Thông báo thành công
       showSuccessMessage(`File "${fileName}" đã được xóa thành công!`);
-      
+
       // 5. Refresh danh sách files
       refreshFileList();
     } else {
@@ -602,4 +604,3 @@ async function handleDeleteFile(
   }
 }
 ```
-
