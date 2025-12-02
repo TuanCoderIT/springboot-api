@@ -96,7 +96,9 @@ function FileCard({ file }: { file: NotebookFileResponse }) {
     <div>
       {/* Sử dụng trực tiếp, không cần thêm domain */}
       <img src={file.notebook.thumbnailUrl || "/default-notebook.png"} />
-      <a href={file.storageUrl} download>Download</a>
+      <a href={file.storageUrl} download>
+        Download
+      </a>
       <img src={file.uploadedBy.avatarUrl || "/default-avatar.png"} />
     </div>
   );
@@ -113,12 +115,12 @@ function isFullUrl(url: string | null): boolean {
 
 function FileCard({ file }: { file: NotebookFileResponse }) {
   const thumbnailUrl = file.notebook.thumbnailUrl;
-  
+
   // URL đã được normalize, luôn có domain
   if (isFullUrl(thumbnailUrl)) {
     console.log("URL đã có domain:", thumbnailUrl);
   }
-  
+
   return <img src={thumbnailUrl || "/default.png"} />;
 }
 ```
@@ -128,12 +130,12 @@ function FileCard({ file }: { file: NotebookFileResponse }) {
 ```typescript
 function FileCard({ file }: { file: NotebookFileResponse }) {
   // thumbnailUrl có thể null, cần fallback
-  const thumbnailUrl = file.notebook.thumbnailUrl 
-    || "http://localhost:8386/default-notebook.png";
-  
-  const avatarUrl = file.uploadedBy.avatarUrl 
-    || "http://localhost:8386/default-avatar.png";
-  
+  const thumbnailUrl =
+    file.notebook.thumbnailUrl || "http://localhost:8386/default-notebook.png";
+
+  const avatarUrl =
+    file.uploadedBy.avatarUrl || "http://localhost:8386/default-avatar.png";
+
   return (
     <div>
       <img src={thumbnailUrl} alt={file.notebook.title} />
@@ -168,28 +170,28 @@ function PendingFileCard({ file }: { file: NotebookFileResponse }) {
   return (
     <div className="file-card">
       <h3>{file.originalFilename}</h3>
-      
+
       {/* Notebook thumbnail - URL đã có domain */}
       {file.notebook.thumbnailUrl && (
-        <img 
+        <img
           src={file.notebook.thumbnailUrl}
           alt={file.notebook.title}
           className="notebook-thumbnail"
         />
       )}
-      
+
       {/* Download link - URL đã có domain */}
-      <a 
-        href={file.storageUrl} 
+      <a
+        href={file.storageUrl}
         download={file.originalFilename}
         className="download-link"
       >
         Download File
       </a>
-      
+
       {/* User avatar - URL đã có domain */}
       {file.uploadedBy.avatarUrl && (
-        <img 
+        <img
           src={file.uploadedBy.avatarUrl}
           alt={file.uploadedBy.fullName}
           className="user-avatar"
@@ -204,12 +206,14 @@ function PendingFileCard({ file }: { file: NotebookFileResponse }) {
 
 1. **URLs đã có domain**: Tất cả URLs trong response đã được normalize với domain đầy đủ, không cần thêm domain phía frontend.
 
-2. **Null handling**: 
+2. **Null handling**:
+
    - `thumbnailUrl` có thể `null` → cần fallback image
    - `avatarUrl` có thể `null` → cần fallback image
    - `storageUrl` không bao giờ `null` (file luôn có storageUrl)
 
-3. **Production**: 
+3. **Production**:
+
    - Cần cập nhật `file.base-url` trong `application.yml` cho production
    - Hoặc sử dụng environment variable: `file.base-url: ${FILE_BASE_URL:http://localhost:8386}`
 
@@ -277,4 +281,3 @@ Thay vì:
   }
 }
 ```
-
