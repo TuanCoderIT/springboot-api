@@ -1,29 +1,15 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -32,13 +18,14 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = TtsFile.ENTITY_NAME)
-@Table(name = TtsFile.TABLE_NAME)
+@Table(name = TtsFile.TABLE_NAME, schema = "public")
 public class TtsFile implements Serializable {
     public static final String ENTITY_NAME = "Tts_File";
     public static final String TABLE_NAME = "tts_files";
     public static final String COLUMN_ID_NAME = "id";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 6771184132635978895L;
+    private static final long serialVersionUID = -5763855575308924678L;
+
 
     private UUID id;
 

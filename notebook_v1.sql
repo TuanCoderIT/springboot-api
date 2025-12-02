@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict WtHOIgLec6rWSHJfcN4U0LkiCEi894cRbvlAWR73mXzTFxAv6eHHh5pArr5e5Sh
+\restrict dQATifj5thH8esgbfqdUnH0EtSReaMXRHhjW6htMS9WT8VPZhr2vpH7vNJx3ODL
 
 -- Dumped from database version 18.1 (Postgres.app)
 -- Dumped by pg_dump version 18.1 (Postgres.app)
@@ -501,6 +501,7 @@ COPY public.notebook_activity_logs (id, notebook_id, user_id, action, target_id,
 --
 
 COPY public.notebook_files (id, notebook_id, uploaded_by, original_filename, mime_type, file_size, storage_url, status, pages_count, ocr_done, embedding_done, extra_metadata, created_at, updated_at, chunk_size, chunk_overlap) FROM stdin;
+683e3fac-f458-4958-87c5-c08fb26da89c	c3a7f558-faa7-4218-ae41-4ef57f976f34	991c40a1-c2b1-4e62-972a-33deafd708ff	1761191230157-8g0t85ryb2n.pdf	application/pdf	308489	/uploads/9ceb7a81-0ef0-442b-b673-6a10cf70ee86.pdf	failed	\N	f	f	\N	2025-12-01 19:58:39.318307+07	2025-12-01 19:58:39.791116+07	800	120
 \.
 
 
@@ -509,6 +510,22 @@ COPY public.notebook_files (id, notebook_id, uploaded_by, original_filename, mim
 --
 
 COPY public.notebook_members (id, notebook_id, user_id, role, status, joined_at, created_at, updated_at) FROM stdin;
+3538fd10-025c-4cbe-a82a-084ae881177d	95f69db9-e3e4-45d9-83ed-fe8d0cda70ba	991c40a1-c2b1-4e62-972a-33deafd708ff	owner	approved	2025-11-30 18:39:40.283697+07	2025-11-30 18:39:40.28377+07	2025-11-30 18:39:40.283774+07
+d6f3d2c6-4ba4-44f7-ac4d-c5c53e46494a	51eb25f7-1cc3-481a-8380-429abaaa5493	991c40a1-c2b1-4e62-972a-33deafd708ff	owner	approved	2025-11-30 18:39:56.068563+07	2025-11-30 18:39:56.068573+07	2025-11-30 18:39:56.068575+07
+4de3ec6f-143c-49fc-b3ca-bc5184730c7b	a19e6b78-b1b0-4c51-83e3-5359ca09996d	991c40a1-c2b1-4e62-972a-33deafd708ff	owner	approved	2025-11-30 18:40:41.473548+07	2025-11-30 18:40:41.473761+07	2025-11-30 18:40:41.47377+07
+6e74945d-2ade-4d51-a744-c2732afc15e0	c3a7f558-faa7-4218-ae41-4ef57f976f34	991c40a1-c2b1-4e62-972a-33deafd708ff	owner	approved	2025-11-30 18:25:08.887545+07	2025-11-30 18:25:08.887621+07	2025-11-30 18:25:08.887632+07
+792828ef-0375-46f6-9da1-5508c6e9af55	74c7507d-f09c-4bfe-9ce0-0ec21b5c6847	991c40a1-c2b1-4e62-972a-33deafd708ff	owner	approved	2025-11-30 18:27:05.585252+07	2025-11-30 18:27:05.585293+07	2025-11-30 18:27:05.585296+07
+2b160321-ac5b-4cc0-8cf9-f282848d0a44	95f69db9-e3e4-45d9-83ed-fe8d0cda70ba	2b569515-99dd-48d1-a767-8f524a005338	member	approved	2025-11-30 23:32:51.837619+07	2025-11-30 23:32:51.837636+07	2025-11-30 23:32:51.83764+07
+d10c6b1a-d6f5-4dda-8049-b4cda0f0ebc0	51eb25f7-1cc3-481a-8380-429abaaa5493	2b569515-99dd-48d1-a767-8f524a005338	member	approved	2025-11-30 23:32:54.498289+07	2025-11-30 23:32:54.498304+07	2025-11-30 23:32:54.498305+07
+fe786224-f245-4129-8081-fa462114fedf	a19e6b78-b1b0-4c51-83e3-5359ca09996d	2b569515-99dd-48d1-a767-8f524a005338	member	approved	2025-11-30 23:33:00.783148+07	2025-11-30 23:33:00.783189+07	2025-11-30 23:33:00.783192+07
+00ce6c86-3bca-497f-92de-609509e95502	74c7507d-f09c-4bfe-9ce0-0ec21b5c6847	2b569515-99dd-48d1-a767-8f524a005338	member	approved	2025-11-30 23:33:02.803579+07	2025-11-30 23:33:02.803609+07	2025-11-30 23:33:02.803612+07
+da5c366f-063d-4669-8755-266a435cbb4c	c3a7f558-faa7-4218-ae41-4ef57f976f34	2b569515-99dd-48d1-a767-8f524a005338	member	approved	2025-11-30 23:32:49.650775+07	2025-11-30 23:32:49.65079+07	2025-11-30 23:35:46.724885+07
+b038cdf5-cfee-4bb5-b1ab-b75e22c167fe	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	2b569515-99dd-48d1-a767-8f524a005338	member	approved	2025-12-01 00:48:47.926467+07	2025-11-30 23:32:56.38183+07	2025-12-01 00:48:47.926483+07
+e06bc3bd-92cf-464d-89ed-0a644394e5f2	19443f99-a3b9-42ff-95f6-af01c7206704	2b569515-99dd-48d1-a767-8f524a005338	member	approved	2025-12-01 01:04:26.137909+07	2025-11-30 23:32:58.919939+07	2025-12-01 01:04:26.137909+07
+8a699f0b-7448-4d26-8723-98dfbb156431	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	member	approved	2025-12-01 01:04:33.719032+07	2025-11-30 21:27:07.869437+07	2025-12-01 01:04:33.719032+07
+1bcbbd05-e25f-42e0-9ed5-fe6605a8d8b3	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	member	approved	2025-12-01 10:44:07.224404+07	2025-12-01 10:43:42.684831+07	2025-12-01 10:44:07.224404+07
+9416dd7b-21a7-42ad-b5bd-1518b85a9627	19443f99-a3b9-42ff-95f6-af01c7206704	991c40a1-c2b1-4e62-972a-33deafd708ff	member	approved	2025-12-01 10:44:07.224404+07	2025-12-01 10:43:44.930829+07	2025-12-01 10:44:07.224404+07
+afd4e365-d0bc-42f2-91da-ff0a01beac21	c3a7f558-faa7-4218-ae41-4ef57f976f34	3442f856-80ee-4615-a569-2f1783a8ba7b	member	approved	2025-12-01 19:55:14.25871+07	2025-12-01 19:55:14.258775+07	2025-12-01 19:55:14.258778+07
 \.
 
 
@@ -604,9 +621,12 @@ COPY public.tts_files (id, tts_id, file_id, created_at) FROM stdin;
 --
 
 COPY public.users (id, email, password_hash, full_name, role, avatar_url, created_at, updated_at, avatar) FROM stdin;
-991c40a1-c2b1-4e62-972a-33deafd708ff	nguyenhuynhdt37@gmail.com	$2a$10$CIhWJWY3x2LEA8lRe8n4oO.B5AgS6NytOzjVTTAu4C9ScITjKP4VG	Nguyen Xuan Huynh	ADMIN	\N	2025-11-28 13:57:12.9733	2025-11-28 13:57:12.9733	\N
 bd11d69b-8264-4eb7-ac45-3ad7c901e1b2	nguyenhuynhdt22@gmail.com	$2a$10$jC4usbtxPLWH75EW3aNGgeTNiUR/Rw728z1d/3U/sbqa47nOGekom	string	STUDENT	\N	2025-11-29 08:13:09.08651	2025-11-29 08:13:09.086513	\N
 b26bbbd2-5074-4a93-a10e-6320b65d8ef2	string@gmail.com	$2a$10$OP7hPwYRhETJrFfbac3IkOxr5Nuy9r38C/xsNA0cz9i6vpLVeOiSe	string 123	STUDENT	\N	2025-11-29 08:19:55.810092	2025-11-29 08:30:05.225211	\N
+7710814e-22b0-40c0-8d32-5bf9f74a14de	admin_f8@gmail.com	$2a$10$Tss7uLsIWjz1fmTebWY1UeJ5hrV/iAojADkg4LWupkrhQjCMKo3xa	Natasha Black	STUDENT	\N	\N	\N	\N
+991c40a1-c2b1-4e62-972a-33deafd708ff	nguyenhuynhdt37@gmail.com	$2a$10$CIhWJWY3x2LEA8lRe8n4oO.B5AgS6NytOzjVTTAu4C9ScITjKP4VG	Đẹp zai ha	ADMIN	/uploads/05fba76f-e0c5-4049-aa32-f66c81837434.jpg	2025-11-28 13:57:12.9733	2025-12-01 04:16:36.406449	\N
+2b569515-99dd-48d1-a767-8f524a005338	nguyenhuynhtk37@gmail.com	$2a$10$5jmdqOKgsSQO8eBwHMtlvON0r1qdh9TiRsxPVs.9EosZblSngqnF2	Huỳnh Cu Bự	STUDENT	/uploads/3b56b24b-b3d1-44bc-9a6b-334e792d5d2e.png	\N	2025-12-01 04:17:22.378108	\N
+3442f856-80ee-4615-a569-2f1783a8ba7b	nguyenhuynhtk371@gmail.com	$2a$10$QeYn/J3i/teCugy8snEzSO8I819sL/SipHJ58P11IdwZ1OmFB5JXC	Natasha Black	STUDENT	\N	\N	\N	\N
 \.
 
 
@@ -1366,5 +1386,5 @@ ALTER TABLE ONLY public.video_assets
 -- PostgreSQL database dump complete
 --
 
-\unrestrict WtHOIgLec6rWSHJfcN4U0LkiCEi894cRbvlAWR73mXzTFxAv6eHHh5pArr5e5Sh
+\unrestrict dQATifj5thH8esgbfqdUnH0EtSReaMXRHhjW6htMS9WT8VPZhr2vpH7vNJx3ODL
 

@@ -13,8 +13,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -31,7 +33,11 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = User.ENTITY_NAME)
-@Table(name = User.TABLE_NAME)
+@Table(name = User.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "idx_users_email", columnList = "email")
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "users_email_key", columnNames = { "email" })
+})
 public class User implements Serializable {
     public static final String ENTITY_NAME = "User";
     public static final String TABLE_NAME = "users";
@@ -44,7 +50,7 @@ public class User implements Serializable {
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_AVATAR_NAME = "avatar";
-    private static final long serialVersionUID = 4410069988865527919L;
+    private static final long serialVersionUID = 1831019774922654443L;
 
     private UUID id;
 
@@ -64,6 +70,33 @@ public class User implements Serializable {
 
     private String avatar;
 
+    private Set<AiTask> aiTasks = new LinkedHashSet<>();
+
+    private Set<FlashcardReview> flashcardReviews = new LinkedHashSet<>();
+
+    private Set<Flashcard> flashcards = new LinkedHashSet<>();
+
+    private Set<MessageReaction> messageReactions = new LinkedHashSet<>();
+
+    private Set<NotebookActivityLog> notebookActivityLogs = new LinkedHashSet<>();
+
+    private Set<NotebookFile> notebookFiles = new LinkedHashSet<>();
+
+    private Set<NotebookMember> notebookMembers = new LinkedHashSet<>();
+
+    private Set<NotebookMessage> notebookMessages = new LinkedHashSet<>();
+
+    private Set<Notebook> notebooks = new LinkedHashSet<>();
+
+    private Set<QuizSubmission> quizSubmissions = new LinkedHashSet<>();
+
+    private Set<Quiz> quizzes = new LinkedHashSet<>();
+
+    private Set<RagQuery> ragQueries = new LinkedHashSet<>();
+
+    private Set<TtsAsset> ttsAssets = new LinkedHashSet<>();
+
+    private Set<VideoAsset> videoAssets = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -120,5 +153,74 @@ public class User implements Serializable {
         return avatar;
     }
 
+    @OneToMany(mappedBy = "user")
+    public Set<AiTask> getAiTasks() {
+        return aiTasks;
+    }
+
+    @OneToMany(mappedBy = "user")
+    public Set<FlashcardReview> getFlashcardReviews() {
+        return flashcardReviews;
+    }
+
+    @OneToMany(mappedBy = "createdBy")
+    public Set<Flashcard> getFlashcards() {
+        return flashcards;
+    }
+
+    @OneToMany(mappedBy = "user")
+    public Set<MessageReaction> getMessageReactions() {
+        return messageReactions;
+    }
+
+    @OneToMany(mappedBy = "user")
+    public Set<NotebookActivityLog> getNotebookActivityLogs() {
+        return notebookActivityLogs;
+    }
+
+    @OneToMany(mappedBy = "uploadedBy")
+    public Set<NotebookFile> getNotebookFiles() {
+        return notebookFiles;
+    }
+
+    @OneToMany(mappedBy = "user")
+    public Set<NotebookMember> getNotebookMembers() {
+        return notebookMembers;
+    }
+
+    @OneToMany(mappedBy = "user")
+    public Set<NotebookMessage> getNotebookMessages() {
+        return notebookMessages;
+    }
+
+    @OneToMany(mappedBy = "createdBy")
+    public Set<Notebook> getNotebooks() {
+        return notebooks;
+    }
+
+    @OneToMany(mappedBy = "user")
+    public Set<QuizSubmission> getQuizSubmissions() {
+        return quizSubmissions;
+    }
+
+    @OneToMany(mappedBy = "createdBy")
+    public Set<Quiz> getQuizzes() {
+        return quizzes;
+    }
+
+    @OneToMany(mappedBy = "user")
+    public Set<RagQuery> getRagQueries() {
+        return ragQueries;
+    }
+
+    @OneToMany(mappedBy = "createdBy")
+    public Set<TtsAsset> getTtsAssets() {
+        return ttsAssets;
+    }
+
+    @OneToMany(mappedBy = "createdBy")
+    public Set<VideoAsset> getVideoAssets() {
+        return videoAssets;
+    }
 
 }

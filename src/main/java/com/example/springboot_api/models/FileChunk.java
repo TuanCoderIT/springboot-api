@@ -18,6 +18,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -36,7 +37,11 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = FileChunk.ENTITY_NAME)
-@Table(name = FileChunk.TABLE_NAME)
+@Table(name = FileChunk.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "idx_file_chunks_notebook", columnList = "notebook_id"),
+        @Index(name = "idx_file_chunks_file", columnList = "file_id"),
+        @Index(name = "idx_file_chunks_embedding", columnList = "embedding")
+})
 public class FileChunk implements Serializable {
     public static final String ENTITY_NAME = "File_Chunk";
     public static final String TABLE_NAME = "file_chunks";
@@ -46,7 +51,7 @@ public class FileChunk implements Serializable {
     public static final String COLUMN_EMBEDDING_NAME = "embedding";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -2172731916715588991L;
+    private static final long serialVersionUID = -3696288209630314774L;
 
     private UUID id;
 
@@ -58,10 +63,10 @@ public class FileChunk implements Serializable {
 
     private String content;
 
+    private List<Double> embedding;
+
     private Map<String, Object> metadata;
     private OffsetDateTime createdAt;
-
-    private List<Double> embedding;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -111,10 +116,10 @@ public class FileChunk implements Serializable {
         return createdAt;
     }
 
-    @NotNull
-    @Column(name = COLUMN_EMBEDDING_NAME, nullable = false, columnDefinition = "vector(1536)")
-    @JdbcTypeCode(SqlTypes.OTHER)
-    public List<Double> getEmbedding() {
-        return embedding;
-    }
+    /*
+     * TODO [Reverse Engineering] create field to map the 'embedding' column
+     * Available actions: Define target Java type | Uncomment as is | Remove column
+     * mapping
+     * private Object embedding;
+     */
 }

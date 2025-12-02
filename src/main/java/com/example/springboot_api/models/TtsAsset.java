@@ -1,33 +1,18 @@
 package com.example.springboot_api.models;
 
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
-
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 @Builder
 @AllArgsConstructor
@@ -36,7 +21,9 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity(name = TtsAsset.ENTITY_NAME)
-@Table(name = TtsAsset.TABLE_NAME)
+@Table(name = TtsAsset.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "idx_tts_assets_notebook", columnList = "notebook_id, created_at")
+})
 public class TtsAsset implements Serializable {
     public static final String ENTITY_NAME = "Tts_Asset";
     public static final String TABLE_NAME = "tts_assets";
@@ -47,7 +34,8 @@ public class TtsAsset implements Serializable {
     public static final String COLUMN_AUDIOURL_NAME = "audio_url";
     public static final String COLUMN_DURATIONSECONDS_NAME = "duration_seconds";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 3123744342915399144L;
+    private static final long serialVersionUID = 5254672165677918910L;
+
 
     private UUID id;
 
@@ -67,6 +55,7 @@ public class TtsAsset implements Serializable {
 
     private OffsetDateTime createdAt;
 
+    private Set<TtsFile> ttsFiles = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -125,5 +114,9 @@ public class TtsAsset implements Serializable {
         return createdAt;
     }
 
+    @OneToMany(mappedBy = "tts")
+    public Set<TtsFile> getTtsFiles() {
+        return ttsFiles;
+    }
 
 }
