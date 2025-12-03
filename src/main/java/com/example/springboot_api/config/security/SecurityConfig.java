@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
+@EnableMethodSecurity(prePostEnabled = true) // Bật method security để sử dụng @PreAuthorize
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
@@ -25,7 +27,6 @@ public class SecurityConfig {
 
         http.csrf(csrf -> csrf.disable());
 
-        // QUAN TRỌNG: GÁN CORS CONFIGURATION SOURCE
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
@@ -40,11 +41,15 @@ public class SecurityConfig {
                 .permitAll()
 
                 .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
-                .requestMatchers("/auth/me").authenticated()
+                .requestMatchers("/auth/me", "/auth/profile").authenticated()
                 .requestMatchers("/db-test").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/ws/**").permitAll() // WebSocket handled by interceptor
                 .requestMatchers("/chat-test.html").permitAll() // Allow access to test page
+
+                // Phân quyền theo role
+                .requestMatchers("/admin/**").hasAnyRole("ADMIN") // Chỉ ADMIN mới truy cập được
+                .requestMatchers("/user/**").hasAnyRole("STUDENT", "TEACHER", "ADMIN") // Tất cả user đã đăng nhập
 
                 .anyRequest().authenticated());
 

@@ -8,6 +8,7 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 
@@ -39,8 +40,9 @@ public class WebSocketAuthInterceptor extends DefaultHandshakeHandler {
                 String userId = jwtProvider.extractUserId(token);
                 User user = userRepository.findById(UUID.fromString(userId)).orElse(null);
                 if (user != null) {
+                    String role = "ROLE_" + user.getRole();
                     UserPrincipal principal = new UserPrincipal(user, 
-                        java.util.List.of(() -> user.getRole()));
+                        java.util.List.of(new SimpleGrantedAuthority(role)));
                     return principal;
                 }
             }
@@ -54,8 +56,9 @@ public class WebSocketAuthInterceptor extends DefaultHandshakeHandler {
                 String userId = jwtProvider.extractUserId(token);
                 User user = userRepository.findById(UUID.fromString(userId)).orElse(null);
                 if (user != null) {
+                    String role = "ROLE_" + user.getRole();
                     UserPrincipal principal = new UserPrincipal(user, 
-                        java.util.List.of(() -> user.getRole()));
+                        java.util.List.of(new SimpleGrantedAuthority(role)));
                     return principal;
                 }
             }
