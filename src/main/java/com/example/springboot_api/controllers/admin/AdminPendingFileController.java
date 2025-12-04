@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.springboot_api.config.security.UserPrincipal;
-import com.example.springboot_api.dto.admin.notebook.NotebookFileResponse;
 import com.example.springboot_api.dto.admin.notebook.PageResponse;
+import com.example.springboot_api.dto.shared.notebook.NotebookFileResponse;
 import com.example.springboot_api.services.admin.AdminNotebookFileService;
 
 import lombok.RequiredArgsConstructor;
@@ -59,4 +59,3 @@ public class AdminPendingFileController {
         return java.util.Map.of("approvedCount", count, "message", "Đã duyệt " + count + " file(s)");
     }
 }
-

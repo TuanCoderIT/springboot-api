@@ -51,11 +51,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 User user = opt.get();
 
-                // Set authority với ROLE_ prefix cho Spring Security
-                String role = "ROLE_" + user.getRole();
+
+                // ⭐ CHỈNH LẠI NGAY TẠI ĐÂY
                 UserPrincipal principal = new UserPrincipal(
                         user,
-                        List.of(new SimpleGrantedAuthority(role)));
+                        List.of(() -> "ROLE_" + user.getRole()) // <-- chuẩn Spring Security
+                );
+
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         principal,
@@ -68,12 +70,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        filterChain.doFilter(request, response); // hết
+        filterChain.doFilter(request, response);
     }
 
     private String extractToken(HttpServletRequest request) {
 
-        // 1. Check cookie
+        // Check cookie
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if (AUTH_COOKIE.equals(cookie.getName())) {
@@ -82,7 +84,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // 2. Fallback Bearer Header (optional)
+        // Fallback header
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             return header.substring(7);

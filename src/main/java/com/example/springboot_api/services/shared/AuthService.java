@@ -46,7 +46,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        String token = jwtProvider.generateToken(user.getId().toString());
+        String token = jwtProvider.generateToken(user.getId().toString(), user.getRole());
         AuthResponse info = new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(),
                 user.getAvatarUrl());
 
@@ -61,11 +61,10 @@ public class AuthService {
             throw new UnauthorizedException("Sai email hoặc mật khẩu");
         }
 
-        String token = jwtProvider.generateToken(user.getId().toString());
+        String token = jwtProvider.generateToken(user.getId().toString(), user.getRole());
         AuthResponse info = new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(),
                 user.getAvatarUrl());
 
         return new AuthResult(token, info);
     }
 }
-
