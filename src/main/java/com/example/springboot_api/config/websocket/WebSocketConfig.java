@@ -27,10 +27,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Endpoint với SockJS (cho backward compatibility)
         registry.addEndpoint("/ws")
                 .setHandshakeHandler(new WebSocketAuthInterceptor(jwtProvider, userRepository))
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
+
+        // Endpoint native WebSocket (cho frontend mới)
+        registry.addEndpoint("/ws")
+                .setHandshakeHandler(new WebSocketAuthInterceptor(jwtProvider, userRepository))
+                .setAllowedOriginPatterns("*");
     }
 }
-

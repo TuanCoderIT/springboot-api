@@ -9,11 +9,11 @@ public class FileUploadRequest {
 
     // NOTE: notebookId đã được xóa vì nó sẽ được lấy từ @PathVariable
 
-    @Min(value = 100, message = "Chunk size phải lớn hơn 100")
+    @Min(value = 3000, message = "Chunk size phải lớn hơn hoặc bằng 3000")
     @Max(value = 5000, message = "Chunk size không được vượt quá 5000")
-    private Integer chunkSize = 800;
+    private Integer chunkSize = 3000;
 
-    @Min(value = 0, message = "Chunk overlap phải lớn hơn 0")
+    @Min(value = 200, message = "Chunk overlap phải lớn hơn hoặc bằng 200")
     @Max(value = 500, message = "Chunk overlap không được vượt quá 500")
-    private Integer chunkOverlap = 120;
+    private Integer chunkOverlap = 250;
 }

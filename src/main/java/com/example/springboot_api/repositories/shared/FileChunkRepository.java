@@ -14,7 +14,10 @@ import com.example.springboot_api.models.FileChunk;
 @Repository
 public interface FileChunkRepository extends JpaRepository<FileChunk, UUID> {
 
-    @Query("SELECT fc FROM File_Chunk fc WHERE fc.file.id = :fileId ORDER BY fc.chunkIndex")
+    @Query("SELECT fc.id, fc.chunkIndex, fc.content FROM File_Chunk fc WHERE fc.file.id = :fileId ORDER BY fc.chunkIndex ASC")
+    List<Object[]> findChunkDataByFileId(@Param("fileId") UUID fileId);
+
+    @Query("SELECT fc FROM File_Chunk fc WHERE fc.file.id = :fileId ORDER BY fc.chunkIndex ASC")
     List<FileChunk> findByFileId(@Param("fileId") UUID fileId);
 
     @Modifying
