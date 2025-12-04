@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
+@EnableMethodSecurity(prePostEnabled = true) // Bật method security để sử dụng @PreAuthorize
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
@@ -42,8 +44,10 @@ public class SecurityConfig {
                 // Auth public
                 .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
 
+
                 // WS public
                 .requestMatchers("/ws/**", "/chat-test.html").permitAll()
+
 
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/db-test").permitAll()
@@ -57,7 +61,7 @@ public class SecurityConfig {
                 // Chỉ cần login
                 .requestMatchers("/auth/me").authenticated()
 
-                // Các API còn lại bắt buộc login
+
                 .anyRequest().authenticated());
 
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

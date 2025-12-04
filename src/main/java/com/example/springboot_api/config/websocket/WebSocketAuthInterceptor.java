@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.server.ServerHttpRequest;
+
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 
@@ -39,6 +40,7 @@ public class WebSocketAuthInterceptor extends DefaultHandshakeHandler {
                 token = extractQueryParam(query, "token");
             }
 
+
             // Lấy role_name nếu có
             if (query.contains("role_name=")) {
                 roleName = extractQueryParam(query, "role_name");
@@ -62,6 +64,7 @@ public class WebSocketAuthInterceptor extends DefaultHandshakeHandler {
                 if (roleName != null && !roleName.isEmpty() && !roleName.equalsIgnoreCase(user.getRole())) {
                     log.warn("Role mismatch: expected {}, got {}", roleName, user.getRole());
                     return null;
+
                 }
 
                 UserPrincipal principal = new UserPrincipal(user,
