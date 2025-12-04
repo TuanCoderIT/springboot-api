@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -50,11 +51,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 User user = opt.get();
 
+
                 // ⭐ CHỈNH LẠI NGAY TẠI ĐÂY
                 UserPrincipal principal = new UserPrincipal(
                         user,
                         List.of(() -> "ROLE_" + user.getRole()) // <-- chuẩn Spring Security
                 );
+
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         principal,
