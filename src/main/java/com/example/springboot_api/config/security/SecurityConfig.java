@@ -25,12 +25,12 @@ public class SecurityConfig {
 
         http.csrf(csrf -> csrf.disable());
 
-        // QUAN TRỌNG: GÁN CORS CONFIGURATION SOURCE
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.authorizeHttpRequests(auth -> auth
+                // Swagger public
                 .requestMatchers(
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
@@ -39,13 +39,25 @@ public class SecurityConfig {
                         "/webjars/**")
                 .permitAll()
 
+                // Auth public
                 .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
-                .requestMatchers("/auth/me").authenticated()
-                .requestMatchers("/db-test").permitAll()
-                .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/ws/**").permitAll() // WebSocket handled by interceptor
-                .requestMatchers("/chat-test.html").permitAll() // Allow access to test page
 
+                // WS public
+                .requestMatchers("/ws/**", "/chat-test.html").permitAll()
+
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/db-test").permitAll()
+
+                // ========== PHÂN QUYỀN ==========
+                .requestMatchers("/admin/**").hasRole("ADMIN") // ROLE_ADMIN
+
+                // Cả hai đều xài được
+                .requestMatchers("/shared/**").hasAnyRole("ADMIN", "STUDENT")
+
+                // Chỉ cần login
+                .requestMatchers("/auth/me").authenticated()
+
+                // Các API còn lại bắt buộc login
                 .anyRequest().authenticated());
 
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

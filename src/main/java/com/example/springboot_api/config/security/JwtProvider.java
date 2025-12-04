@@ -1,13 +1,15 @@
 package com.example.springboot_api.config.security;
 
+import java.time.Instant;
+import java.util.Date;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.stereotype.Component;
+
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Component;
-
-import javax.crypto.SecretKey;
-import java.time.Instant;
-import java.util.Date;
 
 @Component
 public class JwtProvider {
@@ -17,11 +19,12 @@ public class JwtProvider {
 
     private final long expirationMs = 86400000; // 24h
 
-    public String generateToken(String userId) {
+    public String generateToken(String userId, String role) {
         Instant now = Instant.now();
 
         return Jwts.builder()
                 .subject(userId)
+                .claim("role", role) // <-- NHÉT ROLE VÀO ĐÂY: STUDENT / ADMIN
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(expirationMs)))
                 .signWith(secretKey, SignatureAlgorithm.HS256)

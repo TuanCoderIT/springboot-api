@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +38,7 @@ import com.example.springboot_api.repositories.shared.RagQueryRepository;
 import com.example.springboot_api.repositories.shared.TtsAssetRepository;
 import com.example.springboot_api.repositories.shared.VideoAssetRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
+import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -57,9 +57,7 @@ public class AdminCommunityService {
     private final NotebookMessageRepository messageRepository;
     private final RagQueryRepository ragQueryRepository;
     private final FileStorageService fileStorageService;
-
-    @Value("${file.base-url}")
-    private String baseUrl;
+    private final UrlNormalizer urlNormalizer;
 
     @Transactional
     public NotebookResponse createCommunity(NotebookCreateRequest req, MultipartFile thumbnail, UUID adminId) {
@@ -208,24 +206,8 @@ public class AdminCommunityService {
     private NotebookResponse mapToResponse(Notebook nb) {
         Long memberCount = memberRepository.countByNotebookIdAndStatus(nb.getId(), "approved");
 
-        // Convert relative path to full URL if needed
-        String thumbnailUrl = nb.getThumbnailUrl();
-        if (thumbnailUrl != null) {
-            // Normalize URL: convert /files/notebooks/ hoặc /files/ thành /uploads/
-            if (thumbnailUrl.contains("/files/notebooks/")) {
-                thumbnailUrl = thumbnailUrl.replace("/files/notebooks/", "/uploads/");
-            } else if (thumbnailUrl.contains("/files/")) {
-                thumbnailUrl = thumbnailUrl.replace("/files/", "/uploads/");
-            }
-
-            // Nếu đã là full URL (bắt đầu bằng http:// hoặc https://) thì giữ nguyên
-            if (!thumbnailUrl.startsWith("http://") && !thumbnailUrl.startsWith("https://")) {
-                // Nếu là relative path (bắt đầu bằng /) thì thêm baseUrl
-                if (thumbnailUrl.startsWith("/")) {
-                    thumbnailUrl = baseUrl + thumbnailUrl;
-                }
-            }
-        }
+        // Normalize thumbnailUrl
+        String thumbnailUrl = urlNormalizer.normalizeToFull(nb.getThumbnailUrl());
 
         return new NotebookResponse(
                 nb.getId(),
@@ -322,12 +304,12 @@ public class AdminCommunityService {
                         f.getOriginalFilename(),
                         f.getMimeType(),
                         f.getFileSize(),
-                        normalizeFileUrl(f.getStorageUrl()),
+                        urlNormalizer.normalizeToFull(f.getStorageUrl()),
                         f.getStatus(),
                         f.getCreatedAt()))
                 .toList();
 
-        String thumbnailUrl = normalizeThumbnailUrl(notebook.getThumbnailUrl());
+        String thumbnailUrl = urlNormalizer.normalizeToFull(notebook.getThumbnailUrl());
 
         return new NotebookDetailResponse(
                 notebook.getId(),
@@ -540,7 +522,7 @@ public class AdminCommunityService {
                 messageCount,
                 ragQueryCount);
 
-        String avatarUrl = normalizeThumbnailUrl(nm.getUser().getAvatarUrl());
+        String avatarUrl = urlNormalizer.normalizeToFull(nm.getUser().getAvatarUrl());
 
         return new MemberResponse(
                 nm.getId(),
@@ -558,43 +540,4 @@ public class AdminCommunityService {
                 statistics);
     }
 
-    private String normalizeFileUrl(String storageUrl) {
-        if (storageUrl == null) {
-            return null;
-        }
-
-        if (storageUrl.contains("/files/notebooks/")) {
-            storageUrl = storageUrl.replace("/files/notebooks/", "/uploads/");
-        } else if (storageUrl.contains("/files/")) {
-            storageUrl = storageUrl.replace("/files/", "/uploads/");
-        }
-
-        if (!storageUrl.startsWith("http://") && !storageUrl.startsWith("https://")) {
-            if (storageUrl.startsWith("/")) {
-                storageUrl = baseUrl + storageUrl;
-            }
-        }
-
-        return storageUrl;
-    }
-
-    private String normalizeThumbnailUrl(String thumbnailUrl) {
-        if (thumbnailUrl == null) {
-            return null;
-        }
-
-        if (thumbnailUrl.contains("/files/notebooks/")) {
-            thumbnailUrl = thumbnailUrl.replace("/files/notebooks/", "/uploads/");
-        } else if (thumbnailUrl.contains("/files/")) {
-            thumbnailUrl = thumbnailUrl.replace("/files/", "/uploads/");
-        }
-
-        if (!thumbnailUrl.startsWith("http://") && !thumbnailUrl.startsWith("https://")) {
-            if (thumbnailUrl.startsWith("/")) {
-                thumbnailUrl = baseUrl + thumbnailUrl;
-            }
-        }
-
-        return thumbnailUrl;
-    }
 }

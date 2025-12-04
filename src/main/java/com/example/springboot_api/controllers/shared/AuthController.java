@@ -52,7 +52,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@org.springframework.web.bind.annotation.RequestBody RegisterRequest req,
+    public ResponseEntity<AuthResponse> register(
+            @org.springframework.web.bind.annotation.RequestBody RegisterRequest req,
             HttpServletResponse res) {
 
         var result = authService.register(req);
@@ -84,7 +85,7 @@ public class AuthController {
         return ResponseEntity.ok(info);
     }
 
-    @PutMapping(value = "/profile", consumes = {"multipart/form-data"})
+    @PutMapping(value = "/profile", consumes = { "multipart/form-data" })
     public ResponseEntity<AuthResponse> updateProfile(
             @RequestParam(value = "fullName", required = false) String fullName,
             @RequestParam(value = "avatar", required = false) MultipartFile avatar,
@@ -100,4 +101,3 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 }
-

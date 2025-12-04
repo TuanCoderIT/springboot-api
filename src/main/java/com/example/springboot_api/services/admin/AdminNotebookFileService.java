@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -17,8 +16,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.admin.notebook.ContributorInfo;
-import com.example.springboot_api.dto.admin.notebook.NotebookFileResponse;
 import com.example.springboot_api.dto.admin.notebook.PageResponse;
+import com.example.springboot_api.dto.shared.notebook.NotebookFileResponse;
 import com.example.springboot_api.dto.user.notebook.FileUploadRequest;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookFile;
@@ -29,6 +28,7 @@ import com.example.springboot_api.repositories.shared.FileChunkRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
 import com.example.springboot_api.services.shared.ai.FileProcessingTaskService;
+import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,15 +36,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminNotebookFileService {
 
-    @Value("${file.base-url}")
-    private String baseUrl;
-
     private final FileStorageService fileStorageService;
     private final NotebookRepository notebookRepository;
     private final UserRepository userRepository;
     private final NotebookFileRepository notebookFileRepository;
     private final FileChunkRepository fileChunkRepository;
     private final FileProcessingTaskService fileProcessingTaskService;
+    private final UrlNormalizer urlNormalizer;
 
     // ============================
     // ADMIN UPLOAD FILE
@@ -129,11 +127,11 @@ public class AdminNotebookFileService {
     }
 
     private void validateChunkParams(FileUploadRequest req) {
-        if (req.getChunkSize() == null || req.getChunkSize() < 200 || req.getChunkSize() > 2000)
+        if (req.getChunkSize() == null || req.getChunkSize() < 3000 || req.getChunkSize() > 5000)
             throw new BadRequestException("ChunkSize không hợp lệ.");
 
-        if (req.getChunkOverlap() == null || req.getChunkOverlap() < 0
-                || req.getChunkOverlap() > req.getChunkSize() - 10)
+        if (req.getChunkOverlap() == null || req.getChunkOverlap() < 200
+                || req.getChunkOverlap() > 500)
             throw new BadRequestException("ChunkOverlap không hợp lệ.");
     }
 
@@ -141,9 +139,9 @@ public class AdminNotebookFileService {
         User uploader = file.getUploadedBy();
         Notebook notebook = file.getNotebook();
 
-        String normalizedStorageUrl = normalizeStorageUrl(file.getStorageUrl());
+        String normalizedStorageUrl = urlNormalizer.normalizeToFull(file.getStorageUrl());
         String normalizedThumbnailUrl = notebook != null
-                ? normalizeThumbnailUrl(notebook.getThumbnailUrl())
+                ? urlNormalizer.normalizeToFull(notebook.getThumbnailUrl())
                 : null;
 
         NotebookFileResponse.NotebookInfo notebookInfo = notebook != null
@@ -161,7 +159,7 @@ public class AdminNotebookFileService {
                         uploader.getId(),
                         uploader.getFullName(),
                         uploader.getEmail(),
-                        normalizeAvatarUrl(uploader.getAvatarUrl()))
+                        urlNormalizer.normalizeToFull(uploader.getAvatarUrl()))
                 : null;
 
         return new NotebookFileResponse(
@@ -275,6 +273,65 @@ public class AdminNotebookFileService {
     }
 
     // ============================
+    // RETRY FILE PROCESSING
+    // ============================
+
+    @Transactional
+    public NotebookFile retryFile(UUID adminId, UUID notebookId, UUID fileId) {
+        NotebookFile file = notebookFileRepository.findById(fileId)
+                .orElseThrow(() -> new NotFoundException("File không tồn tại"));
+
+        if (!file.getNotebook().getId().equals(notebookId))
+            throw new BadRequestException("File không thuộc notebook này");
+
+        // Chỉ retry file có status = "failed"
+        if (!"failed".equals(file.getStatus())) {
+            throw new BadRequestException("Chỉ có thể retry file có status = 'failed'");
+        }
+
+        // Xóa các chunks cũ
+        fileChunkRepository.deleteByFileId(fileId);
+
+        // Reset status và flags
+        file.setStatus("approved");
+        file.setOcrDone(false);
+        file.setEmbeddingDone(false);
+        file.setUpdatedAt(java.time.OffsetDateTime.now());
+        NotebookFile savedFile = notebookFileRepository.save(file);
+
+        // Bắt đầu xử lý lại
+        fileProcessingTaskService.startAIProcessing(savedFile);
+
+        return savedFile;
+    }
+
+    @Transactional
+    public int retryAllFailedFiles(UUID adminId, UUID notebookId) {
+        List<NotebookFile> failedFiles = notebookFileRepository.findFailedFilesByNotebookId(notebookId);
+
+        int count = 0;
+        java.time.OffsetDateTime now = java.time.OffsetDateTime.now();
+
+        for (NotebookFile file : failedFiles) {
+            // Xóa các chunks cũ
+            fileChunkRepository.deleteByFileId(file.getId());
+
+            // Reset status và flags
+            file.setStatus("approved");
+            file.setOcrDone(false);
+            file.setEmbeddingDone(false);
+            file.setUpdatedAt(now);
+            NotebookFile savedFile = notebookFileRepository.save(file);
+
+            // Bắt đầu xử lý lại
+            fileProcessingTaskService.startAIProcessing(savedFile);
+            count++;
+        }
+
+        return count;
+    }
+
+    // ============================
     // LẤY FILE CHỜ DUYỆT
     // ============================
 
@@ -341,9 +398,9 @@ public class AdminNotebookFileService {
                             ? notebookMap.get(notebookRef.getId())
                             : null;
 
-                    String normalizedStorageUrl = normalizeStorageUrl(file.getStorageUrl());
+                    String normalizedStorageUrl = urlNormalizer.normalizeToFull(file.getStorageUrl());
                     String normalizedThumbnailUrl = notebook != null
-                            ? normalizeThumbnailUrl(notebook.getThumbnailUrl())
+                            ? urlNormalizer.normalizeToFull(notebook.getThumbnailUrl())
                             : null;
 
                     NotebookFileResponse.NotebookInfo notebookInfo = notebook != null
@@ -361,7 +418,7 @@ public class AdminNotebookFileService {
                                     uploader.getId(),
                                     uploader.getFullName(),
                                     uploader.getEmail(),
-                                    normalizeAvatarUrl(uploader.getAvatarUrl()))
+                                    urlNormalizer.normalizeToFull(uploader.getAvatarUrl()))
                             : null;
 
                     return new NotebookFileResponse(
@@ -441,9 +498,9 @@ public class AdminNotebookFileService {
                             : null;
 
                     Notebook notebookRef = file.getNotebook();
-                    String normalizedStorageUrl = normalizeStorageUrl(file.getStorageUrl());
+                    String normalizedStorageUrl = urlNormalizer.normalizeToFull(file.getStorageUrl());
                     String normalizedThumbnailUrl = notebookRef != null
-                            ? normalizeThumbnailUrl(notebookRef.getThumbnailUrl())
+                            ? urlNormalizer.normalizeToFull(notebookRef.getThumbnailUrl())
                             : null;
 
                     NotebookFileResponse.NotebookInfo notebookInfo = notebookRef != null
@@ -461,7 +518,7 @@ public class AdminNotebookFileService {
                                     uploader.getId(),
                                     uploader.getFullName(),
                                     uploader.getEmail(),
-                                    normalizeAvatarUrl(uploader.getAvatarUrl()))
+                                    urlNormalizer.normalizeToFull(uploader.getAvatarUrl()))
                             : null;
 
                     return new NotebookFileResponse(
@@ -533,66 +590,55 @@ public class AdminNotebookFileService {
                 .collect(Collectors.toList());
     }
 
-    private String normalizeStorageUrl(String storageUrl) {
-        if (storageUrl == null) {
-            return null;
-        }
-
-        if (storageUrl.contains("/files/notebooks/")) {
-            storageUrl = storageUrl.replace("/files/notebooks/", "/uploads/");
-        } else if (storageUrl.contains("/files/")) {
-            storageUrl = storageUrl.replace("/files/", "/uploads/");
-        }
-
-        if (!storageUrl.startsWith("http://") && !storageUrl.startsWith("https://")) {
-            if (storageUrl.startsWith("/")) {
-                storageUrl = baseUrl + storageUrl;
-            }
-        }
-
-        return storageUrl;
-    }
-
-    private String normalizeThumbnailUrl(String thumbnailUrl) {
-        if (thumbnailUrl == null) {
-            return null;
-        }
-
-        if (thumbnailUrl.contains("/files/notebooks/")) {
-            thumbnailUrl = thumbnailUrl.replace("/files/notebooks/", "/uploads/");
-        } else if (thumbnailUrl.contains("/files/")) {
-            thumbnailUrl = thumbnailUrl.replace("/files/", "/uploads/");
-        }
-
-        if (!thumbnailUrl.startsWith("http://") && !thumbnailUrl.startsWith("https://")) {
-            if (thumbnailUrl.startsWith("/")) {
-                thumbnailUrl = baseUrl + thumbnailUrl;
-            }
-        }
-
-        return thumbnailUrl;
-    }
-
-    private String normalizeAvatarUrl(String avatarUrl) {
-        if (avatarUrl == null) {
-            return null;
-        }
-
-        if (avatarUrl.contains("/files/")) {
-            avatarUrl = avatarUrl.replace("/files/", "/uploads/");
-        }
-
-        if (!avatarUrl.startsWith("http://") && !avatarUrl.startsWith("https://")) {
-            if (avatarUrl.startsWith("/")) {
-                avatarUrl = baseUrl + avatarUrl;
-            }
-        }
-
-        return avatarUrl;
-    }
 
     public long getChunksCount(UUID fileId) {
         return fileChunkRepository.countByFileId(fileId);
+    }
+
+    @Transactional(readOnly = true)
+    public com.example.springboot_api.dto.admin.notebook.NotebookFileDetailResponse getFileDetail(UUID notebookId,
+            UUID fileId) {
+
+        // Validate input parameters
+        if (notebookId == null) {
+            throw new BadRequestException("notebookId không được để trống");
+        }
+        if (fileId == null) {
+            throw new BadRequestException("fileId không được để trống");
+        }
+
+        NotebookFile file = notebookFileRepository.findById(fileId)
+                .orElseThrow(() -> new NotFoundException("File không tồn tại với ID: " + fileId));
+
+        // Check if notebook exists
+        if (file.getNotebook() == null) {
+            throw new NotFoundException("Notebook của file không tồn tại");
+        }
+
+        if (!file.getNotebook().getId().equals(notebookId)) {
+            throw new BadRequestException("File không thuộc notebook này");
+        }
+
+        long totalTextChunks = fileChunkRepository.countByFileId(fileId);
+
+        // Count generated content using collection sizes (with null safety)
+        int videoCount = file.getVideoAssetFiles() != null ? file.getVideoAssetFiles().size() : 0;
+        int podcastCount = file.getTtsFiles() != null ? file.getTtsFiles().size() : 0;
+        int flashcardCount = file.getFlashcardFiles() != null ? file.getFlashcardFiles().size() : 0;
+        int quizCount = file.getQuizFiles() != null ? file.getQuizFiles().size() : 0;
+
+        java.util.Map<String, Integer> generatedContentCounts = java.util.Map.of(
+                "video", videoCount,
+                "podcast", podcastCount,
+                "flashcard", flashcardCount,
+                "quiz", quizCount);
+
+        NotebookFileResponse fileInfo = toResponse(file, totalTextChunks);
+
+        return new com.example.springboot_api.dto.admin.notebook.NotebookFileDetailResponse(
+                fileInfo,
+                totalTextChunks,
+                generatedContentCounts);
     }
 
 }

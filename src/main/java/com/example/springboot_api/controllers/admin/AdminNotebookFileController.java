@@ -21,8 +21,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.config.security.UserPrincipal;
 import com.example.springboot_api.dto.admin.notebook.ContributorInfo;
-import com.example.springboot_api.dto.admin.notebook.NotebookFileResponse;
 import com.example.springboot_api.dto.admin.notebook.PageResponse;
+import com.example.springboot_api.dto.shared.notebook.NotebookFileResponse;
 import com.example.springboot_api.dto.user.notebook.FileUploadRequest;
 import com.example.springboot_api.models.NotebookFile;
 import com.example.springboot_api.services.admin.AdminNotebookFileService;
@@ -191,5 +191,43 @@ public class AdminNotebookFileController {
             throw new RuntimeException("Admin chưa đăng nhập.");
 
         adminNotebookFileService.deleteFile(admin.getId(), notebookId, fileId);
+    }
+
+    @PutMapping("/{fileId}/retry")
+    public NotebookFileResponse retryFile(
+            @AuthenticationPrincipal UserPrincipal admin,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID fileId) {
+
+        if (admin == null)
+            throw new RuntimeException("Admin chưa đăng nhập.");
+
+        NotebookFile retriedFile = adminNotebookFileService.retryFile(admin.getId(), notebookId, fileId);
+        long chunksCount = adminNotebookFileService.getChunksCount(retriedFile.getId());
+        return adminNotebookFileService.toResponse(retriedFile, chunksCount);
+    }
+
+    @PutMapping("/retry-all")
+    public java.util.Map<String, Object> retryAllFailedFiles(
+            @AuthenticationPrincipal UserPrincipal admin,
+            @PathVariable UUID notebookId) {
+
+        if (admin == null)
+            throw new RuntimeException("Admin chưa đăng nhập.");
+
+        int count = adminNotebookFileService.retryAllFailedFiles(admin.getId(), notebookId);
+        return java.util.Map.of("retriedCount", count, "message", "Đã thử lại " + count + " file(s) bị lỗi");
+    }
+
+    @GetMapping("/{fileId}")
+    public com.example.springboot_api.dto.admin.notebook.NotebookFileDetailResponse getFileDetail(
+            @AuthenticationPrincipal UserPrincipal admin,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID fileId) {
+
+        if (admin == null)
+            throw new RuntimeException("Admin chưa đăng nhập.");
+
+        return adminNotebookFileService.getFileDetail(notebookId, fileId);
     }
 }
