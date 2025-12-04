@@ -4,7 +4,6 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +31,7 @@ import com.example.springboot_api.repositories.shared.FlashcardRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.repositories.shared.NotebookMessageRepository;
 import com.example.springboot_api.repositories.shared.QuizRepository;
+import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,9 +46,7 @@ public class UserCommunityService {
     private final NotebookMessageRepository messageRepository;
     private final QuizRepository quizRepository;
     private final FlashcardRepository flashcardRepository;
-
-    @Value("${file.base-url}")
-    private String baseUrl;
+    private final UrlNormalizer urlNormalizer;
 
     @Transactional
     public JoinGroupResponse joinGroup(JoinGroupRequest req, UUID userId) {
@@ -181,7 +179,7 @@ public class UserCommunityService {
     private AvailableGroupResponse mapToAvailableGroup(Notebook nb) {
         Long memberCount = memberRepository.countByNotebookIdAndStatus(nb.getId(), "approved");
 
-        String thumbnailUrl = normalizeThumbnailUrl(nb.getThumbnailUrl());
+        String thumbnailUrl = urlNormalizer.normalizeToFull(nb.getThumbnailUrl());
 
         return new AvailableGroupResponse(
                 nb.getId(),
@@ -191,26 +189,6 @@ public class UserCommunityService {
                 thumbnailUrl,
                 memberCount,
                 nb.getCreatedAt());
-    }
-
-    private String normalizeThumbnailUrl(String thumbnailUrl) {
-        if (thumbnailUrl == null) {
-            return null;
-        }
-
-        if (thumbnailUrl.contains("/files/notebooks/")) {
-            thumbnailUrl = thumbnailUrl.replace("/files/notebooks/", "/uploads/");
-        } else if (thumbnailUrl.contains("/files/")) {
-            thumbnailUrl = thumbnailUrl.replace("/files/", "/uploads/");
-        }
-
-        if (!thumbnailUrl.startsWith("http://") && !thumbnailUrl.startsWith("https://")) {
-            if (thumbnailUrl.startsWith("/")) {
-                thumbnailUrl = baseUrl + thumbnailUrl;
-            }
-        }
-
-        return thumbnailUrl;
     }
 
     public CommunityPreviewResponse getCommunityPreview(UUID notebookId) {
@@ -255,7 +233,7 @@ public class UserCommunityService {
                         f.getCreatedAt()))
                 .toList();
 
-        String thumbnailUrl = normalizeThumbnailUrl(notebook.getThumbnailUrl());
+        String thumbnailUrl = urlNormalizer.normalizeToFull(notebook.getThumbnailUrl());
 
         return new CommunityPreviewResponse(
                 notebook.getId(),
@@ -375,7 +353,7 @@ public class UserCommunityService {
     private JoinedGroupResponse mapToJoinedGroup(NotebookMember member) {
         Notebook notebook = member.getNotebook();
         Long memberCount = memberRepository.countByNotebookIdAndStatus(notebook.getId(), "approved");
-        String thumbnailUrl = normalizeThumbnailUrl(notebook.getThumbnailUrl());
+        String thumbnailUrl = urlNormalizer.normalizeToFull(notebook.getThumbnailUrl());
 
         return new JoinedGroupResponse(
                 notebook.getId(),

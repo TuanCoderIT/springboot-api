@@ -13,6 +13,7 @@ spring:
 
   datasource:
     url: jdbc:postgresql://localhost:5432/notebooks
+
     username: postgres
     password: 88888888
 
@@ -51,4 +52,4 @@ springdoc:
     enabled: true
 
 gemini:
-  api-key: AIzaSyAcPcb1MacdXNXxcoMgaavp8G7ovGs-9xU
+  api-key:

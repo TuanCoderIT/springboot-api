@@ -3,7 +3,6 @@ package com.example.springboot_api.services.user;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,6 +13,7 @@ import com.example.springboot_api.dto.user.profile.UpdateProfileRequest;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.shared.AuthRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
+import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,9 +23,7 @@ public class ProfileService {
 
     private final AuthRepository userRepository;
     private final FileStorageService fileStorageService;
-
-    @Value("${file.base-url}")
-    private String baseUrl;
+    private final UrlNormalizer urlNormalizer;
 
     @Transactional
     public AuthResponse updateProfile(UUID userId, UpdateProfileRequest req, MultipartFile avatar) {
@@ -52,7 +50,7 @@ public class ProfileService {
         user.setUpdatedAt(java.time.Instant.now());
         userRepository.save(user);
 
-        String avatarUrl = normalizeAvatarUrl(user.getAvatarUrl());
+        String avatarUrl = urlNormalizer.normalizeToFull(user.getAvatarUrl());
         return new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(), avatarUrl);
     }
 
@@ -60,26 +58,8 @@ public class ProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Người dùng không tồn tại"));
 
-        String avatarUrl = normalizeAvatarUrl(user.getAvatarUrl());
+        String avatarUrl = urlNormalizer.normalizeToFull(user.getAvatarUrl());
         return new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(), avatarUrl);
     }
 
-    private String normalizeAvatarUrl(String avatarUrl) {
-        if (avatarUrl == null) {
-            return null;
-        }
-
-        if (avatarUrl.contains("/files/")) {
-            avatarUrl = avatarUrl.replace("/files/", "/uploads/");
-        }
-
-        if (!avatarUrl.startsWith("http://") && !avatarUrl.startsWith("https://")) {
-            if (avatarUrl.startsWith("/")) {
-                avatarUrl = baseUrl + avatarUrl;
-            }
-        }
-
-        return avatarUrl;
-    }
 }
-

@@ -32,6 +32,7 @@ public class SecurityConfig {
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.authorizeHttpRequests(auth -> auth
+                // Swagger public
                 .requestMatchers(
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
@@ -40,16 +41,26 @@ public class SecurityConfig {
                         "/webjars/**")
                 .permitAll()
 
+                // Auth public
                 .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
-                .requestMatchers("/auth/me", "/auth/profile").authenticated()
-                .requestMatchers("/db-test").permitAll()
-                .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/ws/**").permitAll() // WebSocket handled by interceptor
-                .requestMatchers("/chat-test.html").permitAll() // Allow access to test page
 
-                // Phân quyền theo role
-                .requestMatchers("/admin/**").hasAnyRole("ADMIN") // Chỉ ADMIN mới truy cập được
-                .requestMatchers("/user/**").hasAnyRole("STUDENT", "TEACHER", "ADMIN") // Tất cả user đã đăng nhập
+
+                // WS public
+                .requestMatchers("/ws/**", "/chat-test.html").permitAll()
+
+
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/db-test").permitAll()
+
+                // ========== PHÂN QUYỀN ==========
+                .requestMatchers("/admin/**").hasRole("ADMIN") // ROLE_ADMIN
+
+                // Cả hai đều xài được
+                .requestMatchers("/shared/**").hasAnyRole("ADMIN", "STUDENT")
+
+                // Chỉ cần login
+                .requestMatchers("/auth/me").authenticated()
+
 
                 .anyRequest().authenticated());
 

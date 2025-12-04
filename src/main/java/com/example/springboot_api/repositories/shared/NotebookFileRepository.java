@@ -137,4 +137,34 @@ public interface NotebookFileRepository extends JpaRepository<NotebookFile, UUID
                         @Param("uploadedBy") UUID uploadedBy,
                         @Param("search") String search,
                         org.springframework.data.domain.Pageable pageable);
+
+        @Query("""
+                        SELECT nf FROM Notebook_File nf
+                        WHERE nf.notebook.id = :notebookId
+                        AND nf.status = 'failed'
+                        ORDER BY nf.createdAt DESC
+                        """)
+        List<NotebookFile> findFailedFilesByNotebookId(@Param("notebookId") UUID notebookId);
+
+        /**
+         * Lấy danh sách file theo notebookId:
+         * - File có status = 'approved' (đã duyệt và xử lý xong)
+         * - File của user hiện tại với các status khác (pending, failed, rejected,
+         * processing)
+         * - Có tìm kiếm theo tên file
+         */
+        @Query("""
+                        SELECT nf FROM Notebook_File nf
+                        WHERE nf.notebook.id = :notebookId
+                        AND (
+                            nf.status = 'done'
+                            OR (nf.uploadedBy.id = :userId AND nf.status != 'done')
+                        )
+                        AND (:search IS NULL OR :search = '' OR LOWER(nf.originalFilename) LIKE LOWER(CONCAT('%', :search, '%')))
+                        ORDER BY nf.createdAt DESC
+                        """)
+        List<NotebookFile> findFilesForUserByNotebookId(
+                        @Param("notebookId") UUID notebookId,
+                        @Param("userId") UUID userId,
+                        @Param("search") String search);
 }

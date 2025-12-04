@@ -5,10 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.server.ServerHttpRequest;
-import org.springframework.messaging.simp.stomp.StompCommand;
-import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
-import org.springframework.messaging.support.MessageHeaderAccessor;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 
@@ -28,43 +25,76 @@ public class WebSocketAuthInterceptor extends DefaultHandshakeHandler {
     private final AuthRepository userRepository;
 
     @Override
-    protected Principal determineUser(ServerHttpRequest request, WebSocketHandler wsHandler, Map<String, Object> attributes) {
+    protected Principal determineUser(ServerHttpRequest request, WebSocketHandler wsHandler,
+            Map<String, Object> attributes) {
         String query = request.getURI().getQuery();
-        if (query != null && query.contains("token=")) {
-            String token = query.substring(query.indexOf("token=") + 6);
-            if (token.contains("&")) {
-                token = token.substring(0, token.indexOf("&"));
+        String token = null;
+        String roleName = null;
+
+        // Parse query parameters
+        if (query != null) {
+            // Hỗ trợ cả access_token (format mới) và token (format cũ)
+            if (query.contains("access_token=")) {
+                token = extractQueryParam(query, "access_token");
+            } else if (query.contains("token=")) {
+                token = extractQueryParam(query, "token");
             }
-            
-            if (jwtProvider.validateToken(token)) {
-                String userId = jwtProvider.extractUserId(token);
-                User user = userRepository.findById(UUID.fromString(userId)).orElse(null);
-                if (user != null) {
-                    String role = "ROLE_" + user.getRole();
-                    UserPrincipal principal = new UserPrincipal(user, 
-                        java.util.List.of(new SimpleGrantedAuthority(role)));
-                    return principal;
-                }
-            }
-        }
-        
-        // Try Authorization header
-        String authHeader = request.getHeaders().getFirst("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            if (jwtProvider.validateToken(token)) {
-                String userId = jwtProvider.extractUserId(token);
-                User user = userRepository.findById(UUID.fromString(userId)).orElse(null);
-                if (user != null) {
-                    String role = "ROLE_" + user.getRole();
-                    UserPrincipal principal = new UserPrincipal(user, 
-                        java.util.List.of(new SimpleGrantedAuthority(role)));
-                    return principal;
-                }
+
+
+            // Lấy role_name nếu có
+            if (query.contains("role_name=")) {
+                roleName = extractQueryParam(query, "role_name");
             }
         }
-        
+
+        // Nếu không có token trong query, thử Authorization header
+        if (token == null) {
+            String authHeader = request.getHeaders().getFirst("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
+        }
+
+        // Validate token và tạo Principal
+        if (token != null && jwtProvider.validateToken(token)) {
+            String userId = jwtProvider.extractUserId(token);
+            User user = userRepository.findById(UUID.fromString(userId)).orElse(null);
+            if (user != null) {
+                // Validate role_name nếu được cung cấp
+                if (roleName != null && !roleName.isEmpty() && !roleName.equalsIgnoreCase(user.getRole())) {
+                    log.warn("Role mismatch: expected {}, got {}", roleName, user.getRole());
+                    return null;
+
+                }
+
+                UserPrincipal principal = new UserPrincipal(user,
+                        java.util.List.of(() -> "ROLE_" + user.getRole()));
+                return principal;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract query parameter value from query string
+     */
+    private String extractQueryParam(String query, String paramName) {
+        String param = paramName + "=";
+        if (query.contains(param)) {
+            int startIndex = query.indexOf(param) + param.length();
+            int endIndex = query.indexOf("&", startIndex);
+            if (endIndex == -1) {
+                endIndex = query.length();
+            }
+            String value = query.substring(startIndex, endIndex);
+            try {
+                // Decode URL encoding
+                return java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                return value;
+            }
+        }
         return null;
     }
 }
-
