@@ -270,6 +270,49 @@ public class UserNotebookFileService {
                 .toList();
     }
 
+    @Transactional
+    public void deleteFile(UUID userId, UUID notebookId, UUID fileId) {
+        // Kiểm tra user có quyền truy cập notebook không
+        Optional<NotebookMember> memberOpt = notebookMemberRepository.findByNotebookIdAndUserId(notebookId, userId);
+
+        Notebook notebook = notebookRepository.findById(notebookId)
+                .orElseThrow(() -> new NotFoundException("Notebook không tồn tại"));
+
+        boolean isCommunity = "community".equals(notebook.getType());
+        boolean isMember = memberOpt.isPresent() && "approved".equals(memberOpt.get().getStatus());
+
+        if (isCommunity) {
+            if (!isMember) {
+                throw new BadRequestException("Bạn chưa tham gia nhóm cộng đồng này hoặc yêu cầu chưa được duyệt");
+            }
+        } else {
+            if (!isMember) {
+                throw new BadRequestException("Bạn chưa tham gia nhóm này");
+            }
+        }
+
+        NotebookFile file = notebookFileRepository.findById(fileId)
+                .orElseThrow(() -> new NotFoundException("File không tồn tại"));
+
+        if (!file.getNotebook().getId().equals(notebookId)) {
+            throw new BadRequestException("File không thuộc notebook này");
+        }
+
+        // Kiểm tra file có phải của chính user này không
+        if (file.getUploadedBy() == null || !file.getUploadedBy().getId().equals(userId)) {
+            throw new BadRequestException("Bạn chỉ có thể xóa file của chính mình");
+        }
+
+        // Xóa file chunks
+        fileChunkRepository.deleteByFileId(fileId);
+
+        // Xóa file từ storage
+        fileStorageService.deleteFile(file.getStorageUrl());
+
+        // Xóa file record
+        notebookFileRepository.delete(file);
+    }
+
     /**
      * Map NotebookFile sang NotebookFileResponse với URL normalization
      */
