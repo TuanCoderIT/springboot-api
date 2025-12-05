@@ -13,17 +13,16 @@ spring:
 
   datasource:
     url: jdbc:postgresql://localhost:5432/notebooks
-
-    username: postgres
-    password: 88888888
+    username: admin
+    password: Admin1234
 
   jpa:
     show-sql: true
-    open-in-view: false
     hibernate:
       ddl-auto: none
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
           lob:
             non_contextual_creation: true
