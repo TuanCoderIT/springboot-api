@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -117,6 +118,19 @@ public class UserNotebookFileController {
             throw new RuntimeException("User chưa đăng nhập.");
 
         return userNotebookFileService.getFileChunks(user.getId(), notebookId, fileId);
+    }
+
+    @DeleteMapping("/{fileId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteFile(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID fileId) {
+
+        if (user == null)
+            throw new RuntimeException("User chưa đăng nhập.");
+
+        userNotebookFileService.deleteFile(user.getId(), notebookId, fileId);
     }
 
 }
