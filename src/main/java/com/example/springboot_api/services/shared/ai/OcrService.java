@@ -11,134 +11,156 @@ import javax.imageio.ImageIO;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.example.springboot_api.common.exceptions.BadRequestException;
 
-import net.sourceforge.tess4j.Tesseract;
-
 @Service
 public class OcrService {
-
-    private final Tika tika = new Tika();
 
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
 
-    private final Tesseract tess;
+    private final Tika tika = new Tika();
 
-    public OcrService() {
-        tess = new Tesseract();
-        tess.setDatapath("/usr/share/tessdata");
-        tess.setLanguage("vie+eng");
-        tess.setOcrEngineMode(1);
+    // Auto detect tesseract path
+    private String getTesseractBinary() {
+        String os = System.getProperty("os.name").toLowerCase();
+
+        if (os.contains("mac")) {
+            // Brew path
+            if (Files.exists(Path.of("/opt/homebrew/bin/tesseract")))
+                return "/opt/homebrew/bin/tesseract";
+            if (Files.exists(Path.of("/usr/local/bin/tesseract")))
+                return "/usr/local/bin/tesseract";
+        }
+
+        if (os.contains("linux")) {
+            return "/usr/bin/tesseract";
+        }
+
+        if (os.contains("win")) {
+            return "tesseract.exe"; // yêu cầu set PATH
+        }
+
+        return "tesseract";
     }
 
-    public String extractTextFromDocument(String localFilePath, String mimeType) throws IOException {
-        Path path = getValidPath(localFilePath);
+    // ============= MAIN ENTRY =============
+
+    public String extract(String filePath) throws Exception {
+        Path path = resolvePath(filePath);
         File file = path.toFile();
 
-        String detectedMimeType = mimeType;
-        if (detectedMimeType == null || detectedMimeType.equals("application/octet-stream")) {
-            detectedMimeType = tika.detect(file);
-        }
-
-        System.out.println("OCR: Original MIME type: " + mimeType);
-        System.out.println("OCR: Detected MIME type: " + detectedMimeType);
-        System.out.println("OCR: File path: " + path);
-
-        try {
-            String text = extractText(file);
-
-            if (text == null || text.trim().isEmpty()) {
-                throw new BadRequestException("OCR không đọc được nội dung từ file.");
-            }
-
-            System.out.println("✅ OCR hoàn thành, độ dài text: " + text.length());
-            return text;
-
-        } catch (Exception e) {
-            System.err.println("❌ Lỗi OCR tại OcrService: " + e.getMessage());
-            e.printStackTrace();
-            throw new IOException("Lỗi khi thực hiện OCR: " + e.getMessage(), e);
-        }
-    }
-
-    public String extractText(File file) throws Exception {
         String mime = tika.detect(file);
 
-        if (mime.equals("application/pdf")) {
+        if (mime.equals("application/pdf"))
             return extractFromPDF(file);
-        } else if (mime.startsWith("image/")) {
+
+        if (mime.startsWith("image/"))
             return extractFromImage(file);
-        } else if (mime.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
-                mime.equals("application/msword")) {
+
+        if (mime.contains("word"))
             return extractFromWord(file);
-        }
 
-        throw new BadRequestException("Định dạng file không được hỗ trợ: " + mime);
+        throw new BadRequestException("Không hỗ trợ OCR file: " + mime);
     }
 
-    private String extractFromWord(File file) throws Exception {
+    // ============= OCR IMAGE =============
+
+    public String extractFromImage(File file) throws Exception {
+        return runTesseract(file);
+    }
+
+    // ============= OCR WORD =============
+    // dùng Tika, miễn phí, không lỗi
+    public String extractFromWord(File file) throws Exception {
         String text = tika.parseToString(file);
-        return clean(text);
+        return cleanText(text);
     }
 
-    private String extractFromPDF(File file) throws Exception {
+    // ============= OCR PDF =============
+    // convert từng page -> PNG -> OCR
+    public String extractFromPDF(File file) throws Exception {
+        StringBuilder sb = new StringBuilder();
+
         try (PDDocument doc = Loader.loadPDF(file)) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setSortByPosition(true);
-            stripper.setStartPage(1);
-            stripper.setEndPage(doc.getNumberOfPages());
+            PDFRenderer renderer = new PDFRenderer(doc);
+            int totalPages = doc.getNumberOfPages();
 
-            String text = stripper.getText(doc);
-            return clean(text);
-        }
-    }
+            for (int i = 0; i < totalPages; i++) {
+                BufferedImage img = renderer.renderImageWithDPI(i, 300); // DPI cao → OCR đẹp
+                File temp = convertBufferedImageToTemp(img);
 
-    private String extractFromImage(File file) throws Exception {
-        BufferedImage img = ImageIO.read(file);
+                String text = runTesseract(temp);
+                sb.append(text).append("\n");
 
-        if (img == null) {
-            return "";
+                temp.delete();
+            }
         }
 
-        String text = tess.doOCR(img);
-        return clean(text);
+        return cleanText(sb.toString());
     }
 
-    private String clean(String s) {
-        if (s == null)
+    // ============= SUPPORT: run Tesseract CLI =============
+
+    private String runTesseract(File file) throws Exception {
+        String tesseract = getTesseractBinary();
+
+        ProcessBuilder pb = new ProcessBuilder(
+                tesseract,
+                file.getAbsolutePath(),
+                "stdout",
+                "-l", "vie+eng");
+
+        pb.redirectErrorStream(true);
+
+        Process process = pb.start();
+        String output = new String(process.getInputStream().readAllBytes());
+        int exitCode = process.waitFor();
+
+        if (exitCode != 0)
+            throw new BadRequestException("OCR thất bại (exit " + exitCode + "): " + output);
+
+        return cleanText(output);
+    }
+
+    // convert buffer image -> file tạm
+    private File convertBufferedImageToTemp(BufferedImage image) throws IOException {
+        File temp = File.createTempFile("ocr_img_", ".png");
+        ImageIO.write(image, "png", temp);
+        return temp;
+    }
+
+    // ============= CLEAN TEXT =============
+
+    private String cleanText(String text) {
+        if (text == null)
             return "";
-        return s
+        return text
                 .replaceAll("[\\t]+", " ")
                 .replaceAll("\\s{2,}", " ")
                 .trim();
     }
 
-    private Path getValidPath(String storageUrl) {
-        String filePath = storageUrl;
+    // ============= PATH =============
 
-        if (filePath.startsWith("/uploads/")) {
-            String filename = filePath.replaceFirst("^/uploads/", "");
-            filePath = Paths.get(uploadDir, filename).toString();
+    private Path resolvePath(String storageUrl) {
+        if (storageUrl.startsWith("/uploads/")) {
+            storageUrl = storageUrl.replaceFirst("^/uploads/", "");
         }
 
-        Path path = Paths.get(filePath);
+        Path p1 = Paths.get(uploadDir, storageUrl);
+        if (Files.exists(p1))
+            return p1;
 
-        if (Files.exists(path)) {
-            return path;
-        }
+        Path p2 = Paths.get(storageUrl);
+        if (Files.exists(p2))
+            return p2;
 
-        Path absolutePath = Paths.get(System.getProperty("user.dir"), filePath);
-
-        if (Files.exists(absolutePath)) {
-            return absolutePath;
-        }
-
-        throw new BadRequestException("Không tìm thấy file tại đường dẫn: " + storageUrl);
+        throw new BadRequestException("Không tìm thấy file: " + storageUrl);
     }
 }

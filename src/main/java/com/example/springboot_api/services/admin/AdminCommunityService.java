@@ -31,10 +31,10 @@ import com.example.springboot_api.repositories.admin.NotebookMemberRepository;
 import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.admin.UserRepository;
 import com.example.springboot_api.repositories.shared.FlashcardRepository;
+import com.example.springboot_api.repositories.shared.NotebookBotConversationRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.repositories.shared.NotebookMessageRepository;
 import com.example.springboot_api.repositories.shared.QuizRepository;
-import com.example.springboot_api.repositories.shared.RagQueryRepository;
 import com.example.springboot_api.repositories.shared.TtsAssetRepository;
 import com.example.springboot_api.repositories.shared.VideoAssetRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
@@ -55,12 +55,13 @@ public class AdminCommunityService {
     private final TtsAssetRepository ttsAssetRepository;
     private final QuizRepository quizRepository;
     private final NotebookMessageRepository messageRepository;
-    private final RagQueryRepository ragQueryRepository;
+    private final NotebookBotConversationRepository notebookBotConversationRepository;
     private final FileStorageService fileStorageService;
     private final UrlNormalizer urlNormalizer;
 
     @Transactional
-    public NotebookResponse createCommunity(NotebookCreateRequest req, MultipartFile thumbnail, UUID adminId) {
+    public NotebookResponse createCommunity(NotebookCreateRequest req,
+            MultipartFile thumbnail, UUID adminId) {
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new NotFoundException("Admin not found"));
 
@@ -98,7 +99,8 @@ public class AdminCommunityService {
     }
 
     @Transactional
-    public NotebookResponse update(UUID id, NotebookCreateRequest req, MultipartFile thumbnail) {
+    public NotebookResponse update(UUID id, NotebookCreateRequest req,
+            MultipartFile thumbnail) {
         Notebook nb = notebookRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Community not found"));
 
@@ -149,13 +151,15 @@ public class AdminCommunityService {
         String sortDir = Optional.ofNullable(req.getSortDir()).orElse("desc");
 
         String keyword = req.getQ() != null && !req.getQ().isEmpty() ? req.getQ() : null;
-        String visibility = req.getVisibility() != null && !req.getVisibility().isEmpty() ? req.getVisibility() : null;
+        String visibility = req.getVisibility() != null &&
+                !req.getVisibility().isEmpty() ? req.getVisibility() : null;
 
         // Nếu sort theo memberCount, cần xử lý đặc biệt
         if ("memberCount".equals(sortBy)) {
             // Lấy tất cả communities (không phân trang) để sort theo memberCount
             Pageable allPageable = PageRequest.of(0, Integer.MAX_VALUE);
-            Page<Notebook> allResult = notebookRepository.findCommunities(keyword, visibility, allPageable);
+            Page<Notebook> allResult = notebookRepository.findCommunities(keyword,
+                    visibility, allPageable);
 
             // Map và sort theo memberCount
             var sortedList = allResult.getContent().stream()
@@ -191,7 +195,8 @@ public class AdminCommunityService {
                     : Sort.by(sortBy).descending();
 
             Pageable pageable = PageRequest.of(req.getPage(), req.getSize(), sort);
-            Page<Notebook> result = notebookRepository.findCommunities(keyword, visibility, pageable);
+            Page<Notebook> result = notebookRepository.findCommunities(keyword,
+                    visibility, pageable);
 
             return new PagedResponse<>(
                     result.map(this::mapToResponse).getContent(),
@@ -204,7 +209,8 @@ public class AdminCommunityService {
     }
 
     private NotebookResponse mapToResponse(Notebook nb) {
-        Long memberCount = memberRepository.countByNotebookIdAndStatus(nb.getId(), "approved");
+        Long memberCount = memberRepository.countByNotebookIdAndStatus(nb.getId(),
+                "approved");
 
         // Normalize thumbnailUrl
         String thumbnailUrl = urlNormalizer.normalizeToFull(nb.getThumbnailUrl());
@@ -234,7 +240,8 @@ public class AdminCommunityService {
                 sortByField);
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<NotebookMember> result = memberRepository.findMembersWithFilters(notebookId, statusFilter, q, pageable);
+        Page<NotebookMember> result = memberRepository.findMembersWithFilters(notebookId, statusFilter, q,
+                pageable);
 
         return new PagedResponse<>(
                 result.map(this::mapToPendingRequest).getContent(),
@@ -251,7 +258,8 @@ public class AdminCommunityService {
                 .findByNotebookIdAndUserId(req.notebookId(), req.userId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
 
-        if ("owner".equals(member.getRole()) && "block".equals(req.action().toLowerCase())) {
+        if ("owner".equals(member.getRole()) &&
+                "block".equals(req.action().toLowerCase())) {
             throw new BadRequestException("Không thể chặn chủ sở hữu");
         }
 
@@ -392,15 +400,21 @@ public class AdminCommunityService {
         UUID notebookId = member.getNotebook().getId();
         UUID userId = member.getUser().getId();
 
-        Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
+        Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
         Long flashcardCount = flashcardRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long ragQueryCount = ragQueryRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
+        Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
+        Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
+        Long ragQueryCount = notebookBotConversationRepository.countByNotebookIdAndUserId(notebookId, userId);
 
-        long totalContributions = fileCount + videoCount + flashcardCount + ttsCount + quizCount + messageCount
+        long totalContributions = fileCount + videoCount + flashcardCount + ttsCount
+                + quizCount + messageCount
                 + ragQueryCount;
 
         if (totalContributions > 0) {
@@ -505,13 +519,18 @@ public class AdminCommunityService {
         UUID notebookId = nm.getNotebook().getId();
         UUID userId = nm.getUser().getId();
 
-        Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
+        Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
         Long flashcardCount = flashcardRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long ragQueryCount = ragQueryRepository.countByNotebookIdAndUserId(notebookId, userId);
+        Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
+        Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
+        Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId,
+                userId);
+        Long ragQueryCount = notebookBotConversationRepository.countByNotebookIdAndUserId(notebookId, userId);
 
         var statistics = new MemberResponse.UserStatistics(
                 fileCount,

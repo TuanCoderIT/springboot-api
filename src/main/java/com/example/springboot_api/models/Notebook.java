@@ -1,37 +1,21 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -56,7 +40,8 @@ public class Notebook implements Serializable {
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = -1108456317180554353L;
+    private static final long serialVersionUID = 3486602435812351593L;
+
 
     private UUID id;
 
@@ -86,6 +71,10 @@ public class Notebook implements Serializable {
 
     private Set<NotebookActivityLog> notebookActivityLogs = new LinkedHashSet<>();
 
+    private Set<NotebookBotConversation> notebookBotConversations = new LinkedHashSet<>();
+
+    private Set<NotebookBotMessage> notebookBotMessages = new LinkedHashSet<>();
+
     private Set<NotebookFile> notebookFiles = new LinkedHashSet<>();
 
     private Set<NotebookMember> notebookMembers = new LinkedHashSet<>();
@@ -93,8 +82,6 @@ public class Notebook implements Serializable {
     private Set<NotebookMessage> notebookMessages = new LinkedHashSet<>();
 
     private Set<Quiz> quizzes = new LinkedHashSet<>();
-
-    private Set<RagQuery> ragQueries = new LinkedHashSet<>();
 
     private Set<TtsAsset> ttsAssets = new LinkedHashSet<>();
 
@@ -187,6 +174,16 @@ public class Notebook implements Serializable {
     }
 
     @OneToMany(mappedBy = "notebook")
+    public Set<NotebookBotConversation> getNotebookBotConversations() {
+        return notebookBotConversations;
+    }
+
+    @OneToMany(mappedBy = "notebook")
+    public Set<NotebookBotMessage> getNotebookBotMessages() {
+        return notebookBotMessages;
+    }
+
+    @OneToMany(mappedBy = "notebook")
     public Set<NotebookFile> getNotebookFiles() {
         return notebookFiles;
     }
@@ -204,11 +201,6 @@ public class Notebook implements Serializable {
     @OneToMany(mappedBy = "notebook")
     public Set<Quiz> getQuizzes() {
         return quizzes;
-    }
-
-    @OneToMany(mappedBy = "notebook")
-    public Set<RagQuery> getRagQueries() {
-        return ragQueries;
     }
 
     @OneToMany(mappedBy = "notebook")

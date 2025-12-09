@@ -1,4 +1,4 @@
-package com.example.springboot_api.dto.user.bot;
+package com.example.springboot_api.dto.user.chatbot;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
