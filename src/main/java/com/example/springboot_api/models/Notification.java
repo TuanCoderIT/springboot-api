@@ -39,7 +39,7 @@ public class Notification implements Serializable {
     public static final String COLUMN_ROLETARGET_NAME = "role_target";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = -6957729611998552446L;
+    private static final long serialVersionUID = -7045505334767134308L;
 
 
     private UUID id;

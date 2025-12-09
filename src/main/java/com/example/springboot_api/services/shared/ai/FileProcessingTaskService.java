@@ -41,7 +41,7 @@ public class FileProcessingTaskService {
 
         try {
             System.out.println("📄 Bắt đầu OCR...");
-            String text = ocrService.extractTextFromDocument(loadedFile.getStorageUrl(), loadedFile.getMimeType());
+            String text = ocrService.extract(loadedFile.getStorageUrl());
             System.out.println("✅ OCR hoàn thành, độ dài text: " + (text != null ? text.length() : 0));
             if (text == null || text.trim().isEmpty()) {
                 throw new RuntimeException("OCR không đọc được nội dung.");
