@@ -13,6 +13,7 @@ Tài liệu này hướng dẫn cách sử dụng API để lấy lịch sử ch
 API sử dụng **Cookie-based authentication**. Token được lưu trong cookie `AUTH-TOKEN` sau khi user đăng nhập.
 
 **Lưu ý quan trọng:**
+
 - Frontend không cần gửi token trong header
 - Browser sẽ tự động gửi cookie `AUTH-TOKEN` trong mọi request
 - Đảm bảo `credentials: 'include'` khi gọi API từ frontend
@@ -37,10 +38,10 @@ GET /user/notebooks/{notebookId}/bot-chat/history
 
 ### Query Parameters
 
-| Tên        | Kiểu   | Bắt buộc | Mô tả                                                                 |
-| ---------- | ------ | -------- | --------------------------------------------------------------------- |
+| Tên        | Kiểu   | Bắt buộc | Mô tả                                                                      |
+| ---------- | ------ | -------- | -------------------------------------------------------------------------- |
 | cursorNext | String | No       | UUID của message cũ nhất từ lần load trước. Dùng để lấy các message cũ hơn |
-| limit      | Number | No       | Số lượng message muốn lấy (mặc định: 20, tối đa: 50)                 |
+| limit      | Number | No       | Số lượng message muốn lấy (mặc định: 20, tối đa: 50)                       |
 
 ### Request Headers
 
@@ -59,19 +60,43 @@ interface RagQueryResponse {
   id: string;
   question: string;
   answer: string;
-  sourceChunks: {
-    // JSONB chứa thông tin về các chunks được sử dụng để trả lời
-    // Có thể chứa:
-    // - file_id: UUID
-    // - file_name: string
-    // - file_type: string
-    // - chunk_index: number
-    // - metadata: object (offset metadata)
-    // - score: number (cosine similarity)
-    // - bounding_box: object (nếu OCR ảnh)
-    // - ocr_text: string (text OCR của image chunk)
-    [key: string]: any;
-  } | null;
+  sourceChunks:
+    | {
+        // JSONB có thể là object đơn lẻ (một chunk từ một file)
+        // Chứa thông tin về file và chunk được sử dụng để trả lời
+        // - file_id: UUID của file được sử dụng
+        // - file_name: Tên file gốc
+        // - file_type: Loại file (MIME type)
+        // - chunk_index: Index của chunk trong file đó (chunk nào được sử dụng)
+        // - metadata: object (offset metadata)
+        // - score: number (cosine similarity score)
+        // - bounding_box: object (nếu OCR ảnh)
+        // - ocr_text: string (text OCR của image chunk)
+        [key: string]: any;
+      }
+    | Array<{
+        // Hoặc có thể là mảng các objects (nhiều chunks từ một hoặc nhiều files)
+        // Mỗi object trong mảng đại diện cho một chunk được sử dụng
+        // Có thể từ cùng một file hoặc từ nhiều files khác nhau
+        // - file_id: UUID của file chứa chunk này
+        // - file_name: Tên file chứa chunk này
+        // - file_type: Loại file
+        // - chunk_index: Index của chunk trong file đó (chunk nào được sử dụng)
+        // - metadata: object (offset metadata)
+        // - score: number (cosine similarity score)
+        // - bounding_box: object (nếu OCR ảnh)
+        // - ocr_text: string (text OCR của image chunk)
+        file_id?: string;
+        file_name?: string;
+        file_type?: string;
+        chunk_index?: number;
+        metadata?: any;
+        score?: number;
+        bounding_box?: any;
+        ocr_text?: string;
+        [key: string]: any;
+      }>
+    | null;
   latencyMs: number | null;
   createdAt: string; // ISO 8601
 }
@@ -105,13 +130,22 @@ interface RagQueryResponse {
       "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
       "question": "Có những điểm chính nào?",
       "answer": "Các điểm chính bao gồm...",
-      "sourceChunks": {
-        "file_id": "f4a552b4-17a4-40b4-a602-3d1d6a2b3c2b",
-        "file_name": "document.pdf",
-        "file_type": "application/pdf",
-        "chunk_index": 1,
-        "score": 0.78
-      },
+      "sourceChunks": [
+        {
+          "file_id": "f4a552b4-17a4-40b4-a602-3d1d6a2b3c2b",
+          "file_name": "document.pdf",
+          "file_type": "application/pdf",
+          "chunk_index": 0,
+          "score": 0.85
+        },
+        {
+          "file_id": "f4a552b4-17a4-40b4-a602-3d1d6a2b3c2b",
+          "file_name": "document.pdf",
+          "file_type": "application/pdf",
+          "chunk_index": 1,
+          "score": 0.78
+        }
+      ],
       "latencyMs": 980,
       "createdAt": "2025-12-05T10:25:00.000Z"
     }
@@ -133,6 +167,7 @@ interface RagQueryResponse {
       "sourceChunks": {
         "file_id": "f4a552b4-17a4-40b4-a602-3d1d6a2b3c2b",
         "file_name": "document.pdf",
+        "file_type": "application/pdf",
         "chunk_index": 2,
         "score": 0.72
       },
@@ -152,16 +187,19 @@ interface RagQueryResponse {
 ### 1. Lần đầu load (Initial Load)
 
 **Request:**
+
 ```
 GET /user/notebooks/{notebookId}/bot-chat/history?limit=20
 ```
 
 **Response:**
+
 - Trả về 20 message **mới nhất** (sắp xếp theo `createdAt DESC`)
 - `cursorNext` = ID của message **cũ nhất** trong response
 - `hasMore` = `true` nếu còn message cũ hơn
 
 **Ví dụ:**
+
 ```
 Messages: [Mới nhất] -> [Cũ hơn] -> [Cũ nhất trong response]
          Message 1
@@ -173,16 +211,19 @@ Messages: [Mới nhất] -> [Cũ hơn] -> [Cũ nhất trong response]
 ### 2. Load more (Scroll up để xem tin nhắn cũ)
 
 **Request:**
+
 ```
 GET /user/notebooks/{notebookId}/bot-chat/history?cursor_next={uuid}&limit=20
 ```
 
 **Response:**
+
 - Trả về 20 message **cũ hơn** cursor
 - `cursorNext` = ID của message **cũ nhất** trong response mới
 - `hasMore` = `true` nếu còn message cũ hơn
 
 **Ví dụ:**
+
 ```
 Lần 1: Message 1-20 (cursorNext = Message 20's ID)
 Lần 2: Message 21-40 (cursorNext = Message 40's ID) - cũ hơn Message 20
@@ -192,6 +233,7 @@ Lần 3: Message 41-60 (cursorNext = Message 60's ID) - cũ hơn Message 40
 ### 3. Khi không còn message
 
 **Response:**
+
 ```json
 {
   "messages": [...],
@@ -213,17 +255,32 @@ interface RagQueryResponse {
   id: string;
   question: string;
   answer: string;
-  sourceChunks: {
-    file_id?: string;
-    file_name?: string;
-    file_type?: string;
-    chunk_index?: number;
-    metadata?: any;
-    score?: number;
-    bounding_box?: any;
-    ocr_text?: string;
-    [key: string]: any;
-  } | null;
+  sourceChunks:
+    | {
+        // Object đơn lẻ (một chunk)
+        file_id?: string;
+        file_name?: string;
+        file_type?: string;
+        chunk_index?: number;
+        metadata?: any;
+        score?: number;
+        bounding_box?: any;
+        ocr_text?: string;
+        [key: string]: any;
+      }
+    | Array<{
+        // Hoặc mảng các objects (nhiều chunks)
+        file_id?: string;
+        file_name?: string;
+        file_type?: string;
+        chunk_index?: number;
+        metadata?: any;
+        score?: number;
+        bounding_box?: any;
+        ocr_text?: string;
+        [key: string]: any;
+      }>
+    | null;
   latencyMs: number | null;
   createdAt: string;
 }
@@ -302,7 +359,9 @@ const BotChatHistory: React.FC<BotChatHistoryProps> = ({ notebookId }) => {
         setCursorNext(response.cursorNext);
         setHasMore(response.hasMore);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load chat history");
+        setError(
+          err instanceof Error ? err.message : "Failed to load chat history"
+        );
       } finally {
         setInitialLoading(false);
       }
@@ -325,7 +384,9 @@ const BotChatHistory: React.FC<BotChatHistoryProps> = ({ notebookId }) => {
       setCursorNext(response.cursorNext);
       setHasMore(response.hasMore);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more messages");
+      setError(
+        err instanceof Error ? err.message : "Failed to load more messages"
+      );
     } finally {
       setLoading(false);
     }
@@ -385,7 +446,9 @@ const BotChatHistory: React.FC<BotChatHistoryProps> = ({ notebookId }) => {
         >
           <div style={{ marginBottom: "10px" }}>
             <strong>Question:</strong>
-            <p style={{ marginTop: "5px", color: "#333" }}>{message.question}</p>
+            <p style={{ marginTop: "5px", color: "#333" }}>
+              {message.question}
+            </p>
           </div>
 
           <div style={{ marginBottom: "10px" }}>
@@ -476,7 +539,9 @@ function useChatHistory(
       setCursorNext(response.cursorNext);
       setHasMore(response.hasMore);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load chat history");
+      setError(
+        err instanceof Error ? err.message : "Failed to load chat history"
+      );
     } finally {
       setLoading(false);
     }
@@ -495,7 +560,9 @@ function useChatHistory(
       setCursorNext(response.cursorNext);
       setHasMore(response.hasMore);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more messages");
+      setError(
+        err instanceof Error ? err.message : "Failed to load more messages"
+      );
     } finally {
       setLoading(false);
     }
@@ -517,7 +584,8 @@ function useChatHistory(
 
 // Sử dụng
 function ChatHistoryComponent({ notebookId }: { notebookId: string }) {
-  const { messages, loading, error, hasMore, loadMore } = useChatHistory(notebookId);
+  const { messages, loading, error, hasMore, loadMore } =
+    useChatHistory(notebookId);
 
   return (
     <div>
@@ -550,11 +618,13 @@ function ChatHistoryComponent({ notebookId }: { notebookId: string }) {
 ```
 
 **Nguyên nhân:**
+
 - Cookie `AUTH-TOKEN` không tồn tại
 - Cookie đã hết hạn
 - Token không hợp lệ
 
 **Xử lý:**
+
 - Redirect user đến trang login
 - Xóa cookie cũ nếu có
 
@@ -571,10 +641,12 @@ function ChatHistoryComponent({ notebookId }: { notebookId: string }) {
 ```
 
 **Nguyên nhân:**
+
 - `cursorNext` không phải UUID hợp lệ
 - `cursorNext` không tồn tại trong database
 
 **Xử lý:**
+
 - Reset về load initial (bỏ cursor)
 - Hoặc hiển thị thông báo lỗi
 
@@ -722,65 +794,282 @@ try {
 
 ## Source Chunks Structure
 
-`sourceChunks` là JSONB object có thể chứa các thông tin sau:
+`sourceChunks` là JSONB chứa thông tin về **các file và chunks được sử dụng** để trả lời câu hỏi. Có thể là **object đơn lẻ** (một chunk từ một file) hoặc **mảng các objects** (nhiều chunks từ một hoặc nhiều files khác nhau).
+
+### Mục đích
+
+`sourceChunks` cho biết:
+
+- **File nào** được sử dụng để trả lời (file_id, file_name, file_type)
+- **Chunk nào** trong file đó được sử dụng (chunk_index)
+- **Độ liên quan** của chunk với câu hỏi (score)
+- **Thông tin bổ sung** như metadata, OCR text, bounding box (nếu là ảnh)
+
+### Cấu trúc
+
+#### Case 1: Object đơn lẻ (một chunk từ một file)
+
+Khi câu trả lời chỉ sử dụng **một chunk từ một file**:
 
 ```typescript
-interface SourceChunks {
-  // Thông tin file
-  file_id?: string; // UUID của file
-  file_name?: string; // Tên file gốc
-  file_type?: string; // MIME type (application/pdf, image/png, ...)
-
-  // Thông tin chunk
-  chunk_index?: number; // Index của chunk trong file
-
-  // Metadata
+{
+  file_id: string;        // UUID của file được sử dụng
+  file_name: string;      // Tên file gốc (ví dụ: "document.pdf")
+  file_type: string;       // MIME type (application/pdf, image/png, ...)
+  chunk_index: number;    // Index của chunk trong file đó (ví dụ: 0, 1, 2...)
+                          // Chunk này chứa thông tin được dùng để trả lời
   metadata?: {
-    page?: number; // Trang (nếu là PDF)
-    offset?: number; // Offset trong file
+    page?: number;         // Trang (nếu là PDF)
+    offset?: number;       // Offset trong file
     [key: string]: any;
   };
-
-  // Similarity score
-  score?: number; // Cosine similarity score (0-1)
-
-  // OCR (nếu là ảnh)
-  bounding_box?: {
+  score?: number;         // Cosine similarity score (0-1) - độ liên quan
+  bounding_box?: {        // Nếu OCR ảnh
     x: number;
     y: number;
     width: number;
     height: number;
   };
-  ocr_text?: string; // Text được OCR từ ảnh
-
-  // Các field khác
+  ocr_text?: string;      // Text được OCR từ ảnh
   [key: string]: any;
 }
 ```
 
-### Ví dụ sử dụng sourceChunks
+**Ví dụ:**
+
+```json
+{
+  "file_id": "f4a552b4-17a4-40b4-a602-3d1d6a2b3c2b",
+  "file_name": "document.pdf",
+  "file_type": "application/pdf",
+  "chunk_index": 5,
+  "score": 0.85,
+  "metadata": { "page": 2 }
+}
+```
+
+→ Sử dụng **chunk số 5** trong file `document.pdf`
+
+#### Case 2: Mảng các objects (nhiều chunks từ một hoặc nhiều files)
+
+Khi câu trả lời sử dụng **nhiều chunks**, có thể từ:
+
+- **Cùng một file** (nhiều chunks khác nhau trong cùng file)
+- **Nhiều files khác nhau** (chunks từ các files khác nhau)
+
+```typescript
+[
+  {
+    file_id: string;        // File thứ nhất
+    file_name: string;
+    file_type: string;
+    chunk_index: number;    // Chunk nào trong file này được dùng
+    score?: number;
+    metadata?: any;
+    bounding_box?: any;
+    ocr_text?: string;
+    [key: string]: any;
+  },
+  {
+    file_id: string;        // Có thể là cùng file_id hoặc file_id khác
+    file_name: string;
+    chunk_index: number;    // Chunk nào trong file này được dùng
+    score?: number;
+    // ...
+  }
+]
+```
+
+**Ví dụ 1: Nhiều chunks từ cùng một file**
+
+```json
+[
+  {
+    "file_id": "f4a552b4-17a4-40b4-a602-3d1d6a2b3c2b",
+    "file_name": "document.pdf",
+    "file_type": "application/pdf",
+    "chunk_index": 0,
+    "score": 0.85
+  },
+  {
+    "file_id": "f4a552b4-17a4-40b4-a602-3d1d6a2b3c2b",
+    "file_name": "document.pdf",
+    "file_type": "application/pdf",
+    "chunk_index": 1,
+    "score": 0.78
+  }
+]
+```
+
+→ Sử dụng **chunk 0 và chunk 1** từ cùng file `document.pdf`
+
+**Ví dụ 2: Chunks từ nhiều files khác nhau**
+
+```json
+[
+  {
+    "file_id": "f4a552b4-17a4-40b4-a602-3d1d6a2b3c2b",
+    "file_name": "document.pdf",
+    "file_type": "application/pdf",
+    "chunk_index": 5,
+    "score": 0.85
+  },
+  {
+    "file_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "file_name": "report.docx",
+    "file_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "chunk_index": 2,
+    "score": 0.72
+  }
+]
+```
+
+→ Sử dụng **chunk 5** từ `document.pdf` và **chunk 2** từ `report.docx`
+
+### Ví dụ sử dụng sourceChunks (hỗ trợ cả object và array)
 
 ```typescript
 function renderSourceInfo(sourceChunks: any) {
   if (!sourceChunks) return null;
 
+  // Kiểm tra xem là array hay object
+  const chunks = Array.isArray(sourceChunks) ? sourceChunks : [sourceChunks];
+
+  // Nhóm chunks theo file để hiển thị rõ ràng hơn
+  const chunksByFile = chunks.reduce((acc: any, chunk: any) => {
+    const fileId = chunk.file_id || "unknown";
+    if (!acc[fileId]) {
+      acc[fileId] = {
+        file_name: chunk.file_name,
+        file_type: chunk.file_type,
+        chunks: [],
+      };
+    }
+    acc[fileId].chunks.push(chunk);
+    return acc;
+  }, {});
+
   return (
     <div className="source-info">
-      {sourceChunks.file_name && (
-        <div>📄 File: {sourceChunks.file_name}</div>
-      )}
-      {sourceChunks.chunk_index !== undefined && (
-        <div>📍 Chunk: {sourceChunks.chunk_index}</div>
-      )}
-      {sourceChunks.score !== undefined && (
-        <div>🎯 Relevance: {(sourceChunks.score * 100).toFixed(1)}%</div>
-      )}
-      {sourceChunks.metadata?.page && (
-        <div>📄 Page: {sourceChunks.metadata.page}</div>
-      )}
+      <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+        📚 Sources: {Object.keys(chunksByFile).length} file(s), {chunks.length}{" "}
+        {chunks.length === 1 ? "chunk" : "chunks"}
+      </div>
+
+      {Object.entries(chunksByFile).map(([fileId, fileInfo]: [string, any]) => (
+        <div
+          key={fileId}
+          style={{
+            padding: "10px",
+            marginBottom: "10px",
+            backgroundColor: "#f5f5f5",
+            borderRadius: "4px",
+            fontSize: "12px",
+          }}
+        >
+          <div style={{ fontWeight: "bold", marginBottom: "8px" }}>
+            📄 File: {fileInfo.file_name || fileId}
+            {fileInfo.file_type && (
+              <span
+                style={{ color: "#999", fontSize: "11px", marginLeft: "8px" }}
+              >
+                ({fileInfo.file_type})
+              </span>
+            )}
+          </div>
+
+          <div style={{ marginLeft: "12px" }}>
+            <div style={{ marginBottom: "4px", color: "#666" }}>
+              Chunks được sử dụng: {fileInfo.chunks.length}
+            </div>
+            {fileInfo.chunks.map((chunk: any, index: number) => (
+              <div
+                key={index}
+                style={{
+                  padding: "6px",
+                  marginBottom: "4px",
+                  backgroundColor: "#fff",
+                  borderRadius: "3px",
+                  borderLeft: "3px solid #007bff",
+                }}
+              >
+                <div>
+                  <strong>📍 Chunk Index:</strong> {chunk.chunk_index}
+                </div>
+                {chunk.score !== undefined && (
+                  <div>
+                    <strong>🎯 Relevance:</strong>{" "}
+                    {(chunk.score * 100).toFixed(1)}%
+                  </div>
+                )}
+                {chunk.metadata?.page && (
+                  <div>
+                    <strong>📄 Page:</strong> {chunk.metadata.page}
+                  </div>
+                )}
+                {chunk.ocr_text && (
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      fontStyle: "italic",
+                      fontSize: "11px",
+                    }}
+                  >
+                    OCR: {chunk.ocr_text.substring(0, 100)}...
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
+
+// Sử dụng trong component
+function MessageItem({ message }: { message: RagQueryResponse }) {
+  return (
+    <div>
+      <div>{message.question}</div>
+      <div>{message.answer}</div>
+      {renderSourceInfo(message.sourceChunks)}
+    </div>
+  );
+}
+```
+
+### Type Guard Helper
+
+```typescript
+// Helper function để normalize sourceChunks
+function normalizeSourceChunks(sourceChunks: any): Array<{
+  file_id?: string;
+  file_name?: string;
+  file_type?: string;
+  chunk_index?: number;
+  metadata?: any;
+  score?: number;
+  bounding_box?: any;
+  ocr_text?: string;
+  [key: string]: any;
+}> {
+  if (!sourceChunks) return [];
+
+  // Nếu là array, trả về luôn
+  if (Array.isArray(sourceChunks)) {
+    return sourceChunks;
+  }
+
+  // Nếu là object, wrap vào array
+  return [sourceChunks];
+}
+
+// Sử dụng
+const chunks = normalizeSourceChunks(message.sourceChunks);
+chunks.forEach((chunk, index) => {
+  console.log(`Chunk ${index}:`, chunk.file_name, chunk.chunk_index);
+});
 ```
 
 ---
@@ -823,4 +1112,3 @@ function renderSourceInfo(sourceChunks: any) {
 3. ⚠️ **Prevent duplicate requests** bằng loading state
 4. ⚠️ **Xử lý cursor không hợp lệ** bằng cách reset về initial load
 5. ⚠️ **Messages được sắp xếp DESC** (mới nhất trước), nhưng khi load more sẽ lấy message cũ hơn
-

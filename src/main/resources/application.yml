@@ -49,6 +49,3 @@ springdoc:
     use-root-path: true
   api-docs:
     enabled: true
-
-gemini:
-  api-key: AIzaSyCl45IwjeABI62Q5yq_CHE3bHhapbO1gfA

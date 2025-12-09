@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class GeminiConfig {
 
-    @Value("${gemini.api-key:UNCONFIGURED_GEMINI_KEY}")
+    @Value("${google.api.gemini_key:UNCONFIGURED_GEMINI_KEY}")
     private String apiKey;
 
     private static final String PLACEHOLDER_KEY = "AIzaSyCn7GDboHpG5vy0LE2HaiNwTSwFhvDW5MY";
@@ -31,7 +31,7 @@ public class GeminiConfig {
         if (keyToUse == null || keyToUse.isEmpty()) {
             throw new IllegalStateException(
                     "Gemini API key not found. Please set GOOGLE_API_KEY or GEMINI_API_KEY environment variable, " +
-                            "or configure gemini.api-key in application.yml with a valid API key.");
+                            "or configure google.api.gemini_key in application.yml with a valid API key.");
         }
 
         if (PLACEHOLDER_KEY.equals(keyToUse)) {
