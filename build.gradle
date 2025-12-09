@@ -25,6 +25,8 @@ dependencies {
     implementation 'org.apache.tika:tika-core:2.9.0'
     implementation 'org.apache.tika:tika-parsers-standard-package:2.9.0'
     implementation 'net.sourceforge.tess4j:tess4j:5.10.0'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
 
 
     // Apache POI cho Word (.docx)

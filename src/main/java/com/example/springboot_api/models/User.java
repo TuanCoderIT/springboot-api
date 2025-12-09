@@ -1,30 +1,16 @@
 package com.example.springboot_api.models;
 
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
+
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
-
-import org.hibernate.annotations.ColumnDefault;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 @Builder
 @AllArgsConstructor
@@ -36,7 +22,7 @@ import lombok.ToString;
 @Table(name = User.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_users_email", columnList = "email")
 }, uniqueConstraints = {
-        @UniqueConstraint(name = "users_email_key", columnNames = { "email" })
+        @UniqueConstraint(name = "users_email_key", columnNames = {"email"})
 })
 public class User implements Serializable {
     public static final String ENTITY_NAME = "User";
@@ -50,7 +36,8 @@ public class User implements Serializable {
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_AVATAR_NAME = "avatar";
-    private static final long serialVersionUID = 1831019774922654443L;
+    private static final long serialVersionUID = 1853181525295829727L;
+
 
     private UUID id;
 
@@ -80,6 +67,10 @@ public class User implements Serializable {
 
     private Set<NotebookActivityLog> notebookActivityLogs = new LinkedHashSet<>();
 
+    private Set<NotebookBotConversation> notebookBotConversations = new LinkedHashSet<>();
+
+    private Set<NotebookBotMessage> notebookBotMessages = new LinkedHashSet<>();
+
     private Set<NotebookFile> notebookFiles = new LinkedHashSet<>();
 
     private Set<NotebookMember> notebookMembers = new LinkedHashSet<>();
@@ -88,11 +79,11 @@ public class User implements Serializable {
 
     private Set<Notebook> notebooks = new LinkedHashSet<>();
 
+    private Set<Notification> notifications = new LinkedHashSet<>();
+
     private Set<QuizSubmission> quizSubmissions = new LinkedHashSet<>();
 
     private Set<Quiz> quizzes = new LinkedHashSet<>();
-
-    private Set<RagQuery> ragQueries = new LinkedHashSet<>();
 
     private Set<TtsAsset> ttsAssets = new LinkedHashSet<>();
 
@@ -178,6 +169,16 @@ public class User implements Serializable {
         return notebookActivityLogs;
     }
 
+    @OneToMany(mappedBy = "createdBy")
+    public Set<NotebookBotConversation> getNotebookBotConversations() {
+        return notebookBotConversations;
+    }
+
+    @OneToMany(mappedBy = "user")
+    public Set<NotebookBotMessage> getNotebookBotMessages() {
+        return notebookBotMessages;
+    }
+
     @OneToMany(mappedBy = "uploadedBy")
     public Set<NotebookFile> getNotebookFiles() {
         return notebookFiles;
@@ -199,6 +200,11 @@ public class User implements Serializable {
     }
 
     @OneToMany(mappedBy = "user")
+    public Set<Notification> getNotifications() {
+        return notifications;
+    }
+
+    @OneToMany(mappedBy = "user")
     public Set<QuizSubmission> getQuizSubmissions() {
         return quizSubmissions;
     }
@@ -206,11 +212,6 @@ public class User implements Serializable {
     @OneToMany(mappedBy = "createdBy")
     public Set<Quiz> getQuizzes() {
         return quizzes;
-    }
-
-    @OneToMany(mappedBy = "user")
-    public Set<RagQuery> getRagQueries() {
-        return ragQueries;
     }
 
     @OneToMany(mappedBy = "createdBy")
