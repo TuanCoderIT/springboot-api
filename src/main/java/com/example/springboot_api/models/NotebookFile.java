@@ -46,7 +46,7 @@ public class NotebookFile implements Serializable {
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_CHUNKSIZE_NAME = "chunk_size";
     public static final String COLUMN_CHUNKOVERLAP_NAME = "chunk_overlap";
-    private static final long serialVersionUID = -5602626184694919579L;
+    private static final long serialVersionUID = -3887799728292278130L;
 
 
     private UUID id;
@@ -81,17 +81,9 @@ public class NotebookFile implements Serializable {
 
     private Integer chunkOverlap;
 
-    private Set<AiTaskFile> aiTaskFiles = new LinkedHashSet<>();
-
     private Set<FileChunk> fileChunks = new LinkedHashSet<>();
 
-    private Set<FlashcardFile> flashcardFiles = new LinkedHashSet<>();
-
-    private Set<NotebookQuizFile> notebookQuizFiles = new LinkedHashSet<>();
-
-    private Set<TtsFile> ttsFiles = new LinkedHashSet<>();
-
-    private Set<VideoAssetFile> videoAssetFiles = new LinkedHashSet<>();
+    private Set<NotebookAiSetFile> notebookAiSetFiles = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -198,33 +190,13 @@ public class NotebookFile implements Serializable {
     }
 
     @OneToMany(mappedBy = "file")
-    public Set<AiTaskFile> getAiTaskFiles() {
-        return aiTaskFiles;
-    }
-
-    @OneToMany(mappedBy = "file")
     public Set<FileChunk> getFileChunks() {
         return fileChunks;
     }
 
     @OneToMany(mappedBy = "file")
-    public Set<FlashcardFile> getFlashcardFiles() {
-        return flashcardFiles;
-    }
-
-    @OneToMany(mappedBy = "file")
-    public Set<NotebookQuizFile> getNotebookQuizFiles() {
-        return notebookQuizFiles;
-    }
-
-    @OneToMany(mappedBy = "file")
-    public Set<TtsFile> getTtsFiles() {
-        return ttsFiles;
-    }
-
-    @OneToMany(mappedBy = "file")
-    public Set<VideoAssetFile> getVideoAssetFiles() {
-        return videoAssetFiles;
+    public Set<NotebookAiSetFile> getNotebookAiSetFiles() {
+        return notebookAiSetFiles;
     }
 
 }

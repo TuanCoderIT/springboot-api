@@ -34,7 +34,7 @@ public class NotebookQuizz implements Serializable {
     public static final String COLUMN_EMBEDDING_NAME = "embedding";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 9067903996967890555L;
+    private static final long serialVersionUID = -8119844456468888863L;
 
 
     private UUID id;
@@ -53,7 +53,7 @@ public class NotebookQuizz implements Serializable {
 
     private OffsetDateTime createdAt;
 
-    private Set<NotebookQuizFile> notebookQuizFiles = new LinkedHashSet<>();
+    private NotebookAiSet notebookAiSets;
     private Set<NotebookQuizOption> notebookQuizOptions = new LinkedHashSet<>();
 
     @Id
@@ -107,9 +107,10 @@ public class NotebookQuizz implements Serializable {
         return createdAt;
     }
 
-    @OneToMany(mappedBy = "quiz")
-    public Set<NotebookQuizFile> getNotebookQuizFiles() {
-        return notebookQuizFiles;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "notebook_ai_sets_id")
+    public NotebookAiSet getNotebookAiSets() {
+        return notebookAiSets;
     }
 
     @OneToMany(mappedBy = "quiz")

@@ -10,8 +10,6 @@ import org.hibernate.annotations.OnDeleteAction;
 
 import java.io.Serializable;
 import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.UUID;
 
 @Builder
@@ -34,7 +32,7 @@ public class TtsAsset implements Serializable {
     public static final String COLUMN_AUDIOURL_NAME = "audio_url";
     public static final String COLUMN_DURATIONSECONDS_NAME = "duration_seconds";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 5254672165677918910L;
+    private static final long serialVersionUID = 5553417680604496525L;
 
 
     private UUID id;
@@ -55,7 +53,7 @@ public class TtsAsset implements Serializable {
 
     private OffsetDateTime createdAt;
 
-    private Set<TtsFile> ttsFiles = new LinkedHashSet<>();
+    private NotebookAiSet notebookAiSets;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -114,9 +112,10 @@ public class TtsAsset implements Serializable {
         return createdAt;
     }
 
-    @OneToMany(mappedBy = "tts")
-    public Set<TtsFile> getTtsFiles() {
-        return ttsFiles;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "notebook_ai_sets")
+    public NotebookAiSet getNotebookAiSets() {
+        return notebookAiSets;
     }
 
 }

@@ -36,7 +36,7 @@ public class User implements Serializable {
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_AVATAR_NAME = "avatar";
-    private static final long serialVersionUID = 2699248150265613069L;
+    private static final long serialVersionUID = 8808606565639884045L;
 
 
     private UUID id;
@@ -57,8 +57,6 @@ public class User implements Serializable {
 
     private String avatar;
 
-    private Set<AiTask> aiTasks = new LinkedHashSet<>();
-
     private Set<FlashcardReview> flashcardReviews = new LinkedHashSet<>();
 
     private Set<Flashcard> flashcards = new LinkedHashSet<>();
@@ -66,6 +64,8 @@ public class User implements Serializable {
     private Set<MessageReaction> messageReactions = new LinkedHashSet<>();
 
     private Set<NotebookActivityLog> notebookActivityLogs = new LinkedHashSet<>();
+
+    private Set<NotebookAiSet> notebookAiSets = new LinkedHashSet<>();
 
     private Set<NotebookBotConversationState> notebookBotConversationStates = new LinkedHashSet<>();
 
@@ -145,11 +145,6 @@ public class User implements Serializable {
     }
 
     @OneToMany(mappedBy = "user")
-    public Set<AiTask> getAiTasks() {
-        return aiTasks;
-    }
-
-    @OneToMany(mappedBy = "user")
     public Set<FlashcardReview> getFlashcardReviews() {
         return flashcardReviews;
     }
@@ -167,6 +162,11 @@ public class User implements Serializable {
     @OneToMany(mappedBy = "user")
     public Set<NotebookActivityLog> getNotebookActivityLogs() {
         return notebookActivityLogs;
+    }
+
+    @OneToMany(mappedBy = "createdBy")
+    public Set<NotebookAiSet> getNotebookAiSets() {
+        return notebookAiSets;
     }
 
     @OneToMany(mappedBy = "user")

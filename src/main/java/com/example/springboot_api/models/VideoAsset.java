@@ -10,8 +10,6 @@ import org.hibernate.annotations.OnDeleteAction;
 
 import java.io.Serializable;
 import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.UUID;
 
 @Builder
@@ -34,7 +32,7 @@ public class VideoAsset implements Serializable {
     public static final String COLUMN_VIDEOURL_NAME = "video_url";
     public static final String COLUMN_DURATIONSECONDS_NAME = "duration_seconds";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 3510878191440926602L;
+    private static final long serialVersionUID = 2753931280094321301L;
 
 
     private UUID id;
@@ -55,7 +53,7 @@ public class VideoAsset implements Serializable {
 
     private OffsetDateTime createdAt;
 
-    private Set<VideoAssetFile> videoAssetFiles = new LinkedHashSet<>();
+    private NotebookAiSet notebookAiSets;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -114,9 +112,10 @@ public class VideoAsset implements Serializable {
         return createdAt;
     }
 
-    @OneToMany(mappedBy = "videoAsset")
-    public Set<VideoAssetFile> getVideoAssetFiles() {
-        return videoAssetFiles;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "notebook_ai_sets_id")
+    public NotebookAiSet getNotebookAiSets() {
+        return notebookAiSets;
     }
 
 }

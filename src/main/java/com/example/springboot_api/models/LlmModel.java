@@ -37,7 +37,7 @@ public class LlmModel implements Serializable {
     public static final String COLUMN_ISDEFAULT_NAME = "is_default";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 6962948811108666001L;
+    private static final long serialVersionUID = 2434333559678126647L;
 
 
     private UUID id;
@@ -55,6 +55,8 @@ public class LlmModel implements Serializable {
     private Map<String, Object> metadata;
 
     private OffsetDateTime createdAt;
+
+    private Set<NotebookAiSet> notebookAiSets = new LinkedHashSet<>();
 
     private Set<NotebookBotMessage> notebookBotMessages = new LinkedHashSet<>();
 
@@ -108,6 +110,11 @@ public class LlmModel implements Serializable {
     @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    @OneToMany(mappedBy = "llmModel")
+    public Set<NotebookAiSet> getNotebookAiSets() {
+        return notebookAiSets;
     }
 
     @OneToMany(mappedBy = "llmModel")
