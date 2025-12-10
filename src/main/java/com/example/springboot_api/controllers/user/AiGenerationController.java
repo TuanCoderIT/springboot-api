@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.config.security.UserPrincipal;
 import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
+import com.example.springboot_api.dto.user.quiz.QuizListResponse;
 import com.example.springboot_api.services.user.AiGenerationService;
+import com.example.springboot_api.services.user.QuizService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 public class AiGenerationController {
 
     private final AiGenerationService aiGenerationService;
+    private final QuizService quizService;
 
     // ================================
     // QUIZ GENERATION
@@ -77,6 +81,32 @@ public class AiGenerationController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Lấy chi tiết quiz theo AI Set ID.
+     * Bao gồm tất cả câu hỏi và câu trả lời.
+     * 
+     * GET /user/notebooks/{notebookId}/ai/quiz/{aiSetId}
+     * 
+     * @param user       Current authenticated user
+     * @param notebookId Notebook ID
+     * @param aiSetId    AI Set ID chứa quiz
+     * @return QuizListResponse
+     */
+    @GetMapping("/quiz/{aiSetId}")
+    public ResponseEntity<QuizListResponse> getQuizDetails(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        QuizListResponse response = quizService.getQuizzesByAiSetId(user.getId(), notebookId, aiSetId);
+
+        return ResponseEntity.ok(response);
+    }
+
     // ================================
     // AI SETS (thay thế AI Tasks)
     // ================================
@@ -106,6 +136,32 @@ public class AiGenerationController {
         List<AiSetResponse> sets = aiGenerationService.getAiSets(notebookId, user.getId(), setType);
 
         return ResponseEntity.ok(sets);
+    }
+
+    /**
+     * Xóa AI Set.
+     * Chỉ cho phép xóa nếu user là người tạo AI Set.
+     * 
+     * DELETE /user/notebooks/{notebookId}/ai/sets/{aiSetId}
+     * 
+     * @param user       Current authenticated user
+     * @param notebookId Notebook ID
+     * @param aiSetId    AI Set ID cần xóa
+     * @return 204 No Content nếu thành công
+     */
+    @DeleteMapping("/sets/{aiSetId}")
+    public ResponseEntity<Void> deleteAiSet(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        aiGenerationService.deleteAiSet(user.getId(), aiSetId);
+
+        return ResponseEntity.noContent().build();
     }
 
     // ================================
