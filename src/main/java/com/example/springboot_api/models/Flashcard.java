@@ -34,7 +34,7 @@ public class Flashcard implements Serializable {
     public static final String COLUMN_BACKTEXT_NAME = "back_text";
     public static final String COLUMN_EXTRAMETADATA_NAME = "extra_metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 6145289652347593416L;
+    private static final long serialVersionUID = 4349479188106419749L;
 
 
     private UUID id;
@@ -51,7 +51,7 @@ public class Flashcard implements Serializable {
 
     private OffsetDateTime createdAt;
 
-    private Set<FlashcardFile> flashcardFiles = new LinkedHashSet<>();
+    private NotebookAiSet notebookAiSets;
 
     private Set<FlashcardReview> flashcardReviews = new LinkedHashSet<>();
 
@@ -102,9 +102,10 @@ public class Flashcard implements Serializable {
         return createdAt;
     }
 
-    @OneToMany(mappedBy = "flashcard")
-    public Set<FlashcardFile> getFlashcardFiles() {
-        return flashcardFiles;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "notebook_ai_sets_id")
+    public NotebookAiSet getNotebookAiSets() {
+        return notebookAiSets;
     }
 
     @OneToMany(mappedBy = "flashcard")

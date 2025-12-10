@@ -620,11 +620,13 @@ public class AdminNotebookFileService {
 
         long totalTextChunks = fileChunkRepository.countByFileId(fileId);
 
-        // Count generated content using collection sizes (with null safety)
-        int videoCount = file.getVideoAssetFiles() != null ? file.getVideoAssetFiles().size() : 0;
-        int podcastCount = file.getTtsFiles() != null ? file.getTtsFiles().size() : 0;
-        int flashcardCount = file.getFlashcardFiles() != null ? file.getFlashcardFiles().size() : 0;
-        int quizCount = file.getNotebookQuizFiles() != null ? file.getNotebookQuizFiles().size() : 0;
+        // Count generated content
+        // TODO: Cập nhật sau khi cấu trúc model mới hoàn thiện
+        // Hiện tại các generated content được quản lý qua NotebookAiSet
+        int videoCount = 0;
+        int podcastCount = 0;
+        int flashcardCount = 0;
+        int quizCount = 0;
 
         java.util.Map<String, Integer> generatedContentCounts = java.util.Map.of(
                 "video", videoCount,

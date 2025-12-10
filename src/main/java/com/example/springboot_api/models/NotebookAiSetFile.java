@@ -8,7 +8,7 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.io.Serializable;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Builder
@@ -17,23 +17,25 @@ import java.util.UUID;
 @Getter
 @Setter
 @ToString
-@Entity(name = FlashcardFile.ENTITY_NAME)
-@Table(name = FlashcardFile.TABLE_NAME, schema = "public")
-public class FlashcardFile implements Serializable {
-    public static final String ENTITY_NAME = "Flashcard_File";
-    public static final String TABLE_NAME = "flashcard_files";
+@Entity(name = NotebookAiSetFile.ENTITY_NAME)
+@Table(name = NotebookAiSetFile.TABLE_NAME, schema = "public", uniqueConstraints = {
+        @UniqueConstraint(name = "notebook_ai_set_files_ai_set_id_file_id_key", columnNames = {"ai_set_id", "file_id"})
+})
+public class NotebookAiSetFile implements Serializable {
+    public static final String ENTITY_NAME = "Notebook_Ai_Set_File";
+    public static final String TABLE_NAME = "notebook_ai_set_files";
     public static final String COLUMN_ID_NAME = "id";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 1734727847814167400L;
+    private static final long serialVersionUID = 6007035132457123606L;
 
 
     private UUID id;
 
-    private Flashcard flashcard;
+    private NotebookAiSet aiSet;
 
     private NotebookFile file;
 
-    private Instant createdAt;
+    private OffsetDateTime createdAt;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -45,9 +47,9 @@ public class FlashcardFile implements Serializable {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "flashcard_id", nullable = false)
-    public Flashcard getFlashcard() {
-        return flashcard;
+    @JoinColumn(name = "ai_set_id", nullable = false)
+    public NotebookAiSet getAiSet() {
+        return aiSet;
     }
 
     @NotNull
@@ -58,9 +60,10 @@ public class FlashcardFile implements Serializable {
         return file;
     }
 
+    @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME)
-    public Instant getCreatedAt() {
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 

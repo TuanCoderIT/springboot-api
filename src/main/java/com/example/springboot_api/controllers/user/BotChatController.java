@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.config.security.UserPrincipal;
+import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
 import com.example.springboot_api.dto.user.chatbot.ChatRequest;
 import com.example.springboot_api.dto.user.chatbot.ChatResponse;
 import com.example.springboot_api.dto.user.chatbot.ConversationItem;
@@ -74,7 +75,7 @@ public class BotChatController {
             @RequestParam(required = false) UUID cursorNext) {
 
         if (user == null) {
-            throw new RuntimeException("Us  er chưa đăng nhập.");
+            throw new RuntimeException("User chưa đăng nhập.");
         }
 
         return ResponseEntity.ok(chatBotService.listConversations(notebookId, user.getId(), cursorNext));
@@ -307,13 +308,13 @@ public class BotChatController {
     }
 
     /**
-     * @deprecated Sử dụng GET /user/notebooks/{notebookId}/ai/tasks thay thế.
+     * @deprecated Sử dụng GET /user/notebooks/{notebookId}/ai/sets thay thế.
      * 
-     *             Lấy danh sách AI Tasks theo notebook (backward compatible).
+     *             Lấy danh sách AI Sets theo notebook (backward compatible).
      */
     @Deprecated
     @GetMapping("/ai-tasks")
-    public ResponseEntity<List<com.example.springboot_api.dto.user.chatbot.AiTaskResponse>> getAiTasks(
+    public ResponseEntity<List<AiSetResponse>> getAiTasks(
             @AuthenticationPrincipal UserPrincipal user,
             @PathVariable UUID notebookId,
             @RequestParam(required = false) String taskType) {
@@ -322,11 +323,11 @@ public class BotChatController {
             throw new RuntimeException("User chưa đăng nhập.");
         }
 
-        // Forward sang AiGenerationService
-        List<com.example.springboot_api.dto.user.chatbot.AiTaskResponse> tasks = aiGenerationService.getAiTasks(
+        // Forward sang AiGenerationService (sử dụng getAiSets thay vì getAiTasks)
+        List<AiSetResponse> sets = aiGenerationService.getAiSets(
                 notebookId,
                 user.getId(), taskType);
 
-        return ResponseEntity.ok(tasks);
+        return ResponseEntity.ok(sets);
     }
 }
