@@ -46,517 +46,521 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminCommunityService {
 
-    private final NotebookRepository notebookRepository;
-    private final NotebookMemberRepository memberRepository;
-    private final UserRepository userRepository;
-    private final NotebookFileRepository fileRepository;
-    private final VideoAssetRepository videoAssetRepository;
-    private final FlashcardRepository flashcardRepository;
-    private final TtsAssetRepository ttsAssetRepository;
-    private final QuizRepository quizRepository;
-    private final NotebookMessageRepository messageRepository;
-    private final NotebookBotConversationRepository notebookBotConversationRepository;
-    private final FileStorageService fileStorageService;
-    private final UrlNormalizer urlNormalizer;
+        private final NotebookRepository notebookRepository;
+        private final NotebookMemberRepository memberRepository;
+        private final UserRepository userRepository;
+        private final NotebookFileRepository fileRepository;
+        private final VideoAssetRepository videoAssetRepository;
+        private final FlashcardRepository flashcardRepository;
+        private final TtsAssetRepository ttsAssetRepository;
+        private final QuizRepository quizRepository;
+        private final NotebookMessageRepository messageRepository;
+        private final NotebookBotConversationRepository notebookBotConversationRepository;
+        private final FileStorageService fileStorageService;
+        private final UrlNormalizer urlNormalizer;
 
-    @Transactional
-    public NotebookResponse createCommunity(NotebookCreateRequest req,
-            MultipartFile thumbnail, UUID adminId) {
-        User admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new NotFoundException("Admin not found"));
+        @Transactional
+        public NotebookResponse createCommunity(NotebookCreateRequest req,
+                        MultipartFile thumbnail, UUID adminId) {
+                User admin = userRepository.findById(adminId)
+                                .orElseThrow(() -> new NotFoundException("Admin not found"));
 
-        Notebook nb = new Notebook();
-        nb.setTitle(req.title());
-        nb.setDescription(req.description());
-        nb.setType("community");
-        nb.setVisibility(req.visibility());
-        nb.setCreatedBy(admin);
+                Notebook nb = new Notebook();
+                nb.setTitle(req.title());
+                nb.setDescription(req.description());
+                nb.setType("community");
+                nb.setVisibility(req.visibility());
+                nb.setCreatedBy(admin);
 
-        // Xử lý upload thumbnail
-        if (thumbnail != null && !thumbnail.isEmpty()) {
-            try {
-                String thumbnailUrl = fileStorageService.storeFile(thumbnail);
-                nb.setThumbnailUrl(thumbnailUrl);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to upload thumbnail", e);
-            }
-        }
-
-        Notebook saved = notebookRepository.save(nb);
-
-        NotebookMember ownerMember = NotebookMember.builder()
-                .notebook(saved)
-                .user(admin)
-                .role("owner")
-                .status("approved")
-                .joinedAt(OffsetDateTime.now())
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
-        memberRepository.save(ownerMember);
-
-        return mapToResponse(saved);
-    }
-
-    @Transactional
-    public NotebookResponse update(UUID id, NotebookCreateRequest req,
-            MultipartFile thumbnail) {
-        Notebook nb = notebookRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Community not found"));
-
-        nb.setTitle(req.title());
-        nb.setDescription(req.description());
-        nb.setVisibility(req.visibility());
-
-        // Xử lý upload thumbnail mới
-        if (thumbnail != null && !thumbnail.isEmpty()) {
-            // Xóa thumbnail cũ nếu có
-            if (nb.getThumbnailUrl() != null) {
-                fileStorageService.deleteFile(nb.getThumbnailUrl());
-            }
-
-            try {
-                String thumbnailUrl = fileStorageService.storeFile(thumbnail);
-                nb.setThumbnailUrl(thumbnailUrl);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to upload thumbnail", e);
-            }
-        }
-
-        Notebook saved = notebookRepository.save(nb);
-        return mapToResponse(saved);
-    }
-
-    @Transactional
-    public void delete(UUID id) {
-        Notebook nb = notebookRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Community not found"));
-
-        // Xóa thumbnail nếu có
-        if (nb.getThumbnailUrl() != null) {
-            fileStorageService.deleteFile(nb.getThumbnailUrl());
-        }
-
-        notebookRepository.deleteById(id);
-    }
-
-    public NotebookResponse getOne(UUID id) {
-        Notebook nb = notebookRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Community not found"));
-        return mapToResponse(nb);
-    }
-
-    public PagedResponse<NotebookResponse> list(ListCommunityRequest req) {
-        String sortBy = Optional.ofNullable(req.getSortBy()).orElse("createdAt");
-        String sortDir = Optional.ofNullable(req.getSortDir()).orElse("desc");
-
-        String keyword = req.getQ() != null && !req.getQ().isEmpty() ? req.getQ() : null;
-        String visibility = req.getVisibility() != null &&
-                !req.getVisibility().isEmpty() ? req.getVisibility() : null;
-
-        // Nếu sort theo memberCount, cần xử lý đặc biệt
-        if ("memberCount".equals(sortBy)) {
-            // Lấy tất cả communities (không phân trang) để sort theo memberCount
-            Pageable allPageable = PageRequest.of(0, Integer.MAX_VALUE);
-            Page<Notebook> allResult = notebookRepository.findCommunities(keyword,
-                    visibility, allPageable);
-
-            // Map và sort theo memberCount
-            var sortedList = allResult.getContent().stream()
-                    .map(this::mapToResponse)
-                    .sorted((a, b) -> {
-                        int compare = Long.compare(
-                                a.memberCount() != null ? a.memberCount() : 0L,
-                                b.memberCount() != null ? b.memberCount() : 0L);
-                        return sortDir.equalsIgnoreCase("asc") ? compare : -compare;
-                    })
-                    .toList();
-
-            // Phân trang thủ công
-            int start = req.getPage() * req.getSize();
-            int end = Math.min(start + req.getSize(), sortedList.size());
-            java.util.List<NotebookResponse> pagedList = start < sortedList.size()
-                    ? sortedList.subList(start, end)
-                    : new java.util.ArrayList<>();
-
-            int totalPages = (int) Math.ceil((double) sortedList.size() / req.getSize());
-
-            return new PagedResponse<>(
-                    pagedList,
-                    new PagedResponse.Meta(
-                            req.getPage(),
-                            req.getSize(),
-                            sortedList.size(),
-                            totalPages));
-        } else {
-            // Sort theo các field của Notebook entity
-            Sort sort = sortDir.equalsIgnoreCase("asc")
-                    ? Sort.by(sortBy).ascending()
-                    : Sort.by(sortBy).descending();
-
-            Pageable pageable = PageRequest.of(req.getPage(), req.getSize(), sort);
-            Page<Notebook> result = notebookRepository.findCommunities(keyword,
-                    visibility, pageable);
-
-            return new PagedResponse<>(
-                    result.map(this::mapToResponse).getContent(),
-                    new PagedResponse.Meta(
-                            result.getNumber(),
-                            result.getSize(),
-                            result.getTotalElements(),
-                            result.getTotalPages()));
-        }
-    }
-
-    private NotebookResponse mapToResponse(Notebook nb) {
-        Long memberCount = memberRepository.countByNotebookIdAndStatus(nb.getId(),
-                "approved");
-
-        // Normalize thumbnailUrl
-        String thumbnailUrl = urlNormalizer.normalizeToFull(nb.getThumbnailUrl());
-
-        return new NotebookResponse(
-                nb.getId(),
-                nb.getTitle(),
-                nb.getDescription(),
-                nb.getType(),
-                nb.getVisibility(),
-                thumbnailUrl,
-                memberCount,
-                nb.getCreatedAt(),
-                nb.getUpdatedAt());
-    }
-
-    public PagedResponse<PendingRequestResponse> getPendingRequests(
-            UUID notebookId, String status, String keyword, String sortBy, String sortDir, int page, int size) {
-
-        String q = (keyword != null && !keyword.isEmpty()) ? keyword : null;
-        String statusFilter = (status != null && !status.isEmpty()) ? status : "pending";
-
-        String sortByField = Optional.ofNullable(sortBy).orElse("createdAt");
-        String sortDirection = Optional.ofNullable(sortDir).orElse("desc");
-
-        Sort sort = Sort.by(sortDirection.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC,
-                sortByField);
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Page<NotebookMember> result = memberRepository.findMembersWithFilters(notebookId, statusFilter, q,
-                pageable);
-
-        return new PagedResponse<>(
-                result.map(this::mapToPendingRequest).getContent(),
-                new PagedResponse.Meta(
-                        result.getNumber(),
-                        result.getSize(),
-                        result.getTotalElements(),
-                        result.getTotalPages()));
-    }
-
-    @Transactional
-    public void approveRejectBlockMember(ApproveRejectBlockRequest req) {
-        NotebookMember member = memberRepository
-                .findByNotebookIdAndUserId(req.notebookId(), req.userId())
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
-
-        if ("owner".equals(member.getRole()) &&
-                "block".equals(req.action().toLowerCase())) {
-            throw new BadRequestException("Không thể chặn chủ sở hữu");
-        }
-
-        String action = req.action().toLowerCase();
-        String newStatus;
-
-        switch (action) {
-            case "approve":
-                newStatus = "approved";
-                if (member.getJoinedAt() == null) {
-                    member.setJoinedAt(java.time.OffsetDateTime.now());
+                // Xử lý upload thumbnail
+                if (thumbnail != null && !thumbnail.isEmpty()) {
+                        try {
+                                String thumbnailUrl = fileStorageService.storeFile(thumbnail);
+                                nb.setThumbnailUrl(thumbnailUrl);
+                        } catch (IOException e) {
+                                throw new RuntimeException("Failed to upload thumbnail", e);
+                        }
                 }
-                break;
-            case "reject":
-                newStatus = "rejected";
-                break;
-            case "block":
-                newStatus = "blocked";
-                break;
-            default:
-                throw new BadRequestException("Action không hợp lệ. Chỉ chấp nhận: approve, reject, block");
+
+                Notebook saved = notebookRepository.save(nb);
+
+                NotebookMember ownerMember = NotebookMember.builder()
+                                .notebook(saved)
+                                .user(admin)
+                                .role("owner")
+                                .status("approved")
+                                .joinedAt(OffsetDateTime.now())
+                                .createdAt(OffsetDateTime.now())
+                                .updatedAt(OffsetDateTime.now())
+                                .build();
+                memberRepository.save(ownerMember);
+
+                return mapToResponse(saved);
         }
 
-        member.setStatus(newStatus);
-        member.setUpdatedAt(java.time.OffsetDateTime.now());
-        memberRepository.save(member);
-    }
+        @Transactional
+        public NotebookResponse update(UUID id, NotebookCreateRequest req,
+                        MultipartFile thumbnail) {
+                Notebook nb = notebookRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Community not found"));
 
-    public NotebookDetailResponse getNotebookDetail(UUID notebookId) {
-        Notebook notebook = notebookRepository.findById(notebookId)
-                .orElseThrow(() -> new NotFoundException("Nhóm không tồn tại"));
+                nb.setTitle(req.title());
+                nb.setDescription(req.description());
+                nb.setVisibility(req.visibility());
 
-        // Lấy danh sách thành viên đã approved
-        var approvedMembers = memberRepository.findApprovedMembers(notebookId);
-        var memberItems = approvedMembers.stream()
-                .map(m -> new NotebookDetailResponse.MemberItem(
-                        m.getUser().getId(),
-                        m.getUser().getFullName(),
-                        m.getUser().getEmail(),
-                        m.getRole(),
-                        m.getStatus(),
-                        m.getJoinedAt()))
-                .toList();
+                // Xử lý upload thumbnail mới
+                if (thumbnail != null && !thumbnail.isEmpty()) {
+                        // Xóa thumbnail cũ nếu có
+                        if (nb.getThumbnailUrl() != null) {
+                                fileStorageService.deleteFile(nb.getThumbnailUrl());
+                        }
 
-        // Lấy danh sách files
-        var files = fileRepository.findByNotebookId(notebookId);
-        var fileItems = files.stream()
-                .map(f -> new NotebookDetailResponse.FileItem(
-                        f.getId(),
-                        f.getOriginalFilename(),
-                        f.getMimeType(),
-                        f.getFileSize(),
-                        urlNormalizer.normalizeToFull(f.getStorageUrl()),
-                        f.getStatus(),
-                        f.getCreatedAt()))
-                .toList();
+                        try {
+                                String thumbnailUrl = fileStorageService.storeFile(thumbnail);
+                                nb.setThumbnailUrl(thumbnailUrl);
+                        } catch (IOException e) {
+                                throw new RuntimeException("Failed to upload thumbnail", e);
+                        }
+                }
 
-        String thumbnailUrl = urlNormalizer.normalizeToFull(notebook.getThumbnailUrl());
-
-        return new NotebookDetailResponse(
-                notebook.getId(),
-                notebook.getTitle(),
-                notebook.getDescription(),
-                notebook.getType(),
-                notebook.getVisibility(),
-                thumbnailUrl,
-                notebook.getCreatedBy().getId(),
-                notebook.getCreatedBy().getFullName(),
-                notebook.getCreatedAt(),
-                notebook.getUpdatedAt(),
-                new NotebookDetailResponse.MemberInfo(
-                        (long) memberItems.size(),
-                        memberItems),
-                new NotebookDetailResponse.FileInfo(
-                        (long) fileItems.size(),
-                        fileItems));
-    }
-
-    public PagedResponse<MemberResponse> getNotebookMembers(
-            UUID notebookId, String status, String keyword, String sortBy, String sortDir, int page, int size) {
-
-        notebookRepository.findById(notebookId)
-                .orElseThrow(() -> new NotFoundException("Nhóm không tồn tại"));
-
-        String q = (keyword != null && !keyword.isEmpty()) ? keyword : null;
-        String statusFilter = (status != null && !status.isEmpty()) ? status : null;
-
-        String sortByField = Optional.ofNullable(sortBy).orElse("joinedAt");
-        String sortDirection = Optional.ofNullable(sortDir).orElse("desc");
-
-        Sort sort = Sort.by(sortDirection.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC,
-                sortByField);
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Page<NotebookMember> result = memberRepository.findByNotebookIdWithFilters(notebookId, statusFilter, q,
-                pageable);
-
-        return new PagedResponse<>(
-                result.map(this::mapToMemberResponse).getContent(),
-                new PagedResponse.Meta(
-                        result.getNumber(),
-                        result.getSize(),
-                        result.getTotalElements(),
-                        result.getTotalPages()));
-    }
-
-    @Transactional
-    public void updateMemberRole(UUID memberId, String role) {
-        NotebookMember member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
-
-        if ("owner".equals(member.getRole())) {
-            throw new BadRequestException("Không thể thay đổi role của chủ sở hữu");
+                Notebook saved = notebookRepository.save(nb);
+                return mapToResponse(saved);
         }
 
-        if (!"admin".equals(role) && !"member".equals(role) && !"owner".equals(role)) {
-            throw new BadRequestException("Role không hợp lệ. Chỉ chấp nhận: admin, member, owner");
+        @Transactional
+        public void delete(UUID id) {
+                Notebook nb = notebookRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Community not found"));
+
+                // Xóa thumbnail nếu có
+                if (nb.getThumbnailUrl() != null) {
+                        fileStorageService.deleteFile(nb.getThumbnailUrl());
+                }
+
+                notebookRepository.deleteById(id);
         }
 
-        if ("owner".equals(role)) {
-            throw new BadRequestException("Không thể cấp role owner thông qua API này");
+        public NotebookResponse getOne(UUID id) {
+                Notebook nb = notebookRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Community not found"));
+                return mapToResponse(nb);
         }
 
-        member.setRole(role);
-        member.setUpdatedAt(OffsetDateTime.now());
-        memberRepository.save(member);
-    }
+        public PagedResponse<NotebookResponse> list(ListCommunityRequest req) {
+                String sortBy = Optional.ofNullable(req.getSortBy()).orElse("createdAt");
+                String sortDir = Optional.ofNullable(req.getSortDir()).orElse("desc");
 
-    @Transactional
-    public void deleteMember(UUID memberId) {
-        NotebookMember member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+                String keyword = req.getQ() != null && !req.getQ().isEmpty() ? req.getQ() : null;
+                String visibility = req.getVisibility() != null &&
+                                !req.getVisibility().isEmpty() ? req.getVisibility() : null;
 
-        if ("owner".equals(member.getRole())) {
-            throw new BadRequestException("Không thể xóa chủ sở hữu. Chủ sở hữu không thể bị xóa khỏi notebook.");
+                // Nếu sort theo memberCount, cần xử lý đặc biệt
+                if ("memberCount".equals(sortBy)) {
+                        // Lấy tất cả communities (không phân trang) để sort theo memberCount
+                        Pageable allPageable = PageRequest.of(0, Integer.MAX_VALUE);
+                        Page<Notebook> allResult = notebookRepository.findCommunities(keyword,
+                                        visibility, allPageable);
+
+                        // Map và sort theo memberCount
+                        var sortedList = allResult.getContent().stream()
+                                        .map(this::mapToResponse)
+                                        .sorted((a, b) -> {
+                                                int compare = Long.compare(
+                                                                a.memberCount() != null ? a.memberCount() : 0L,
+                                                                b.memberCount() != null ? b.memberCount() : 0L);
+                                                return sortDir.equalsIgnoreCase("asc") ? compare : -compare;
+                                        })
+                                        .toList();
+
+                        // Phân trang thủ công
+                        int start = req.getPage() * req.getSize();
+                        int end = Math.min(start + req.getSize(), sortedList.size());
+                        java.util.List<NotebookResponse> pagedList = start < sortedList.size()
+                                        ? sortedList.subList(start, end)
+                                        : new java.util.ArrayList<>();
+
+                        int totalPages = (int) Math.ceil((double) sortedList.size() / req.getSize());
+
+                        return new PagedResponse<>(
+                                        pagedList,
+                                        new PagedResponse.Meta(
+                                                        req.getPage(),
+                                                        req.getSize(),
+                                                        sortedList.size(),
+                                                        totalPages));
+                } else {
+                        // Sort theo các field của Notebook entity
+                        Sort sort = sortDir.equalsIgnoreCase("asc")
+                                        ? Sort.by(sortBy).ascending()
+                                        : Sort.by(sortBy).descending();
+
+                        Pageable pageable = PageRequest.of(req.getPage(), req.getSize(), sort);
+                        Page<Notebook> result = notebookRepository.findCommunities(keyword,
+                                        visibility, pageable);
+
+                        return new PagedResponse<>(
+                                        result.map(this::mapToResponse).getContent(),
+                                        new PagedResponse.Meta(
+                                                        result.getNumber(),
+                                                        result.getSize(),
+                                                        result.getTotalElements(),
+                                                        result.getTotalPages()));
+                }
         }
 
-        UUID notebookId = member.getNotebook().getId();
-        UUID userId = member.getUser().getId();
+        private NotebookResponse mapToResponse(Notebook nb) {
+                Long memberCount = memberRepository.countByNotebookIdAndStatus(nb.getId(),
+                                "approved");
 
-        Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long flashcardCount = flashcardRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long ragQueryCount = notebookBotConversationRepository.countByNotebookIdAndUserId(notebookId, userId);
+                // Normalize thumbnailUrl
+                String thumbnailUrl = urlNormalizer.normalizeToFull(nb.getThumbnailUrl());
 
-        long totalContributions = fileCount + videoCount + flashcardCount + ttsCount
-                + quizCount + messageCount
-                + ragQueryCount;
-
-        if (totalContributions > 0) {
-            throw new BadRequestException(
-                    "Không thể xóa thành viên đã có đóng góp. Vui lòng sử dụng chức năng chặn (block) để ẩn thành viên này.");
+                return new NotebookResponse(
+                                nb.getId(),
+                                nb.getTitle(),
+                                nb.getDescription(),
+                                nb.getType(),
+                                nb.getVisibility(),
+                                thumbnailUrl,
+                                memberCount,
+                                nb.getCreatedAt(),
+                                nb.getUpdatedAt());
         }
 
-        memberRepository.delete(member);
-    }
+        public PagedResponse<PendingRequestResponse> getPendingRequests(
+                        UUID notebookId, String status, String keyword, String sortBy, String sortDir, int page,
+                        int size) {
 
-    @Transactional
-    public void blockMember(UUID memberId) {
-        NotebookMember member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+                String q = (keyword != null && !keyword.isEmpty()) ? keyword : null;
+                String statusFilter = (status != null && !status.isEmpty()) ? status : "pending";
 
-        if ("owner".equals(member.getRole())) {
-            throw new BadRequestException("Không thể chặn chủ sở hữu. Chủ sở hữu không thể bị chặn.");
+                String sortByField = Optional.ofNullable(sortBy).orElse("createdAt");
+                String sortDirection = Optional.ofNullable(sortDir).orElse("desc");
+
+                Sort sort = Sort.by(sortDirection.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC,
+                                sortByField);
+                Pageable pageable = PageRequest.of(page, size, sort);
+
+                Page<NotebookMember> result = memberRepository.findMembersWithFilters(notebookId, statusFilter, q,
+                                pageable);
+
+                return new PagedResponse<>(
+                                result.map(this::mapToPendingRequest).getContent(),
+                                new PagedResponse.Meta(
+                                                result.getNumber(),
+                                                result.getSize(),
+                                                result.getTotalElements(),
+                                                result.getTotalPages()));
         }
 
-        member.setStatus("blocked");
-        member.setUpdatedAt(OffsetDateTime.now());
-        memberRepository.save(member);
-    }
+        @Transactional
+        public void approveRejectBlockMember(ApproveRejectBlockRequest req) {
+                NotebookMember member = memberRepository
+                                .findByNotebookIdAndUserId(req.notebookId(), req.userId())
+                                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
 
-    @Transactional
-    public void unblockMember(UUID memberId) {
-        NotebookMember member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+                if ("owner".equals(member.getRole()) &&
+                                "block".equals(req.action().toLowerCase())) {
+                        throw new BadRequestException("Không thể chặn chủ sở hữu");
+                }
 
-        if (!"blocked".equals(member.getStatus())) {
-            throw new BadRequestException(
-                    "Thành viên này không bị chặn. Chỉ có thể mở chặn cho thành viên đang bị chặn.");
+                String action = req.action().toLowerCase();
+                String newStatus;
+
+                switch (action) {
+                        case "approve":
+                                newStatus = "approved";
+                                if (member.getJoinedAt() == null) {
+                                        member.setJoinedAt(java.time.OffsetDateTime.now());
+                                }
+                                break;
+                        case "reject":
+                                newStatus = "rejected";
+                                break;
+                        case "block":
+                                newStatus = "blocked";
+                                break;
+                        default:
+                                throw new BadRequestException(
+                                                "Action không hợp lệ. Chỉ chấp nhận: approve, reject, block");
+                }
+
+                member.setStatus(newStatus);
+                member.setUpdatedAt(java.time.OffsetDateTime.now());
+                memberRepository.save(member);
         }
 
-        member.setStatus("approved");
-        if (member.getJoinedAt() == null) {
-            member.setJoinedAt(OffsetDateTime.now());
+        public NotebookDetailResponse getNotebookDetail(UUID notebookId) {
+                Notebook notebook = notebookRepository.findById(notebookId)
+                                .orElseThrow(() -> new NotFoundException("Nhóm không tồn tại"));
+
+                // Lấy danh sách thành viên đã approved
+                var approvedMembers = memberRepository.findApprovedMembers(notebookId);
+                var memberItems = approvedMembers.stream()
+                                .map(m -> new NotebookDetailResponse.MemberItem(
+                                                m.getUser().getId(),
+                                                m.getUser().getFullName(),
+                                                m.getUser().getEmail(),
+                                                m.getRole(),
+                                                m.getStatus(),
+                                                m.getJoinedAt()))
+                                .toList();
+
+                // Lấy danh sách files
+                var files = fileRepository.findByNotebookId(notebookId);
+                var fileItems = files.stream()
+                                .map(f -> new NotebookDetailResponse.FileItem(
+                                                f.getId(),
+                                                f.getOriginalFilename(),
+                                                f.getMimeType(),
+                                                f.getFileSize(),
+                                                urlNormalizer.normalizeToFull(f.getStorageUrl()),
+                                                f.getStatus(),
+                                                f.getCreatedAt()))
+                                .toList();
+
+                String thumbnailUrl = urlNormalizer.normalizeToFull(notebook.getThumbnailUrl());
+
+                return new NotebookDetailResponse(
+                                notebook.getId(),
+                                notebook.getTitle(),
+                                notebook.getDescription(),
+                                notebook.getType(),
+                                notebook.getVisibility(),
+                                thumbnailUrl,
+                                notebook.getCreatedBy().getId(),
+                                notebook.getCreatedBy().getFullName(),
+                                notebook.getCreatedAt(),
+                                notebook.getUpdatedAt(),
+                                new NotebookDetailResponse.MemberInfo(
+                                                (long) memberItems.size(),
+                                                memberItems),
+                                new NotebookDetailResponse.FileInfo(
+                                                (long) fileItems.size(),
+                                                fileItems));
         }
-        member.setUpdatedAt(OffsetDateTime.now());
-        memberRepository.save(member);
-    }
 
-    @Transactional
-    public void approveMember(UUID memberId) {
-        NotebookMember member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+        public PagedResponse<MemberResponse> getNotebookMembers(
+                        UUID notebookId, String status, String keyword, String sortBy, String sortDir, int page,
+                        int size) {
 
-        if (!"pending".equals(member.getStatus())) {
-            throw new BadRequestException(
-                    "Chỉ có thể phê duyệt yêu cầu đang ở trạng thái pending. Trạng thái hiện tại: "
-                            + member.getStatus());
+                notebookRepository.findById(notebookId)
+                                .orElseThrow(() -> new NotFoundException("Nhóm không tồn tại"));
+
+                String q = (keyword != null && !keyword.isEmpty()) ? keyword : null;
+                String statusFilter = (status != null && !status.isEmpty()) ? status : null;
+
+                String sortByField = Optional.ofNullable(sortBy).orElse("joinedAt");
+                String sortDirection = Optional.ofNullable(sortDir).orElse("desc");
+
+                Sort sort = Sort.by(sortDirection.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC,
+                                sortByField);
+                Pageable pageable = PageRequest.of(page, size, sort);
+
+                Page<NotebookMember> result = memberRepository.findByNotebookIdWithFilters(notebookId, statusFilter, q,
+                                pageable);
+
+                return new PagedResponse<>(
+                                result.map(this::mapToMemberResponse).getContent(),
+                                new PagedResponse.Meta(
+                                                result.getNumber(),
+                                                result.getSize(),
+                                                result.getTotalElements(),
+                                                result.getTotalPages()));
         }
 
-        member.setStatus("approved");
-        if (member.getJoinedAt() == null) {
-            member.setJoinedAt(OffsetDateTime.now());
-        }
-        member.setUpdatedAt(OffsetDateTime.now());
-        memberRepository.save(member);
-    }
+        @Transactional
+        public void updateMemberRole(UUID memberId, String role) {
+                NotebookMember member = memberRepository.findById(memberId)
+                                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
 
-    @Transactional
-    public int approveAllPendingRequests(UUID notebookId) {
-        List<NotebookMember> pendingMembers = memberRepository.findAllPendingRequests(notebookId);
+                if ("owner".equals(member.getRole())) {
+                        throw new BadRequestException("Không thể thay đổi role của chủ sở hữu");
+                }
 
-        if (pendingMembers.isEmpty()) {
-            return 0;
-        }
+                if (!"admin".equals(role) && !"member".equals(role) && !"owner".equals(role)) {
+                        throw new BadRequestException("Role không hợp lệ. Chỉ chấp nhận: admin, member, owner");
+                }
 
-        OffsetDateTime now = OffsetDateTime.now();
-        int approvedCount = 0;
+                if ("owner".equals(role)) {
+                        throw new BadRequestException("Không thể cấp role owner thông qua API này");
+                }
 
-        for (NotebookMember member : pendingMembers) {
-            member.setStatus("approved");
-            if (member.getJoinedAt() == null) {
-                member.setJoinedAt(now);
-            }
-            member.setUpdatedAt(now);
-            memberRepository.save(member);
-            approvedCount++;
+                member.setRole(role);
+                member.setUpdatedAt(OffsetDateTime.now());
+                memberRepository.save(member);
         }
 
-        return approvedCount;
-    }
+        @Transactional
+        public void deleteMember(UUID memberId) {
+                NotebookMember member = memberRepository.findById(memberId)
+                                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
 
-    private PendingRequestResponse mapToPendingRequest(NotebookMember nm) {
-        return new PendingRequestResponse(
-                nm.getId(),
-                nm.getNotebook().getId(),
-                nm.getNotebook().getTitle(),
-                nm.getUser().getId(),
-                nm.getUser().getFullName(),
-                nm.getUser().getEmail(),
-                nm.getRole(),
-                nm.getStatus(),
-                nm.getJoinedAt(),
-                nm.getCreatedAt(),
-                nm.getUpdatedAt());
-    }
+                if ("owner".equals(member.getRole())) {
+                        throw new BadRequestException(
+                                        "Không thể xóa chủ sở hữu. Chủ sở hữu không thể bị xóa khỏi notebook.");
+                }
 
-    private MemberResponse mapToMemberResponse(NotebookMember nm) {
-        UUID notebookId = nm.getNotebook().getId();
-        UUID userId = nm.getUser().getId();
+                UUID notebookId = member.getNotebook().getId();
+                UUID userId = member.getUser().getId();
 
-        Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long flashcardCount = flashcardRepository.countByNotebookIdAndUserId(notebookId, userId);
-        Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId,
-                userId);
-        Long ragQueryCount = notebookBotConversationRepository.countByNotebookIdAndUserId(notebookId, userId);
+                Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long flashcardCount = flashcardRepository.countByNotebookIdAndUserId(notebookId, userId);
+                Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long ragQueryCount = notebookBotConversationRepository.countByNotebookIdAndUserId(notebookId, userId);
 
-        var statistics = new MemberResponse.UserStatistics(
-                fileCount,
-                videoCount,
-                flashcardCount,
-                ttsCount,
-                quizCount,
-                messageCount,
-                ragQueryCount);
+                long totalContributions = fileCount + videoCount + flashcardCount + ttsCount
+                                + quizCount + messageCount
+                                + ragQueryCount;
 
-        String avatarUrl = urlNormalizer.normalizeToFull(nm.getUser().getAvatarUrl());
+                if (totalContributions > 0) {
+                        throw new BadRequestException(
+                                        "Không thể xóa thành viên đã có đóng góp. Vui lòng sử dụng chức năng chặn (block) để ẩn thành viên này.");
+                }
 
-        return new MemberResponse(
-                nm.getId(),
-                nm.getNotebook().getId(),
-                nm.getNotebook().getTitle(),
-                nm.getUser().getId(),
-                nm.getUser().getFullName(),
-                nm.getUser().getEmail(),
-                avatarUrl,
-                nm.getRole(),
-                nm.getStatus(),
-                nm.getJoinedAt(),
-                nm.getCreatedAt(),
-                nm.getUpdatedAt(),
-                statistics);
-    }
+                memberRepository.delete(member);
+        }
+
+        @Transactional
+        public void blockMember(UUID memberId) {
+                NotebookMember member = memberRepository.findById(memberId)
+                                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+                if ("owner".equals(member.getRole())) {
+                        throw new BadRequestException("Không thể chặn chủ sở hữu. Chủ sở hữu không thể bị chặn.");
+                }
+
+                member.setStatus("blocked");
+                member.setUpdatedAt(OffsetDateTime.now());
+                memberRepository.save(member);
+        }
+
+        @Transactional
+        public void unblockMember(UUID memberId) {
+                NotebookMember member = memberRepository.findById(memberId)
+                                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+                if (!"blocked".equals(member.getStatus())) {
+                        throw new BadRequestException(
+                                        "Thành viên này không bị chặn. Chỉ có thể mở chặn cho thành viên đang bị chặn.");
+                }
+
+                member.setStatus("approved");
+                if (member.getJoinedAt() == null) {
+                        member.setJoinedAt(OffsetDateTime.now());
+                }
+                member.setUpdatedAt(OffsetDateTime.now());
+                memberRepository.save(member);
+        }
+
+        @Transactional
+        public void approveMember(UUID memberId) {
+                NotebookMember member = memberRepository.findById(memberId)
+                                .orElseThrow(() -> new NotFoundException("Không tìm thấy thành viên"));
+
+                if (!"pending".equals(member.getStatus())) {
+                        throw new BadRequestException(
+                                        "Chỉ có thể phê duyệt yêu cầu đang ở trạng thái pending. Trạng thái hiện tại: "
+                                                        + member.getStatus());
+                }
+
+                member.setStatus("approved");
+                if (member.getJoinedAt() == null) {
+                        member.setJoinedAt(OffsetDateTime.now());
+                }
+                member.setUpdatedAt(OffsetDateTime.now());
+                memberRepository.save(member);
+        }
+
+        @Transactional
+        public int approveAllPendingRequests(UUID notebookId) {
+                List<NotebookMember> pendingMembers = memberRepository.findAllPendingRequests(notebookId);
+
+                if (pendingMembers.isEmpty()) {
+                        return 0;
+                }
+
+                OffsetDateTime now = OffsetDateTime.now();
+                int approvedCount = 0;
+
+                for (NotebookMember member : pendingMembers) {
+                        member.setStatus("approved");
+                        if (member.getJoinedAt() == null) {
+                                member.setJoinedAt(now);
+                        }
+                        member.setUpdatedAt(now);
+                        memberRepository.save(member);
+                        approvedCount++;
+                }
+
+                return approvedCount;
+        }
+
+        private PendingRequestResponse mapToPendingRequest(NotebookMember nm) {
+                return new PendingRequestResponse(
+                                nm.getId(),
+                                nm.getNotebook().getId(),
+                                nm.getNotebook().getTitle(),
+                                nm.getUser().getId(),
+                                nm.getUser().getFullName(),
+                                nm.getUser().getEmail(),
+                                nm.getRole(),
+                                nm.getStatus(),
+                                nm.getJoinedAt(),
+                                nm.getCreatedAt(),
+                                nm.getUpdatedAt());
+        }
+
+        private MemberResponse mapToMemberResponse(NotebookMember nm) {
+                UUID notebookId = nm.getNotebook().getId();
+                UUID userId = nm.getUser().getId();
+
+                Long fileCount = fileRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long videoCount = videoAssetRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long flashcardCount = flashcardRepository.countByNotebookIdAndUserId(notebookId, userId);
+                Long ttsCount = ttsAssetRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long quizCount = quizRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long messageCount = messageRepository.countByNotebookIdAndUserId(notebookId,
+                                userId);
+                Long ragQueryCount = notebookBotConversationRepository.countByNotebookIdAndUserId(notebookId, userId);
+
+                var statistics = new MemberResponse.UserStatistics(
+                                fileCount,
+                                videoCount,
+                                flashcardCount,
+                                ttsCount,
+                                quizCount,
+                                messageCount,
+                                ragQueryCount);
+
+                String avatarUrl = urlNormalizer.normalizeToFull(nm.getUser().getAvatarUrl());
+
+                return new MemberResponse(
+                                nm.getId(),
+                                nm.getNotebook().getId(),
+                                nm.getNotebook().getTitle(),
+                                nm.getUser().getId(),
+                                nm.getUser().getFullName(),
+                                nm.getUser().getEmail(),
+                                avatarUrl,
+                                nm.getRole(),
+                                nm.getStatus(),
+                                nm.getJoinedAt(),
+                                nm.getCreatedAt(),
+                                nm.getUpdatedAt(),
+                                statistics);
+        }
 
 }

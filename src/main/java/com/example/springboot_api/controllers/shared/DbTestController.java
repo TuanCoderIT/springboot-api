@@ -1,5 +1,8 @@
 package com.example.springboot_api.controllers.shared;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,11 +11,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.springboot_api.dto.shared.ai.AIModelTestResponse;
 import com.example.springboot_api.dto.shared.ai.WebSearchResult;
+import com.example.springboot_api.models.LlmModel;
+import com.example.springboot_api.models.NotebookFile;
+import com.example.springboot_api.repositories.shared.LlmModelRepository;
+import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.ai.AIModelService;
+import com.example.springboot_api.services.shared.ai.AiAsyncTaskService;
 import com.example.springboot_api.services.shared.ai.EmbeddingService;
 import com.example.springboot_api.services.shared.ai.OcrGoogleService;
 import com.example.springboot_api.services.shared.ai.OcrService;
 import com.example.springboot_api.services.shared.ai.WebSearchService;
+import com.example.springboot_api.services.user.AiGenerationService;
 import com.example.springboot_api.services.user.ChatBotService;
 
 @RestController
@@ -25,6 +34,10 @@ public class DbTestController {
     private final WebSearchService webSearchService;
     private final AIModelService aiModelService;
     private final ChatBotService chatBotService;
+    private final AiGenerationService aiGenerationService;
+    private final AiAsyncTaskService aiAsyncTaskService;
+    private final NotebookFileRepository notebookFileRepository;
+    private final LlmModelRepository llmModelRepository;
 
     public DbTestController(
             EmbeddingService embeddingService,
@@ -32,13 +45,21 @@ public class DbTestController {
             OcrService localOcrService,
             WebSearchService webSearchService,
             AIModelService aiModelService,
-            ChatBotService chatBotService) {
+            ChatBotService chatBotService,
+            AiGenerationService aiGenerationService,
+            AiAsyncTaskService aiAsyncTaskService,
+            NotebookFileRepository notebookFileRepository,
+            LlmModelRepository llmModelRepository) {
         this.embeddingService = embeddingService;
         this.ocrService = ocrService;
         this.localOcrService = localOcrService;
         this.webSearchService = webSearchService;
         this.aiModelService = aiModelService;
         this.chatBotService = chatBotService;
+        this.aiGenerationService = aiGenerationService;
+        this.aiAsyncTaskService = aiAsyncTaskService;
+        this.notebookFileRepository = notebookFileRepository;
+        this.llmModelRepository = llmModelRepository;
     }
 
     // ... (các router /test/db và /test/embedding không đổi)
@@ -566,29 +587,26 @@ public class DbTestController {
     }
 
     /**
-     * Test Chat History với OCR text
-     * GET /test/chat-history?conversationId=xxx&userId=xxx&excludeMessageId=xxx
+     * Test Chat History - lấy 2 cặp chat gần nhất (4 messages).
+     * GET /test/chat-history?conversationId=xxx&userId=xxx
      * 
-     * @param conversationId   Conversation ID (required)
-     * @param userId           User ID (required)
-     * @param excludeMessageId Message ID để exclude (optional)
-     * @return Chat history string với OCR text từ hình ảnh
+     * @param conversationId Conversation ID (required)
+     * @param userId         User ID (required)
+     * @return Chat history string với 2 cặp chat gần nhất
      */
     @GetMapping("/chat-history")
     public String testChatHistory(
             @org.springframework.web.bind.annotation.RequestParam UUID conversationId,
-            @org.springframework.web.bind.annotation.RequestParam UUID userId,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID excludeMessageId) {
+            @org.springframework.web.bind.annotation.RequestParam UUID userId) {
         try {
             System.out.println("📝 Bắt đầu test Chat History:");
             System.out.println("   Conversation ID: " + conversationId);
             System.out.println("   User ID: " + userId);
-            System.out.println("   Exclude Message ID: " + excludeMessageId);
 
             long startTime = System.currentTimeMillis();
 
-            // Gọi public method để test chat history
-            String chatHistory = chatBotService.getChatHistoryForTest(conversationId, userId, excludeMessageId);
+            // Gọi public method để test chat history (chỉ lấy 2 cặp chat gần nhất)
+            String chatHistory = chatBotService.getChatHistory(conversationId, userId);
 
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
@@ -598,10 +616,9 @@ public class DbTestController {
                         "Chat History Test ✅\n" +
                                 "Conversation ID: %s\n" +
                                 "User ID: %s\n" +
-                                "Exclude Message ID: %s\n" +
                                 "Thời gian: %dms\n" +
                                 "Kết quả: Chat history rỗng (không có messages hoặc không có dữ liệu)",
-                        conversationId, userId, excludeMessageId, duration);
+                        conversationId, userId, duration);
             }
 
             // Format output để dễ đọc
@@ -628,17 +645,324 @@ public class DbTestController {
                     "Chat History Test ✅\n" +
                             "Conversation ID: %s\n" +
                             "User ID: %s\n" +
-                            "Exclude Message ID: %s\n" +
                             "Thời gian: %dms\n" +
                             "Số dòng: %d\n" +
                             "Số ký tự: %d\n" +
                             "Có OCR text: %s\n\n" +
-                            "--- CHAT HISTORY ---\n%s",
-                    conversationId, userId, excludeMessageId, duration, lineCount, charCount,
+                            "--- CHAT HISTORY (2 cặp chat gần nhất) ---\n%s",
+                    conversationId, userId, duration, lineCount, charCount,
                     hasOcrText ? "Có ✅" : "Không ❌", preview);
 
         } catch (Exception e) {
             return "Chat History Test LỖI ❌: " + e.getMessage() + "\n" +
+                    "Error Type: " + e.getClass().getSimpleName() + "\n" +
+                    "Stack: " + (e.getStackTrace().length > 0 ? e.getStackTrace()[0].toString() : "N/A");
+        }
+    }
+
+    /**
+     * Test Summarize Documents - tóm tắt tài liệu từ danh sách files.
+     * GET /test/summarize-documents?fileIds=uuid1,uuid2,uuid3&modelId=uuid
+     * Hoặc: GET
+     * /test/summarize-documents?fileIds=uuid1&fileIds=uuid2&fileIds=uuid3&modelId=uuid
+     * 
+     * @param fileIds List of file IDs (có thể truyền nhiều lần hoặc
+     *                comma-separated) (required)
+     * @param modelId LLM Model ID (optional, sẽ dùng model mặc định nếu null)
+     * @return Summarized text
+     */
+    @GetMapping("/summarize-documents")
+    public String testSummarizeDocuments(
+            @org.springframework.web.bind.annotation.RequestParam List<String> fileIds,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID modelId) {
+        try {
+            System.out.println("📝 Bắt đầu test Summarize Documents:");
+            System.out.println("   File IDs: " + fileIds);
+            System.out.println("   Model ID: " + modelId);
+
+            if (fileIds == null || fileIds.isEmpty()) {
+                return "Lỗi: Không có file ID nào được cung cấp";
+            }
+
+            // Parse fileIds - hỗ trợ cả comma-separated string và multiple params
+            List<UUID> fileIdList = new ArrayList<>();
+            for (String fileIdParam : fileIds) {
+                // Nếu có comma, split ra
+                if (fileIdParam.contains(",")) {
+                    String[] fileIdStrings = fileIdParam.split(",");
+                    for (String fileIdStr : fileIdStrings) {
+                        try {
+                            UUID fileId = UUID.fromString(fileIdStr.trim());
+                            if (!fileIdList.contains(fileId)) {
+                                fileIdList.add(fileId);
+                            }
+                        } catch (IllegalArgumentException e) {
+                            return "Lỗi: File ID không hợp lệ: " + fileIdStr;
+                        }
+                    }
+                } else {
+                    // Single UUID
+                    try {
+                        UUID fileId = UUID.fromString(fileIdParam.trim());
+                        if (!fileIdList.contains(fileId)) {
+                            fileIdList.add(fileId);
+                        }
+                    } catch (IllegalArgumentException e) {
+                        return "Lỗi: File ID không hợp lệ: " + fileIdParam;
+                    }
+                }
+            }
+
+            if (fileIdList.isEmpty()) {
+                return "Lỗi: Không có file ID hợp lệ nào được cung cấp";
+            }
+
+            // Lấy NotebookFile từ fileIds
+            List<NotebookFile> files = new ArrayList<>();
+            List<String> notFoundFiles = new ArrayList<>();
+            for (UUID fileId : fileIdList) {
+                NotebookFile file = notebookFileRepository.findById(fileId)
+                        .orElse(null);
+                if (file == null) {
+                    notFoundFiles.add(fileId.toString());
+                } else {
+                    files.add(file);
+                }
+            }
+
+            if (!notFoundFiles.isEmpty()) {
+                return "Lỗi: Không tìm thấy các file với ID: " + String.join(", ", notFoundFiles);
+            }
+
+            if (files.isEmpty()) {
+                return "Lỗi: Không có file nào để tóm tắt";
+            }
+
+            // Lấy LlmModel nếu có
+            LlmModel llmModel = null;
+            if (modelId != null) {
+                llmModel = llmModelRepository.findById(modelId).orElse(null);
+                if (llmModel == null) {
+                    return "Lỗi: Không tìm thấy model với ID: " + modelId;
+                }
+            }
+
+            long startTime = System.currentTimeMillis();
+
+            // Gọi hàm summarizeDocuments từ AiAsyncTaskService
+            String summarizedText = aiAsyncTaskService.summarizeDocuments(files, llmModel);
+
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+
+            if (summarizedText == null || summarizedText.isEmpty()) {
+                return String.format(
+                        "Summarize Documents Test ✅\n" +
+                                "Số file: %d\n" +
+                                "File IDs: %s\n" +
+                                "Model ID: %s\n" +
+                                "Thời gian: %dms\n" +
+                                "Kết quả: Text rỗng (không có chunks hoặc không có dữ liệu)",
+                        files.size(), String.join(", ", fileIdList.stream().map(UUID::toString).toList()), modelId,
+                        duration);
+            }
+
+            // Format output
+            int charCount = summarizedText.length();
+            int lineCount = summarizedText.split("\n").length;
+            int maxPreviewLength = 2000;
+            String preview = summarizedText.length() > maxPreviewLength
+                    ? summarizedText.substring(0, maxPreviewLength) + "\n\n...[truncated, total length: "
+                            + summarizedText.length() + " chars]"
+                    : summarizedText;
+
+            // Tạo danh sách file names để hiển thị
+            List<String> fileNames = files.stream()
+                    .map(f -> f.getOriginalFilename() != null ? f.getOriginalFilename() : f.getId().toString())
+                    .toList();
+
+            return String.format(
+                    "Summarize Documents Test ✅\n" +
+                            "Số file: %d\n" +
+                            "File IDs: %s\n" +
+                            "File names: %s\n" +
+                            "Model ID: %s\n" +
+                            "Thời gian: %dms\n" +
+                            "Số dòng: %d\n" +
+                            "Số ký tự: %d\n\n" +
+                            "--- SUMMARIZED TEXT ---\n%s",
+                    files.size(),
+                    String.join(", ", fileIdList.stream().map(UUID::toString).toList()),
+                    String.join(", ", fileNames),
+                    modelId, duration, lineCount, charCount, preview);
+
+        } catch (Exception e) {
+            return "Summarize Documents Test LỖI ❌: " + e.getMessage() + "\n" +
+                    "Error Type: " + e.getClass().getSimpleName() + "\n" +
+                    "Stack: " + (e.getStackTrace().length > 0 ? e.getStackTrace()[0].toString() : "N/A");
+        }
+    }
+
+    /**
+     * Test Generate Quiz - tạo quiz từ các notebook files.
+     * GET
+     * /test/generate-quiz?notebookId=uuid&fileIds=uuid1,uuid2,uuid3&numberOfQuestions=standard&difficultyLevel=medium
+     * Hoặc: GET
+     * /test/generate-quiz?notebookId=uuid&fileIds=uuid1&fileIds=uuid2&numberOfQuestions=many&difficultyLevel=hard
+     * 
+     * numberOfQuestions: "few" | "standard" | "many"
+     * difficultyLevel: "easy" | "medium" | "hard"
+     * 
+     * @param notebookId        Notebook ID (required)
+     * @param fileIds           Danh sách file IDs (có thể truyền nhiều lần hoặc
+     *                          comma-separated) (required)
+     * @param numberOfQuestions Số lượng câu hỏi: "few" | "standard" | "many"
+     *                          (optional, mặc định: "standard")
+     * @param difficultyLevel   Độ khó: "easy" | "medium" | "hard" (optional, mặc
+     *                          định: "medium")
+     * @return Quiz generation result
+     */
+    @GetMapping("/generate-quiz")
+    public String testGenerateQuiz(
+            @org.springframework.web.bind.annotation.RequestParam UUID notebookId,
+            @org.springframework.web.bind.annotation.RequestParam UUID userId,
+            @org.springframework.web.bind.annotation.RequestParam List<String> fileIds,
+            @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "standard") String numberOfQuestions,
+            @org.springframework.web.bind.annotation.RequestParam(required = false, defaultValue = "medium") String difficultyLevel) {
+        try {
+            System.out.println("📝 Bắt đầu test Generate Quiz:");
+            System.out.println("   Notebook ID: " + notebookId);
+            System.out.println("   User ID: " + userId);
+            System.out.println("   File IDs: " + fileIds);
+            System.out.println("   Number of Questions: " + numberOfQuestions);
+            System.out.println("   Difficulty Level: " + difficultyLevel);
+
+            // Parse fileIds từ comma-separated string hoặc multiple params
+            List<UUID> fileIdList = new ArrayList<>();
+            for (String fileIdParam : fileIds) {
+                if (fileIdParam.contains(",")) {
+                    String[] fileIdStrings = fileIdParam.split(",");
+                    for (String fileIdStr : fileIdStrings) {
+                        try {
+                            UUID fileId = UUID.fromString(fileIdStr.trim());
+                            if (!fileIdList.contains(fileId)) {
+                                fileIdList.add(fileId);
+                            }
+                        } catch (IllegalArgumentException e) {
+                            return "Lỗi: File ID không hợp lệ: " + fileIdStr;
+                        }
+                    }
+                } else {
+                    try {
+                        UUID fileId = UUID.fromString(fileIdParam.trim());
+                        if (!fileIdList.contains(fileId)) {
+                            fileIdList.add(fileId);
+                        }
+                    } catch (IllegalArgumentException e) {
+                        return "Lỗi: File ID không hợp lệ: " + fileIdParam;
+                    }
+                }
+            }
+
+            if (fileIdList.isEmpty()) {
+                return "Lỗi: Không có file ID hợp lệ nào được cung cấp";
+            }
+
+            long startTime = System.currentTimeMillis();
+
+            // Gọi hàm generateQuiz với userId từ AiGenerationService
+            Map<String, Object> result = aiGenerationService.generateQuiz(notebookId, userId, fileIdList,
+                    numberOfQuestions, difficultyLevel, null);
+
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+
+            // Format output
+            StringBuilder output = new StringBuilder();
+            output.append("Generate Quiz Test ");
+
+            if (result.containsKey("error")) {
+                output.append("LỖI ❌\n");
+                output.append("Error: ").append(result.get("error")).append("\n");
+                if (result.containsKey("errorType")) {
+                    output.append("Error Type: ").append(result.get("errorType")).append("\n");
+                }
+            } else {
+                output.append("✅\n");
+            }
+
+            output.append("Notebook ID: ").append(result.getOrDefault("notebookId", "N/A")).append("\n");
+            output.append("Selected Files Count: ").append(result.getOrDefault("selectedFilesCount", 0)).append("\n");
+
+            if (result.containsKey("selectedFileIds")) {
+                @SuppressWarnings("unchecked")
+                List<String> selectedFileIds = (List<String>) result.get("selectedFileIds");
+                output.append("Selected File IDs: ").append(String.join(", ", selectedFileIds)).append("\n");
+            }
+
+            if (result.containsKey("requestedFileIds")) {
+                @SuppressWarnings("unchecked")
+                List<String> requestedFileIds = (List<String>) result.get("requestedFileIds");
+                output.append("Requested File IDs: ").append(String.join(", ", requestedFileIds)).append("\n");
+            }
+
+            output.append("Summary Length: ").append(result.getOrDefault("summaryLength", 0)).append(" chars\n");
+
+            if (result.containsKey("summaryPreview")) {
+                output.append("Summary Preview: ").append(result.get("summaryPreview")).append("\n");
+            }
+
+            output.append("Prompt Length: ").append(result.getOrDefault("promptLength", 0)).append(" chars\n");
+            output.append("Raw Response Length: ").append(result.getOrDefault("rawResponseLength", 0))
+                    .append(" chars\n");
+            output.append("Number of Questions: ").append(numberOfQuestions).append("\n");
+            output.append("Difficulty Level: ").append(difficultyLevel).append("\n");
+            output.append("Thời gian: ").append(duration).append("ms\n\n");
+
+            if (result.containsKey("parsedQuiz")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> quizList = (List<Map<String, Object>>) result.get("parsedQuiz");
+                output.append("Quiz Count: ").append(quizList.size()).append("\n");
+                output.append("Success: ").append(result.getOrDefault("success", false)).append("\n\n");
+
+                // Hiển thị preview của quiz (chỉ 2 câu đầu)
+                output.append("--- QUIZ PREVIEW (first 2 questions) ---\n");
+                int previewCount = Math.min(2, quizList.size());
+                for (int i = 0; i < previewCount; i++) {
+                    Map<String, Object> quiz = quizList.get(i);
+                    output.append("\nQuestion ").append(i + 1).append(":\n");
+                    output.append("  Question: ").append(quiz.get("question")).append("\n");
+                    output.append("  Explanation: ").append(quiz.get("explanation")).append("\n");
+                    output.append("  Difficulty: ").append(quiz.get("difficulty_level")).append("\n");
+
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> options = (List<Map<String, Object>>) quiz.get("options");
+                    if (options != null) {
+                        output.append("  Options (").append(options.size()).append("):\n");
+                        for (Map<String, Object> option : options) {
+                            output.append("    - ").append(option.get("text"))
+                                    .append(" [").append(option.get("is_correct")).append("]\n");
+                        }
+                    }
+                }
+
+                if (quizList.size() > previewCount) {
+                    output.append("\n... (còn ").append(quizList.size() - previewCount).append(" câu hỏi nữa)\n");
+                }
+            } else if (result.containsKey("rawResponse")) {
+                output.append("--- RAW RESPONSE (first 1000 chars) ---\n");
+                String rawResponse = (String) result.get("rawResponse");
+                if (rawResponse.length() > 1000) {
+                    output.append(rawResponse.substring(0, 1000)).append("\n... [truncated]\n");
+                } else {
+                    output.append(rawResponse).append("\n");
+                }
+            }
+
+            return output.toString();
+
+        } catch (Exception e) {
+            return "Generate Quiz Test LỖI ❌: " + e.getMessage() + "\n" +
                     "Error Type: " + e.getClass().getSimpleName() + "\n" +
                     "Stack: " + (e.getStackTrace().length > 0 ? e.getStackTrace()[0].toString() : "N/A");
         }

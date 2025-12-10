@@ -46,7 +46,7 @@ public class NotebookFile implements Serializable {
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_CHUNKSIZE_NAME = "chunk_size";
     public static final String COLUMN_CHUNKOVERLAP_NAME = "chunk_overlap";
-    private static final long serialVersionUID = -1804503772143418487L;
+    private static final long serialVersionUID = -5602626184694919579L;
 
 
     private UUID id;
@@ -81,13 +81,13 @@ public class NotebookFile implements Serializable {
 
     private Integer chunkOverlap;
 
-    private Set<AiTask> aiTasks = new LinkedHashSet<>();
+    private Set<AiTaskFile> aiTaskFiles = new LinkedHashSet<>();
 
     private Set<FileChunk> fileChunks = new LinkedHashSet<>();
 
     private Set<FlashcardFile> flashcardFiles = new LinkedHashSet<>();
 
-    private Set<QuizFile> quizFiles = new LinkedHashSet<>();
+    private Set<NotebookQuizFile> notebookQuizFiles = new LinkedHashSet<>();
 
     private Set<TtsFile> ttsFiles = new LinkedHashSet<>();
 
@@ -198,8 +198,8 @@ public class NotebookFile implements Serializable {
     }
 
     @OneToMany(mappedBy = "file")
-    public Set<AiTask> getAiTasks() {
-        return aiTasks;
+    public Set<AiTaskFile> getAiTaskFiles() {
+        return aiTaskFiles;
     }
 
     @OneToMany(mappedBy = "file")
@@ -213,8 +213,8 @@ public class NotebookFile implements Serializable {
     }
 
     @OneToMany(mappedBy = "file")
-    public Set<QuizFile> getQuizFiles() {
-        return quizFiles;
+    public Set<NotebookQuizFile> getNotebookQuizFiles() {
+        return notebookQuizFiles;
     }
 
     @OneToMany(mappedBy = "file")

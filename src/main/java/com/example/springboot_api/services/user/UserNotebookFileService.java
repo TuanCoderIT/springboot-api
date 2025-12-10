@@ -203,7 +203,7 @@ public class UserNotebookFileService {
         counts.put("video", (long) file.getVideoAssetFiles().size());
         counts.put("podcast", (long) file.getTtsFiles().size());
         counts.put("flashcard", (long) file.getFlashcardFiles().size());
-        counts.put("quiz", (long) file.getQuizFiles().size());
+        counts.put("quiz", (long) file.getNotebookQuizFiles().size());
         // counts.put("video", 0L);
         // counts.put("podcast", 0L);
         // counts.put("flashcard", 0L);

@@ -590,7 +590,6 @@ public class AdminNotebookFileService {
                 .collect(Collectors.toList());
     }
 
-
     public long getChunksCount(UUID fileId) {
         return fileChunkRepository.countByFileId(fileId);
     }
@@ -625,7 +624,7 @@ public class AdminNotebookFileService {
         int videoCount = file.getVideoAssetFiles() != null ? file.getVideoAssetFiles().size() : 0;
         int podcastCount = file.getTtsFiles() != null ? file.getTtsFiles().size() : 0;
         int flashcardCount = file.getFlashcardFiles() != null ? file.getFlashcardFiles().size() : 0;
-        int quizCount = file.getQuizFiles() != null ? file.getQuizFiles().size() : 0;
+        int quizCount = file.getNotebookQuizFiles() != null ? file.getNotebookQuizFiles().size() : 0;
 
         java.util.Map<String, Integer> generatedContentCounts = java.util.Map.of(
                 "video", videoCount,

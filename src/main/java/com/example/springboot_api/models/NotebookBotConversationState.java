@@ -30,7 +30,7 @@ public class NotebookBotConversationState implements Serializable {
     public static final String COLUMN_ID_NAME = "id";
     public static final String COLUMN_LASTOPENEDAT_NAME = "last_opened_at";
     public static final String COLUMN_METADATA_NAME = "metadata";
-    private static final long serialVersionUID = 4648652614646518802L;
+    private static final long serialVersionUID = -1460569587807336761L;
 
 
     private UUID id;
