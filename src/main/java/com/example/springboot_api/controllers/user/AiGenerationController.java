@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.config.security.UserPrincipal;
-import com.example.springboot_api.dto.user.chatbot.AiTaskResponse;
+import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
 import com.example.springboot_api.services.user.AiGenerationService;
 
 import lombok.RequiredArgsConstructor;
@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
  * Controller cho các tính năng AI Generation (Quiz, Summary, Flashcards, TTS,
  * Video...).
  * Base URL: /user/notebooks/{notebookId}/ai
+ * 
+ * Sử dụng NotebookAiSet để quản lý các AI generation sets.
  */
 @RestController
 @RequestMapping("/user/notebooks/{notebookId}/ai")
@@ -40,12 +42,13 @@ public class AiGenerationController {
      * Tạo quiz từ các notebook files (chạy nền).
      * POST /user/notebooks/{notebookId}/ai/quiz/generate
      * 
-     * @param user              Current authenticated user
-     * @param notebookId        Notebook ID
-     * @param fileIds           Danh sách file IDs
-     * @param numberOfQuestions Số lượng câu hỏi: "few" | "standard" | "many"
-     * @param difficultyLevel   Độ khó: "easy" | "medium" | "hard"
-     * @return Map chứa taskId để track tiến trình
+     * @param user                   Current authenticated user
+     * @param notebookId             Notebook ID
+     * @param fileIds                Danh sách file IDs
+     * @param numberOfQuestions      Số lượng câu hỏi: "few" | "standard" | "many"
+     * @param difficultyLevel        Độ khó: "easy" | "medium" | "hard"
+     * @param additionalRequirements Yêu cầu bổ sung (optional)
+     * @return Map chứa aiSetId để track tiến trình
      */
     @PostMapping("/quiz/generate")
     public ResponseEntity<Map<String, Object>> generateQuiz(
@@ -75,35 +78,34 @@ public class AiGenerationController {
     }
 
     // ================================
-    // AI TASKS
+    // AI SETS (thay thế AI Tasks)
     // ================================
 
     /**
-     * Lấy danh sách AI Tasks theo notebook.
-     * - Tasks của user hiện tại: Hiển thị tất cả status
-     * - Tasks của người khác: Chỉ hiển thị done
+     * Lấy danh sách AI Sets theo notebook.
+     * - Sets của user hiện tại: Hiển thị tất cả status
+     * - Sets của người khác: Chỉ hiển thị done
      * 
-     * GET /user/notebooks/{notebookId}/ai/tasks?taskType=quiz
+     * GET /user/notebooks/{notebookId}/ai/sets?setType=quiz
      * 
      * @param user       Current authenticated user
      * @param notebookId Notebook ID
-     * @param taskType   Loại task (optional): quiz, summary, flashcards, tts,
-     *                   video, other
-     * @return List<AiTaskResponse>
+     * @param setType    Loại set (optional): quiz, summary, flashcards, tts, video
+     * @return List<AiSetResponse>
      */
-    @GetMapping("/tasks")
-    public ResponseEntity<List<AiTaskResponse>> getAiTasks(
+    @GetMapping("/sets")
+    public ResponseEntity<List<AiSetResponse>> getAiSets(
             @AuthenticationPrincipal UserPrincipal user,
             @PathVariable UUID notebookId,
-            @RequestParam(required = false) String taskType) {
+            @RequestParam(required = false) String setType) {
 
         if (user == null) {
             throw new RuntimeException("User chưa đăng nhập.");
         }
 
-        List<AiTaskResponse> tasks = aiGenerationService.getAiTasks(notebookId, user.getId(), taskType);
+        List<AiSetResponse> sets = aiGenerationService.getAiSets(notebookId, user.getId(), setType);
 
-        return ResponseEntity.ok(tasks);
+        return ResponseEntity.ok(sets);
     }
 
     // ================================

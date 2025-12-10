@@ -40,7 +40,7 @@ public class Notebook implements Serializable {
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = 2552482617490998989L;
+    private static final long serialVersionUID = 5856045495641142828L;
 
 
     private UUID id;
@@ -63,13 +63,13 @@ public class Notebook implements Serializable {
 
     private OffsetDateTime updatedAt;
 
-    private Set<AiTask> aiTasks = new LinkedHashSet<>();
-
     private Set<FileChunk> fileChunks = new LinkedHashSet<>();
 
     private Set<Flashcard> flashcards = new LinkedHashSet<>();
 
     private Set<NotebookActivityLog> notebookActivityLogs = new LinkedHashSet<>();
+
+    private Set<NotebookAiSet> notebookAiSets = new LinkedHashSet<>();
 
     private Set<NotebookBotConversationState> notebookBotConversationStates = new LinkedHashSet<>();
 
@@ -156,11 +156,6 @@ public class Notebook implements Serializable {
     }
 
     @OneToMany(mappedBy = "notebook")
-    public Set<AiTask> getAiTasks() {
-        return aiTasks;
-    }
-
-    @OneToMany(mappedBy = "notebook")
     public Set<FileChunk> getFileChunks() {
         return fileChunks;
     }
@@ -173,6 +168,11 @@ public class Notebook implements Serializable {
     @OneToMany(mappedBy = "notebook")
     public Set<NotebookActivityLog> getNotebookActivityLogs() {
         return notebookActivityLogs;
+    }
+
+    @OneToMany(mappedBy = "notebook")
+    public Set<NotebookAiSet> getNotebookAiSets() {
+        return notebookAiSets;
     }
 
     @OneToMany(mappedBy = "notebook")

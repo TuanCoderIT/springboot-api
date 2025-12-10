@@ -11,16 +11,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.springboot_api.common.exceptions.NotFoundException;
-import com.example.springboot_api.dto.user.chatbot.AiTaskResponse;
-import com.example.springboot_api.models.AiTask;
-import com.example.springboot_api.models.AiTaskFile;
+import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
 import com.example.springboot_api.models.Notebook;
+import com.example.springboot_api.models.NotebookAiSet;
+import com.example.springboot_api.models.NotebookAiSetFile;
 import com.example.springboot_api.models.NotebookFile;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.admin.UserRepository;
-import com.example.springboot_api.repositories.shared.AiTaskFileRepository;
-import com.example.springboot_api.repositories.shared.AiTaskRepository;
+import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.ai.AiAsyncTaskService;
 
@@ -30,6 +29,9 @@ import lombok.RequiredArgsConstructor;
  * Service xử lý các tính năng AI Generation (Quiz, Summary, Flashcards, TTS,
  * Video...).
  * Tách riêng để quản lý nghiệp vụ AI generation độc lập với ChatBot.
+ * 
+ * Sử dụng NotebookAiSet thay cho AiTask để quản lý các AI generation sets.
+ * Mỗi quiz/flashcard/tts/video sẽ có foreign key tới NotebookAiSet.
  * 
  * Lưu ý: Các methods async được delegate sang AiAsyncTaskService để đảm bảo
  * 
@@ -42,8 +44,7 @@ public class AiGenerationService {
     private final NotebookRepository notebookRepository;
     private final UserRepository userRepository;
     private final NotebookFileRepository notebookFileRepository;
-    private final AiTaskRepository aiTaskRepository;
-    private final AiTaskFileRepository aiTaskFileRepository;
+    private final NotebookAiSetRepository aiSetRepository;
     private final AiAsyncTaskService aiAsyncTaskService;
 
     // ================================
@@ -52,7 +53,7 @@ public class AiGenerationService {
 
     /**
      * Tạo quiz từ các notebook files (chạy nền).
-     * API trả về taskId ngay lập tức, việc tạo quiz xử lý ở background.
+     * API trả về aiSetId ngay lập tức, việc tạo quiz xử lý ở background.
      * 
      * @param notebookId             Notebook ID
      * @param userId                 ID của user tạo quiz
@@ -60,7 +61,7 @@ public class AiGenerationService {
      * @param numberOfQuestions      Số lượng câu hỏi: "few" | "standard" | "many"
      * @param difficultyLevel        Độ khó: "easy" | "medium" | "hard"
      * @param additionalRequirements Yêu cầu bổ sung từ người dùng (optional)
-     * @return Map chứa taskId để track tiến trình
+     * @return Map chứa aiSetId để track tiến trình
      */
     public Map<String, Object> generateQuiz(UUID notebookId, UUID userId, List<UUID> fileIds,
             String numberOfQuestions, String difficultyLevel, String additionalRequirements) {
@@ -93,14 +94,14 @@ public class AiGenerationService {
                 return result;
             }
 
-            // Tạo AI Task với trạng thái queued
-            AiTask savedTask = createQuizAiTask(notebook, user, selectedFiles, fileIds, numberOfQuestions,
+            // Tạo NotebookAiSet với trạng thái queued
+            NotebookAiSet savedAiSet = createQuizAiSet(notebook, user, selectedFiles, fileIds, numberOfQuestions,
                     difficultyLevel, additionalRequirements);
 
-            // Trả về taskId ngay lập tức
-            result.put("taskId", savedTask.getId());
+            // Trả về aiSetId ngay lập tức
+            result.put("aiSetId", savedAiSet.getId());
             result.put("status", "queued");
-            result.put("message", "Quiz đang được tạo ở nền. Sử dụng taskId để theo dõi tiến trình.");
+            result.put("message", "Quiz đang được tạo ở nền. Sử dụng aiSetId để theo dõi tiến trình.");
             result.put("success", true);
 
             // Log để debug
@@ -110,7 +111,7 @@ public class AiGenerationService {
             // QUAN TRỌNG: Chỉ truyền IDs, không truyền managed entities để tránh
             // LazyInitializationException
             aiAsyncTaskService.processQuizGenerationAsync(
-                    savedTask.getId(),
+                    savedAiSet.getId(),
                     notebookId,
                     userId,
                     fileIds,
@@ -127,10 +128,10 @@ public class AiGenerationService {
     }
 
     /**
-     * Tạo AiTask và liên kết files.
+     * Tạo NotebookAiSet và liên kết files.
      */
     @Transactional
-    public AiTask createQuizAiTask(Notebook notebook, User user, List<NotebookFile> selectedFiles,
+    public NotebookAiSet createQuizAiSet(Notebook notebook, User user, List<NotebookFile> selectedFiles,
             List<UUID> fileIds, String numberOfQuestions, String difficultyLevel, String additionalRequirements) {
 
         OffsetDateTime now = OffsetDateTime.now();
@@ -142,63 +143,63 @@ public class AiGenerationService {
             inputConfig.put("additionalRequirements", additionalRequirements.trim());
         }
 
-        AiTask aiTask = AiTask.builder()
+        NotebookAiSet aiSet = NotebookAiSet.builder()
                 .notebook(notebook)
-                .user(user)
-                .taskType("quiz")
+                .createdBy(user)
+                .setType("quiz")
                 .status("queued")
+                .title("Quiz từ " + selectedFiles.size() + " tài liệu")
                 .inputConfig(inputConfig)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
-        AiTask savedTask = aiTaskRepository.save(aiTask);
+        NotebookAiSet savedAiSet = aiSetRepository.save(aiSet);
 
-        // Liên kết tất cả files với AI Task
+        // Liên kết tất cả files với AI Set
         for (NotebookFile file : selectedFiles) {
-            AiTaskFile aiTaskFile = AiTaskFile.builder()
-                    .task(savedTask)
+            NotebookAiSetFile aiSetFile = NotebookAiSetFile.builder()
+                    .aiSet(savedAiSet)
                     .file(file)
-                    .role("source")
                     .createdAt(now)
                     .build();
-            aiTaskFileRepository.save(aiTaskFile);
+            savedAiSet.getNotebookAiSetFiles().add(aiSetFile);
         }
 
-        return savedTask;
+        return aiSetRepository.save(savedAiSet);
     }
 
     // ================================
-    // AI TASK MANAGEMENT
+    // AI SET MANAGEMENT
     // ================================
 
     /**
-     * Lấy danh sách AI Tasks theo notebook.
-     * - Tasks của user hiện tại: Hiển thị tất cả status
-     * - Tasks của người khác: Chỉ hiển thị done
+     * Lấy danh sách AI Sets theo notebook.
+     * - Sets của user hiện tại: Hiển thị tất cả status
+     * - Sets của người khác: Chỉ hiển thị done
      */
-    public List<AiTaskResponse> getAiTasks(UUID notebookId, UUID userId, String taskType) {
-        List<AiTaskResponse> result = new ArrayList<>();
+    public List<AiSetResponse> getAiSets(UUID notebookId, UUID userId, String setType) {
+        List<AiSetResponse> result = new ArrayList<>();
 
-        // Lấy tất cả tasks của user hiện tại trong notebook
-        List<AiTask> myTasks = aiTaskRepository.findByNotebookIdAndUserId(notebookId, userId);
+        // Lấy tất cả AI sets của user hiện tại trong notebook
+        List<NotebookAiSet> mySets = aiSetRepository.findByNotebookIdAndUserId(notebookId, userId);
 
-        // Lấy tasks đã hoàn thành của người khác
-        List<AiTask> otherTasks = aiTaskRepository.findCompletedByNotebookIdExcludeUser(notebookId, userId);
+        // Lấy AI sets đã hoàn thành của người khác
+        List<NotebookAiSet> otherSets = aiSetRepository.findCompletedByNotebookIdExcludeUser(notebookId, userId);
 
-        // Convert tasks của user hiện tại
-        for (AiTask task : myTasks) {
-            if (taskType != null && !taskType.isEmpty() && !taskType.equals(task.getTaskType())) {
+        // Convert sets của user hiện tại
+        for (NotebookAiSet set : mySets) {
+            if (setType != null && !setType.isEmpty() && !setType.equals(set.getSetType())) {
                 continue;
             }
-            result.add(convertToAiTaskResponse(task, true));
+            result.add(convertToAiSetResponse(set, true));
         }
 
-        // Convert tasks đã hoàn thành của người khác
-        for (AiTask task : otherTasks) {
-            if (taskType != null && !taskType.isEmpty() && !taskType.equals(task.getTaskType())) {
+        // Convert sets đã hoàn thành của người khác
+        for (NotebookAiSet set : otherSets) {
+            if (setType != null && !setType.isEmpty() && !setType.equals(set.getSetType())) {
                 continue;
             }
-            result.add(convertToAiTaskResponse(task, false));
+            result.add(convertToAiSetResponse(set, false));
         }
 
         // Sort theo createdAt DESC
@@ -212,32 +213,36 @@ public class AiGenerationService {
     // ================================
 
     /**
-     * Convert AiTask entity sang AiTaskResponse DTO.
+     * Convert NotebookAiSet entity sang AiSetResponse DTO.
      */
-    private AiTaskResponse convertToAiTaskResponse(AiTask task, boolean isOwner) {
+    private AiSetResponse convertToAiSetResponse(NotebookAiSet set, boolean isOwner) {
         String userFullName = null;
         String userAvatar = null;
-        UUID taskUserId = null;
+        UUID userId = null;
 
-        if (task.getUser() != null) {
-            taskUserId = task.getUser().getId();
-            userFullName = task.getUser().getFullName();
-            userAvatar = task.getUser().getAvatarUrl();
+        if (set.getCreatedBy() != null) {
+            userId = set.getCreatedBy().getId();
+            userFullName = set.getCreatedBy().getFullName();
+            userAvatar = set.getCreatedBy().getAvatarUrl();
         }
 
-        int fileCount = aiTaskFileRepository.findByTaskId(task.getId()).size();
+        int fileCount = set.getNotebookAiSetFiles() != null ? set.getNotebookAiSetFiles().size() : 0;
 
-        return AiTaskResponse.builder()
-                .id(task.getId())
-                .notebookId(task.getNotebook() != null ? task.getNotebook().getId() : null)
-                .userId(taskUserId)
+        return AiSetResponse.builder()
+                .id(set.getId())
+                .notebookId(set.getNotebook() != null ? set.getNotebook().getId() : null)
+                .userId(userId)
                 .userFullName(userFullName)
                 .userAvatar(userAvatar)
-                .taskType(task.getTaskType())
-                .status(task.getStatus())
-                .errorMessage(task.getErrorMessage())
-                .createdAt(task.getCreatedAt())
-                .updatedAt(task.getUpdatedAt())
+                .setType(set.getSetType())
+                .status(set.getStatus())
+                .errorMessage(set.getErrorMessage())
+                .title(set.getTitle())
+                .description(set.getDescription())
+                .createdAt(set.getCreatedAt())
+                .startedAt(set.getStartedAt())
+                .finishedAt(set.getFinishedAt())
+                .updatedAt(set.getUpdatedAt())
                 .fileCount(fileCount)
                 .isOwner(isOwner)
                 .build();

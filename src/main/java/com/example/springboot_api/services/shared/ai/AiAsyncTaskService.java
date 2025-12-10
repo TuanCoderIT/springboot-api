@@ -15,14 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.springboot_api.models.LlmModel;
 import com.example.springboot_api.models.Notebook;
+import com.example.springboot_api.models.NotebookAiSet;
 import com.example.springboot_api.models.NotebookFile;
-import com.example.springboot_api.models.NotebookQuizFile;
 import com.example.springboot_api.models.NotebookQuizOption;
 import com.example.springboot_api.models.NotebookQuizz;
 import com.example.springboot_api.models.User;
-import com.example.springboot_api.repositories.shared.AiTaskRepository;
 import com.example.springboot_api.repositories.shared.FileChunkRepository;
-import com.example.springboot_api.repositories.shared.QuizFileRepository;
+import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 import com.example.springboot_api.repositories.shared.QuizOptionRepository;
 import com.example.springboot_api.repositories.shared.QuizRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,16 +31,18 @@ import lombok.RequiredArgsConstructor;
 /**
  * Service xử lý các tác vụ AI chạy nền (async).
  * Tách riêng để đảm bảo @Async hoạt động (tránh self-invocation problem).
+ * 
+ * Sử dụng NotebookAiSet để quản lý các AI generation sets.
+ * Mỗi quiz/flashcard/tts/video sẽ có foreign key tới NotebookAiSet.
  */
 @Service
 @RequiredArgsConstructor
 public class AiAsyncTaskService {
 
-    private final AiTaskRepository aiTaskRepository;
+    private final NotebookAiSetRepository aiSetRepository;
     private final FileChunkRepository fileChunkRepository;
     private final QuizRepository quizRepository;
     private final QuizOptionRepository quizOptionRepository;
-    private final QuizFileRepository quizFileRepository;
     private final AIModelService aiModelService;
     private final ObjectMapper objectMapper;
 
@@ -51,51 +52,56 @@ public class AiAsyncTaskService {
      * 
      * QUAN TRỌNG: Nhận IDs thay vì managed entities để tránh
      * LazyInitializationException.
+     * 
+     * @param aiSetId                ID của NotebookAiSet đã tạo
+     * @param notebookId             Notebook ID
+     * @param userId                 User ID
+     * @param fileIds                Danh sách file IDs
+     * @param numberOfQuestions      Số lượng câu hỏi
+     * @param difficultyLevel        Độ khó
+     * @param additionalRequirements Yêu cầu bổ sung
      */
     @Async
     @Transactional
-    public void processQuizGenerationAsync(UUID taskId, UUID notebookId, UUID userId,
+    public void processQuizGenerationAsync(UUID aiSetId, UUID notebookId, UUID userId,
             List<UUID> fileIds, String numberOfQuestions, String difficultyLevel,
             String additionalRequirements) {
 
         System.out.println(
-                "🚀 [ASYNC] Bắt đầu tạo quiz - Task: " + taskId + " | Thread: " + Thread.currentThread().getName());
+                "🚀 [ASYNC] Bắt đầu tạo quiz - AiSet: " + aiSetId + " | Thread: " + Thread.currentThread().getName());
 
         try {
             // Cập nhật status thành processing
-            updateAiTaskStatus(taskId, "processing", null, null);
+            updateAiSetStatus(aiSetId, "processing", null, null);
 
-            // Load entities từ IDs trong transaction mới
-            Notebook notebook = aiTaskRepository.findById(taskId)
-                    .map(task -> task.getNotebook())
-                    .orElse(null);
+            // Load AI Set với các thông tin liên quan
+            NotebookAiSet aiSet = aiSetRepository.findById(aiSetId).orElse(null);
+            if (aiSet == null) {
+                System.err.println("❌ [ASYNC] Không tìm thấy AiSet: " + aiSetId);
+                return;
+            }
 
-            User user = aiTaskRepository.findById(taskId)
-                    .map(task -> task.getUser())
-                    .orElse(null);
+            Notebook notebook = aiSet.getNotebook();
+            User user = aiSet.getCreatedBy();
 
             if (notebook == null || user == null) {
-                String errorMsg = "Không tìm thấy notebook hoặc user từ task";
-                updateAiTaskStatus(taskId, "failed", errorMsg, null);
+                String errorMsg = "Không tìm thấy notebook hoặc user từ AiSet";
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
                 System.err.println("❌ [ASYNC] " + errorMsg);
                 return;
             }
 
-            // Load files từ fileIds
+            // Load files từ AiSetFiles
             List<NotebookFile> selectedFiles = new ArrayList<>();
-            for (UUID fileId : fileIds) {
-                // Lấy từ AiTaskFile repository thông qua task
-                aiTaskRepository.findById(taskId).ifPresent(task -> {
-                    task.getAiTaskFiles().stream()
-                            .filter(tf -> tf.getFile() != null && tf.getFile().getId().equals(fileId))
-                            .findFirst()
-                            .ifPresent(tf -> selectedFiles.add(tf.getFile()));
-                });
-            }
+            aiSet.getNotebookAiSetFiles().forEach(asf -> {
+                if (asf.getFile() != null) {
+                    selectedFiles.add(asf.getFile());
+                }
+            });
 
             if (selectedFiles.isEmpty()) {
-                String errorMsg = "Không tìm thấy file nào từ task";
-                updateAiTaskStatus(taskId, "failed", errorMsg, null);
+                String errorMsg = "Không tìm thấy file nào từ AiSet";
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
                 System.err.println("❌ [ASYNC] " + errorMsg);
                 return;
             }
@@ -105,7 +111,7 @@ public class AiAsyncTaskService {
             String summaryText = summarizeDocuments(selectedFiles, null);
             if (summaryText == null || summaryText.isEmpty()) {
                 String errorMsg = "Không thể tóm tắt tài liệu (có thể không có chunks)";
-                updateAiTaskStatus(taskId, "failed", errorMsg, null);
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
                 System.err.println("❌ [ASYNC] " + errorMsg);
                 return;
             }
@@ -119,7 +125,7 @@ public class AiAsyncTaskService {
             String llmResponse = aiModelService.callGeminiModel(quizPrompt);
             if (llmResponse == null || llmResponse.trim().isEmpty()) {
                 String errorMsg = "LLM trả về response rỗng";
-                updateAiTaskStatus(taskId, "failed", errorMsg, null);
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
                 System.err.println("❌ [ASYNC] " + errorMsg);
                 return;
             }
@@ -129,53 +135,60 @@ public class AiAsyncTaskService {
             List<Map<String, Object>> quizList = parseQuizJsonResponse(llmResponse);
             if (quizList == null || quizList.isEmpty()) {
                 String errorMsg = "Không thể parse quiz từ LLM response";
-                updateAiTaskStatus(taskId, "failed", errorMsg, null);
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
                 System.err.println("❌ [ASYNC] " + errorMsg);
                 return;
             }
 
-            // Lưu quiz vào database
-            List<UUID> savedQuizIds = saveQuizzesToDatabase(notebook, user, selectedFiles, quizList);
+            // Lưu quiz vào database VỚI foreign key tới AiSet
+            List<UUID> savedQuizIds = saveQuizzesToDatabase(notebook, user, aiSet, quizList);
 
-            // Cập nhật AiTask thành công
-            Map<String, Object> outputData = new HashMap<>();
-            outputData.put("quizIds", savedQuizIds);
-            outputData.put("quizCount", savedQuizIds.size());
-            updateAiTaskStatus(taskId, "done", null, outputData);
+            // Cập nhật AiSet thành công
+            Map<String, Object> outputStats = new HashMap<>();
+            outputStats.put("quizIds", savedQuizIds);
+            outputStats.put("quizCount", savedQuizIds.size());
+            updateAiSetStatus(aiSetId, "done", null, outputStats);
 
-            System.out
-                    .println("✅ [ASYNC] Hoàn thành tạo quiz - Task: " + taskId + " | Số quiz: " + savedQuizIds.size());
+            System.out.println(
+                    "✅ [ASYNC] Hoàn thành tạo quiz - AiSet: " + aiSetId + " | Số quiz: " + savedQuizIds.size());
 
         } catch (Exception e) {
             String errorMsg = "Lỗi khi tạo quiz: " + e.getMessage();
-            updateAiTaskStatus(taskId, "failed", errorMsg, null);
+            updateAiSetStatus(aiSetId, "failed", errorMsg, null);
             System.err.println("❌ [ASYNC] " + errorMsg);
             e.printStackTrace();
         }
     }
 
     /**
-     * Cập nhật status của AiTask.
+     * Cập nhật status của NotebookAiSet.
      */
     @Transactional
-    public void updateAiTaskStatus(UUID taskId, String status, String errorMessage, Map<String, Object> outputData) {
-        aiTaskRepository.findById(taskId).ifPresent(task -> {
-            task.setStatus(status);
-            task.setErrorMessage(errorMessage);
-            if (outputData != null) {
-                task.setOutputData(outputData);
+    public void updateAiSetStatus(UUID aiSetId, String status, String errorMessage, Map<String, Object> outputStats) {
+        aiSetRepository.findById(aiSetId).ifPresent(aiSet -> {
+            aiSet.setStatus(status);
+            aiSet.setErrorMessage(errorMessage);
+            aiSet.setUpdatedAt(OffsetDateTime.now());
+
+            if ("processing".equals(status)) {
+                aiSet.setStartedAt(OffsetDateTime.now());
             }
-            task.setUpdatedAt(OffsetDateTime.now());
-            aiTaskRepository.save(task);
+            if ("done".equals(status) || "failed".equals(status)) {
+                aiSet.setFinishedAt(OffsetDateTime.now());
+            }
+            if (outputStats != null) {
+                aiSet.setOutputStats(outputStats);
+            }
+            aiSetRepository.save(aiSet);
         });
     }
 
     /**
-     * Lưu quiz vào database.
+     * Lưu quiz vào database với foreign key tới NotebookAiSet.
      */
     @Transactional
     public List<UUID> saveQuizzesToDatabase(Notebook notebook, User user,
-            List<NotebookFile> sourceFiles, List<Map<String, Object>> quizList) {
+            NotebookAiSet aiSet, List<Map<String, Object>> quizList) {
 
         List<UUID> savedQuizIds = new ArrayList<>();
         OffsetDateTime now = OffsetDateTime.now();
@@ -192,6 +205,7 @@ public class AiAsyncTaskService {
                     .explanation(explanation)
                     .difficultyLevel(difficultyLevel)
                     .createdBy(user)
+                    .notebookAiSets(aiSet) // Liên kết quiz với AI Set
                     .createdAt(now)
                     .build();
             NotebookQuizz savedQuiz = quizRepository.save(quiz);
@@ -220,16 +234,6 @@ public class AiAsyncTaskService {
                             .build();
                     quizOptionRepository.save(option);
                 }
-            }
-
-            // Liên kết quiz với source files
-            for (NotebookFile sourceFile : sourceFiles) {
-                NotebookQuizFile quizFile = NotebookQuizFile.builder()
-                        .quiz(savedQuiz)
-                        .file(sourceFile)
-                        .createdAt(now)
-                        .build();
-                quizFileRepository.save(quizFile);
             }
         }
 
