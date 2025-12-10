@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
 import com.example.springboot_api.models.Notebook;
@@ -19,9 +20,11 @@ import com.example.springboot_api.models.NotebookFile;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.admin.UserRepository;
+import com.example.springboot_api.repositories.shared.NotebookAiSetFileRepository;
 import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.ai.AiAsyncTaskService;
+import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -45,7 +48,9 @@ public class AiGenerationService {
     private final UserRepository userRepository;
     private final NotebookFileRepository notebookFileRepository;
     private final NotebookAiSetRepository aiSetRepository;
+    private final NotebookAiSetFileRepository aiSetFileRepository;
     private final AiAsyncTaskService aiAsyncTaskService;
+    private final UrlNormalizer urlNormalizer;
 
     // ================================
     // QUIZ GENERATION
@@ -155,17 +160,17 @@ public class AiGenerationService {
                 .build();
         NotebookAiSet savedAiSet = aiSetRepository.save(aiSet);
 
-        // Liên kết tất cả files với AI Set
+        // Liên kết tất cả files với AI Set (save qua repository để tránh NPE)
         for (NotebookFile file : selectedFiles) {
             NotebookAiSetFile aiSetFile = NotebookAiSetFile.builder()
                     .aiSet(savedAiSet)
                     .file(file)
                     .createdAt(now)
                     .build();
-            savedAiSet.getNotebookAiSetFiles().add(aiSetFile);
+            aiSetFileRepository.save(aiSetFile);
         }
 
-        return aiSetRepository.save(savedAiSet);
+        return savedAiSet;
     }
 
     // ================================
@@ -223,7 +228,7 @@ public class AiGenerationService {
         if (set.getCreatedBy() != null) {
             userId = set.getCreatedBy().getId();
             userFullName = set.getCreatedBy().getFullName();
-            userAvatar = set.getCreatedBy().getAvatarUrl();
+            userAvatar = urlNormalizer.normalizeToFull(set.getCreatedBy().getAvatarUrl());
         }
 
         int fileCount = set.getNotebookAiSetFiles() != null ? set.getNotebookAiSetFiles().size() : 0;
@@ -246,5 +251,36 @@ public class AiGenerationService {
                 .fileCount(fileCount)
                 .isOwner(isOwner)
                 .build();
+    }
+
+    // ================================
+    // DELETE AI SET
+    // ================================
+
+    /**
+     * Xóa AI Set và tất cả dữ liệu liên quan.
+     * Chỉ cho phép xóa nếu user là người tạo AI Set.
+     * 
+     * @param userId  ID của user đang request
+     * @param aiSetId ID của AI Set cần xóa
+     * @throws NotFoundException   nếu không tìm thấy AI Set
+     * @throws BadRequestException nếu user không phải người tạo
+     */
+    @Transactional
+    public void deleteAiSet(UUID userId, UUID aiSetId) {
+        // Tìm AI Set
+        NotebookAiSet aiSet = aiSetRepository.findById(aiSetId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy AI Set với ID: " + aiSetId));
+
+        // Kiểm tra quyền: chỉ người tạo mới được xóa
+        if (aiSet.getCreatedBy() == null || !aiSet.getCreatedBy().getId().equals(userId)) {
+            throw new BadRequestException("Bạn chỉ có thể xóa AI Set do chính mình tạo");
+        }
+
+        // Xóa các file liên kết (NotebookAiSetFile)
+        aiSetFileRepository.deleteByAiSetId(aiSetId);
+
+        // Xóa AI Set (cascade sẽ xóa quizzes, options, flashcards, etc.)
+        aiSetRepository.delete(aiSet);
     }
 }
