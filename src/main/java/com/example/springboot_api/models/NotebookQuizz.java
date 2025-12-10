@@ -2,7 +2,6 @@ package com.example.springboot_api.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -23,25 +22,30 @@ import java.util.UUID;
 @Getter
 @Setter
 @ToString
-@Entity(name = Quiz.ENTITY_NAME)
-@Table(name = Quiz.TABLE_NAME, schema = "public", indexes = {
-        @Index(name = "idx_quizzes_notebook", columnList = "notebook_id")
-})
-public class Quiz implements Serializable {
-    public static final String ENTITY_NAME = "Quiz";
-    public static final String TABLE_NAME = "quizzes";
+@Entity(name = NotebookQuizz.ENTITY_NAME)
+@Table(name = NotebookQuizz.TABLE_NAME, schema = "public")
+public class NotebookQuizz implements Serializable {
+    public static final String ENTITY_NAME = "Notebook_Quizz";
+    public static final String TABLE_NAME = "notebook_quizzes";
     public static final String COLUMN_ID_NAME = "id";
-    public static final String COLUMN_TITLE_NAME = "title";
+    public static final String COLUMN_QUESTION_NAME = "question";
+    public static final String COLUMN_EXPLANATION_NAME = "explanation";
+    public static final String COLUMN_DIFFICULTYLEVEL_NAME = "difficulty_level";
+    public static final String COLUMN_EMBEDDING_NAME = "embedding";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -4964519334904178639L;
+    private static final long serialVersionUID = 9067903996967890555L;
 
 
     private UUID id;
 
     private Notebook notebook;
 
-    private String title;
+    private String question;
+
+    private String explanation;
+
+    private Short difficultyLevel;
 
     private User createdBy;
 
@@ -49,11 +53,8 @@ public class Quiz implements Serializable {
 
     private OffsetDateTime createdAt;
 
-    private Set<QuizFile> quizFiles = new LinkedHashSet<>();
-
-    private Set<QuizQuestion> quizQuestions = new LinkedHashSet<>();
-
-    private Set<QuizSubmission> quizSubmissions = new LinkedHashSet<>();
+    private Set<NotebookQuizFile> notebookQuizFiles = new LinkedHashSet<>();
+    private Set<NotebookQuizOption> notebookQuizOptions = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -70,11 +71,20 @@ public class Quiz implements Serializable {
         return notebook;
     }
 
-    @Size(max = 255)
     @NotNull
-    @Column(name = COLUMN_TITLE_NAME, nullable = false)
-    public String getTitle() {
-        return title;
+    @Column(name = COLUMN_QUESTION_NAME, nullable = false, length = Integer.MAX_VALUE)
+    public String getQuestion() {
+        return question;
+    }
+
+    @Column(name = COLUMN_EXPLANATION_NAME, length = Integer.MAX_VALUE)
+    public String getExplanation() {
+        return explanation;
+    }
+
+    @Column(name = COLUMN_DIFFICULTYLEVEL_NAME)
+    public Short getDifficultyLevel() {
+        return difficultyLevel;
     }
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -98,18 +108,18 @@ public class Quiz implements Serializable {
     }
 
     @OneToMany(mappedBy = "quiz")
-    public Set<QuizFile> getQuizFiles() {
-        return quizFiles;
+    public Set<NotebookQuizFile> getNotebookQuizFiles() {
+        return notebookQuizFiles;
     }
 
     @OneToMany(mappedBy = "quiz")
-    public Set<QuizQuestion> getQuizQuestions() {
-        return quizQuestions;
+    public Set<NotebookQuizOption> getNotebookQuizOptions() {
+        return notebookQuizOptions;
     }
 
-    @OneToMany(mappedBy = "quiz")
-    public Set<QuizSubmission> getQuizSubmissions() {
-        return quizSubmissions;
-    }
-
+/*
+ TODO [Reverse Engineering] create field to map the 'embedding' column
+ Available actions: Define target Java type | Uncomment as is | Remove column mapping
+    private Object embedding;
+*/
 }

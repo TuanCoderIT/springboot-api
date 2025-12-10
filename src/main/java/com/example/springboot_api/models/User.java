@@ -36,7 +36,7 @@ public class User implements Serializable {
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_AVATAR_NAME = "avatar";
-    private static final long serialVersionUID = 1853181525295829727L;
+    private static final long serialVersionUID = 2699248150265613069L;
 
 
     private UUID id;
@@ -67,6 +67,8 @@ public class User implements Serializable {
 
     private Set<NotebookActivityLog> notebookActivityLogs = new LinkedHashSet<>();
 
+    private Set<NotebookBotConversationState> notebookBotConversationStates = new LinkedHashSet<>();
+
     private Set<NotebookBotConversation> notebookBotConversations = new LinkedHashSet<>();
 
     private Set<NotebookBotMessage> notebookBotMessages = new LinkedHashSet<>();
@@ -77,13 +79,11 @@ public class User implements Serializable {
 
     private Set<NotebookMessage> notebookMessages = new LinkedHashSet<>();
 
+    private Set<NotebookQuizz> notebookQuizzes = new LinkedHashSet<>();
+
     private Set<Notebook> notebooks = new LinkedHashSet<>();
 
     private Set<Notification> notifications = new LinkedHashSet<>();
-
-    private Set<QuizSubmission> quizSubmissions = new LinkedHashSet<>();
-
-    private Set<Quiz> quizzes = new LinkedHashSet<>();
 
     private Set<TtsAsset> ttsAssets = new LinkedHashSet<>();
 
@@ -169,6 +169,11 @@ public class User implements Serializable {
         return notebookActivityLogs;
     }
 
+    @OneToMany(mappedBy = "user")
+    public Set<NotebookBotConversationState> getNotebookBotConversationStates() {
+        return notebookBotConversationStates;
+    }
+
     @OneToMany(mappedBy = "createdBy")
     public Set<NotebookBotConversation> getNotebookBotConversations() {
         return notebookBotConversations;
@@ -195,6 +200,11 @@ public class User implements Serializable {
     }
 
     @OneToMany(mappedBy = "createdBy")
+    public Set<NotebookQuizz> getNotebookQuizzes() {
+        return notebookQuizzes;
+    }
+
+    @OneToMany(mappedBy = "createdBy")
     public Set<Notebook> getNotebooks() {
         return notebooks;
     }
@@ -202,16 +212,6 @@ public class User implements Serializable {
     @OneToMany(mappedBy = "user")
     public Set<Notification> getNotifications() {
         return notifications;
-    }
-
-    @OneToMany(mappedBy = "user")
-    public Set<QuizSubmission> getQuizSubmissions() {
-        return quizSubmissions;
-    }
-
-    @OneToMany(mappedBy = "createdBy")
-    public Set<Quiz> getQuizzes() {
-        return quizzes;
     }
 
     @OneToMany(mappedBy = "createdBy")

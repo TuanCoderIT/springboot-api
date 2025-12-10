@@ -8,7 +8,7 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.io.Serializable;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Builder
@@ -17,23 +17,23 @@ import java.util.UUID;
 @Getter
 @Setter
 @ToString
-@Entity(name = QuizFile.ENTITY_NAME)
-@Table(name = QuizFile.TABLE_NAME, schema = "public")
-public class QuizFile implements Serializable {
-    public static final String ENTITY_NAME = "Quiz_File";
-    public static final String TABLE_NAME = "quiz_files";
+@Entity(name = NotebookQuizFile.ENTITY_NAME)
+@Table(name = NotebookQuizFile.TABLE_NAME, schema = "public")
+public class NotebookQuizFile implements Serializable {
+    public static final String ENTITY_NAME = "Notebook_Quiz_File";
+    public static final String TABLE_NAME = "notebook_quiz_files";
     public static final String COLUMN_ID_NAME = "id";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -4489002159142380319L;
+    private static final long serialVersionUID = 4886695187993826599L;
 
 
     private UUID id;
 
-    private Quiz quiz;
+    private NotebookQuizz quiz;
 
     private NotebookFile file;
 
-    private Instant createdAt;
+    private OffsetDateTime createdAt;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -46,7 +46,7 @@ public class QuizFile implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "quiz_id", nullable = false)
-    public Quiz getQuiz() {
+    public NotebookQuizz getQuiz() {
         return quiz;
     }
 
@@ -58,9 +58,10 @@ public class QuizFile implements Serializable {
         return file;
     }
 
+    @NotNull
     @ColumnDefault("now()")
-    @Column(name = COLUMN_CREATEDAT_NAME)
-    public Instant getCreatedAt() {
+    @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 

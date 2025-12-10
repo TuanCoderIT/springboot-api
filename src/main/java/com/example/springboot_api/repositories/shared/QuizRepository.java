@@ -7,17 +7,27 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.example.springboot_api.models.Quiz;
+import com.example.springboot_api.models.NotebookQuizz;
 
 @Repository
-public interface QuizRepository extends JpaRepository<Quiz, UUID> {
-    long countByNotebookId(UUID notebookId);
+public interface QuizRepository extends JpaRepository<NotebookQuizz, UUID> {
 
-    @Query("""
-            SELECT COUNT(q) FROM Quiz q
-            WHERE q.notebook.id = :notebookId
-            AND q.createdBy.id = :userId
-            """)
-    long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
+        /**
+         * Count quizzes by notebook ID
+         */
+        @Query("""
+                        SELECT COUNT(q) FROM Notebook_Quizz q
+                        WHERE q.notebook.id = :notebookId
+                        """)
+        long countByNotebookId(@Param("notebookId") UUID notebookId);
+
+        /**
+         * Count quizzes by notebook ID and user ID
+         */
+        @Query("""
+                        SELECT COUNT(q) FROM Notebook_Quizz q
+                        WHERE q.notebook.id = :notebookId
+                        AND q.createdBy.id = :userId
+                        """)
+        long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
 }
-
