@@ -199,15 +199,13 @@ public class UserNotebookFileService {
         String fullContent = "";
 
         // Count generated content
+        // TODO: Cập nhật sau khi cấu trúc model mới hoàn thiện
+        // Hiện tại các generated content được quản lý qua NotebookAiSet
         java.util.Map<String, Long> counts = new java.util.HashMap<>();
-        counts.put("video", (long) file.getVideoAssetFiles().size());
-        counts.put("podcast", (long) file.getTtsFiles().size());
-        counts.put("flashcard", (long) file.getFlashcardFiles().size());
-        counts.put("quiz", (long) file.getNotebookQuizFiles().size());
-        // counts.put("video", 0L);
-        // counts.put("podcast", 0L);
-        // counts.put("flashcard", 0L);
-        // counts.put("quiz", 0L);
+        counts.put("video", 0L);
+        counts.put("podcast", 0L);
+        counts.put("flashcard", 0L);
+        counts.put("quiz", 0L);
 
         // Contributor
         NotebookFileResponse.UploaderInfo contributor = null;
