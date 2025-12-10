@@ -12,7 +12,9 @@ import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Builder
@@ -38,14 +40,12 @@ public class AiTask implements Serializable {
     public static final String COLUMN_ERRORMESSAGE_NAME = "error_message";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = 7454011392209553171L;
+    private static final long serialVersionUID = 4542261421498452268L;
 
 
     private UUID id;
 
     private Notebook notebook;
-
-    private NotebookFile file;
 
     private User user;
 
@@ -63,6 +63,8 @@ public class AiTask implements Serializable {
 
     private OffsetDateTime updatedAt;
 
+    private Set<AiTaskFile> aiTaskFiles = new LinkedHashSet<>();
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = COLUMN_ID_NAME, nullable = false)
@@ -76,13 +78,6 @@ public class AiTask implements Serializable {
     @JoinColumn(name = "notebook_id", nullable = false)
     public Notebook getNotebook() {
         return notebook;
-    }
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "file_id")
-    public NotebookFile getFile() {
-        return file;
     }
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -135,6 +130,11 @@ public class AiTask implements Serializable {
     @Column(name = COLUMN_UPDATEDAT_NAME, nullable = false)
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    @OneToMany(mappedBy = "task")
+    public Set<AiTaskFile> getAiTaskFiles() {
+        return aiTaskFiles;
     }
 
 }

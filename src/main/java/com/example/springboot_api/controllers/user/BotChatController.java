@@ -2,6 +2,7 @@ package com.example.springboot_api.controllers.user;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ import com.example.springboot_api.dto.user.chatbot.ConversationItem;
 import com.example.springboot_api.dto.user.chatbot.ListConversationsResponse;
 import com.example.springboot_api.dto.user.chatbot.ListMessagesResponse;
 import com.example.springboot_api.dto.user.chatbot.LlmModelResponse;
+import com.example.springboot_api.services.user.AiGenerationService;
 import com.example.springboot_api.services.user.ChatBotService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -35,6 +37,7 @@ import lombok.RequiredArgsConstructor;
 public class BotChatController {
 
     private final ChatBotService chatBotService;
+    private final AiGenerationService aiGenerationService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -267,5 +270,63 @@ public class BotChatController {
 
         chatBotService.deleteConversation(notebookId, user.getId(), conversationId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * @deprecated Sử dụng POST /user/notebooks/{notebookId}/ai/quiz/generate thay
+     *             thế.
+     * 
+     *             Tạo quiz từ các notebook files (backward compatible).
+     */
+    @Deprecated
+    @GetMapping("/generate-quiz")
+    public ResponseEntity<Map<String, Object>> generateQuiz(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false, defaultValue = "standard") String numberOfQuestions,
+            @RequestParam(required = false, defaultValue = "medium") String difficultyLevel) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        // Forward sang AiGenerationService
+        Map<String, Object> result = aiGenerationService.generateQuiz(notebookId, user.getId(), fileIds,
+                numberOfQuestions, difficultyLevel, null);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * @deprecated Sử dụng GET /user/notebooks/{notebookId}/ai/tasks thay thế.
+     * 
+     *             Lấy danh sách AI Tasks theo notebook (backward compatible).
+     */
+    @Deprecated
+    @GetMapping("/ai-tasks")
+    public ResponseEntity<List<com.example.springboot_api.dto.user.chatbot.AiTaskResponse>> getAiTasks(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam(required = false) String taskType) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        // Forward sang AiGenerationService
+        List<com.example.springboot_api.dto.user.chatbot.AiTaskResponse> tasks = aiGenerationService.getAiTasks(
+                notebookId,
+                user.getId(), taskType);
+
+        return ResponseEntity.ok(tasks);
     }
 }
