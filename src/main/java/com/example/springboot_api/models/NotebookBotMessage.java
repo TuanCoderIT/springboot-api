@@ -38,7 +38,7 @@ public class NotebookBotMessage implements Serializable {
     public static final String COLUMN_CONTEXT_NAME = "context";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_METADATA_NAME = "metadata";
-    private static final long serialVersionUID = -6485881963877417182L;
+    private static final long serialVersionUID = 1307834477887665062L;
 
 
     private UUID id;

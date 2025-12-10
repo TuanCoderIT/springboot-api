@@ -40,7 +40,7 @@ public class Notebook implements Serializable {
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = 3486602435812351593L;
+    private static final long serialVersionUID = 2552482617490998989L;
 
 
     private UUID id;
@@ -71,6 +71,8 @@ public class Notebook implements Serializable {
 
     private Set<NotebookActivityLog> notebookActivityLogs = new LinkedHashSet<>();
 
+    private Set<NotebookBotConversationState> notebookBotConversationStates = new LinkedHashSet<>();
+
     private Set<NotebookBotConversation> notebookBotConversations = new LinkedHashSet<>();
 
     private Set<NotebookBotMessage> notebookBotMessages = new LinkedHashSet<>();
@@ -81,7 +83,7 @@ public class Notebook implements Serializable {
 
     private Set<NotebookMessage> notebookMessages = new LinkedHashSet<>();
 
-    private Set<Quiz> quizzes = new LinkedHashSet<>();
+    private Set<NotebookQuizz> notebookQuizzes = new LinkedHashSet<>();
 
     private Set<TtsAsset> ttsAssets = new LinkedHashSet<>();
 
@@ -174,6 +176,11 @@ public class Notebook implements Serializable {
     }
 
     @OneToMany(mappedBy = "notebook")
+    public Set<NotebookBotConversationState> getNotebookBotConversationStates() {
+        return notebookBotConversationStates;
+    }
+
+    @OneToMany(mappedBy = "notebook")
     public Set<NotebookBotConversation> getNotebookBotConversations() {
         return notebookBotConversations;
     }
@@ -199,8 +206,8 @@ public class Notebook implements Serializable {
     }
 
     @OneToMany(mappedBy = "notebook")
-    public Set<Quiz> getQuizzes() {
-        return quizzes;
+    public Set<NotebookQuizz> getNotebookQuizzes() {
+        return notebookQuizzes;
     }
 
     @OneToMany(mappedBy = "notebook")

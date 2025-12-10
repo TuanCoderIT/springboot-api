@@ -62,6 +62,7 @@ public class FileChunk implements Serializable {
     private Integer chunkIndex;
 
     private String content;
+
     private List<Double> embedding;
 
     private Map<String, Object> metadata;

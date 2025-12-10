@@ -17,8 +17,15 @@ public interface FileChunkRepository extends JpaRepository<FileChunk, UUID> {
     @Query("SELECT fc.id, fc.chunkIndex, fc.content FROM File_Chunk fc WHERE fc.file.id = :fileId ORDER BY fc.chunkIndex ASC")
     List<Object[]> findChunkDataByFileId(@Param("fileId") UUID fileId);
 
-    @Query("SELECT fc FROM File_Chunk fc WHERE fc.file.id = :fileId ORDER BY fc.chunkIndex ASC")
-    List<FileChunk> findByFileId(@Param("fileId") UUID fileId);
+    @Query("SELECT fc.chunkIndex, fc.content FROM File_Chunk fc WHERE fc.file.id = :fileId ORDER BY fc.chunkIndex ASC")
+    List<Object[]> findByFileId(@Param("fileId") UUID fileId);
+
+    /**
+     * Lấy chunks với giới hạn số lượng để tránh OutOfMemoryError (dùng native
+     * query)
+     */
+    @Query(value = "SELECT fc.chunk_index, fc.content FROM file_chunks fc WHERE fc.file_id = :fileId ORDER BY fc.chunk_index ASC LIMIT :limit", nativeQuery = true)
+    List<Object[]> findByFileIdWithLimit(@Param("fileId") UUID fileId, @Param("limit") int limit);
 
     @Modifying
     @Query("DELETE FROM File_Chunk fc WHERE fc.file.id = :fileId")

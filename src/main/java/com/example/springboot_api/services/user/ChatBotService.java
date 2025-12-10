@@ -391,13 +391,13 @@ public class ChatBotService {
             throw new BadRequestException("Câu hỏi là bắt buộc. Vui lòng nhập câu hỏi.");
         }
 
-        // Kết hợp queryText và imageTexts thành prompt với trọng số
-        // Trọng số câu hỏi cao hơn trọng số hình ảnh một chút
+        // Kết hợp queryText và imageTexts thành prompt
+        // Format giống chat history để LLM hiểu rõ hình ảnh là câu hỏi bổ sung
         String combinedQueryText;
         if (!imageTexts.isEmpty()) {
-            // Có cả câu hỏi và hình ảnh: câu hỏi là chính, hình ảnh là bổ sung
+            // Có cả câu hỏi và hình ảnh: format như chat history
             combinedQueryText = String.format(
-                    "Câu hỏi chính: %s\n\nThông tin bổ sung từ hình ảnh (trọng số thấp hơn): %s",
+                    "%s\n\n[Câu hỏi bổ sung từ hình ảnh: %s]",
                     queryText, imageTexts);
         } else {
             // Chỉ có câu hỏi
@@ -416,18 +416,6 @@ public class ChatBotService {
         }
 
         ChatMode actualMode = req.getMode();
-        if (req.getMode() == ChatMode.AUTO) {
-            // Thu thập thông tin đầy đủ cho router
-            String imagesText = imageTextsBuilder.toString().trim();
-            List<String> uniqueFileTypes = fileTypes.stream().distinct().collect(Collectors.toList());
-
-            // Lấy chat history để hiểu ngữ cảnh (không exclude message hiện tại vì chưa
-            // được tạo)
-            String chatHistoryForRouter = getChatHistory(conversation.getId(), userId, null);
-
-            actualMode = determineModeFromGemini(queryText, imagesText, uniqueFileTypes, imageCount,
-                    chatHistoryForRouter);
-        }
 
         // Lưu mode và queryText chung cho tất cả các case
         llmInputData.put("mode", actualMode.name());
@@ -460,7 +448,7 @@ public class ChatBotService {
         }
 
         // Lấy chat history (10 messages mới nhất) để bổ sung ngữ cảnh
-        String chatHistory = getChatHistory(conversation.getId(), userId, userMessage.getId());
+        String chatHistory = getChatHistory(conversation.getId(), userId);
 
         // Chuẩn bị prompt từ llmInputData và chat history để gọi LLM
         String llmPrompt = buildLlmPrompt(llmInputData, chatHistory);
@@ -490,9 +478,15 @@ public class ChatBotService {
         Map<String, Object> llmResponseJson = parseLlmResponse(llmResponse);
 
         // Extract answer và sources từ JSON
-        String answer = (String) llmResponseJson.get("answer");
-        if (answer == null) {
-            answer = "";
+        Object answerObj = llmResponseJson.get("answer");
+        String answer = "";
+        if (answerObj != null) {
+            if (answerObj instanceof String) {
+                answer = (String) answerObj;
+            } else {
+                // Nếu answer không phải String, convert sang String
+                answer = answerObj.toString();
+            }
         }
 
         // Tạo NotebookBotMessage với role = "assistant"
@@ -561,224 +555,140 @@ public class ChatBotService {
         return resp;
     }
 
-    /**
-     * Lấy chat history (tối đa 20 messages để đảm bảo có đủ 5 user + 5 assistant)
-     * và format thành string.
-     * Lấy 5 câu hỏi của user và 5 câu trả lời của assistant.
-     * 
-     * @param conversationId   Conversation ID
-     * @param userId           User ID
-     * @param excludeMessageId Message ID hiện tại (để loại trừ)
-     * @return Formatted chat history string
-     */
-    private String getChatHistory(UUID conversationId, UUID userId, UUID excludeMessageId) {
+    public String getChatHistory(UUID conversationId, UUID userId) {
         try {
-            // Lấy 20 messages mới nhất để đảm bảo có đủ 5 user + 5 assistant
-            // Sử dụng query với files để lấy OCR text
-            Pageable pageable = PageRequest.of(0, 20);
+            // Get 4 messages to ensure we have 2 pairs (2 user + 2 assistant)
+            // Use WithFiles to load OCR text from files
+            Pageable pageable = PageRequest.of(0, 4);
             List<NotebookBotMessage> recentMessages = messageRepository
-                    .findRecentMessagesByConversationIdAndUserIdWithFiles(conversationId, userId, excludeMessageId,
-                            pageable);
+                    .findRecentMessagesByConversationIdAndUserIdWithFiles(conversationId, userId, null, pageable);
 
             if (recentMessages == null || recentMessages.isEmpty()) {
                 return "";
             }
 
-            // Phân loại thành user messages và assistant messages
-            List<NotebookBotMessage> userMessages = new ArrayList<>();
-            List<NotebookBotMessage> assistantMessages = new ArrayList<>();
+            // Sort by time ascending to maintain chronological order
+            recentMessages.sort((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()));
+
+            // Group messages into pairs (user-assistant)
+            List<List<NotebookBotMessage>> chatPairs = new ArrayList<>();
+            NotebookBotMessage currentUserMessage = null;
 
             for (NotebookBotMessage msg : recentMessages) {
                 if ("user".equalsIgnoreCase(msg.getRole())) {
-                    userMessages.add(msg);
+                    // If we have a previous user message without assistant, add it as incomplete
+                    // pair
+                    if (currentUserMessage != null) {
+                        List<NotebookBotMessage> incompletePair = new ArrayList<>();
+                        incompletePair.add(currentUserMessage);
+                        chatPairs.add(incompletePair);
+                    }
+                    currentUserMessage = msg;
                 } else if ("assistant".equalsIgnoreCase(msg.getRole())) {
-                    assistantMessages.add(msg);
+                    // Complete pair: user + assistant
+                    List<NotebookBotMessage> pair = new ArrayList<>();
+                    if (currentUserMessage != null) {
+                        pair.add(currentUserMessage);
+                    }
+                    pair.add(msg);
+                    chatPairs.add(pair);
+                    currentUserMessage = null;
                 }
             }
 
-            // Lấy 5 câu hỏi gần nhất (sắp xếp theo thời gian tăng dần để giữ thứ tự)
-            List<NotebookBotMessage> recentUserMessages = userMessages.stream()
-                    .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
-                    .limit(5)
-                    .collect(Collectors.toList());
+            // Add last incomplete pair if exists (user without assistant)
+            if (currentUserMessage != null) {
+                List<NotebookBotMessage> incompletePair = new ArrayList<>();
+                incompletePair.add(currentUserMessage);
+                chatPairs.add(incompletePair);
+            }
 
-            // Lấy 5 câu trả lời gần nhất (sắp xếp theo thời gian tăng dần để giữ thứ tự)
-            List<NotebookBotMessage> recentAssistantMessages = assistantMessages.stream()
-                    .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
-                    .limit(5)
-                    .collect(Collectors.toList());
+            // Get only 2 most recent pairs
+            int startIndex = Math.max(0, chatPairs.size() - 2);
+            List<List<NotebookBotMessage>> recentPairs = chatPairs.subList(startIndex, chatPairs.size());
 
-            // Nếu không có message nào thì trả về empty
-            if (recentUserMessages.isEmpty() && recentAssistantMessages.isEmpty()) {
+            if (recentPairs.isEmpty()) {
                 return "";
             }
 
-            // Format thành string
+            // Format into string
             StringBuilder historyBuilder = new StringBuilder();
+            int totalPairs = recentPairs.size();
 
-            // Ghép cặp user-assistant theo thứ tự thời gian
-            List<NotebookBotMessage> allMessages = new ArrayList<>();
-            allMessages.addAll(recentUserMessages);
-            allMessages.addAll(recentAssistantMessages);
-            allMessages.sort((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()));
+            for (int i = 0; i < recentPairs.size(); i++) {
+                List<NotebookBotMessage> pair = recentPairs.get(i);
+                boolean isNewest = (i == totalPairs - 1); // Last pair is newest
 
-            for (NotebookBotMessage msg : allMessages) {
-                // Lấy nội dung text của message
-                String messageContent = msg.getContent() != null ? msg.getContent() : "";
+                for (NotebookBotMessage msg : pair) {
+                    String content = msg.getContent() != null ? msg.getContent() : "";
+                    String mode = msg.getMode() != null ? msg.getMode() : "";
+                    String prefix = "";
 
-                // Thu thập OCR text từ tất cả các files của message
-                StringBuilder ocrTextsBuilder = new StringBuilder();
-                if (msg.getNotebookBotMessageFiles() != null && !msg.getNotebookBotMessageFiles().isEmpty()) {
-                    for (NotebookBotMessageFile file : msg.getNotebookBotMessageFiles()) {
-                        if (file.getOcrText() != null && !file.getOcrText().trim().isEmpty()) {
-                            // Bỏ qua các error message từ OCR
-                            if (!file.getOcrText().startsWith("OCR failed:")) {
-                                if (ocrTextsBuilder.length() > 0) {
-                                    ocrTextsBuilder.append("\n\n");
+                    if ("user".equalsIgnoreCase(msg.getRole())) {
+                        // Collect OCR text from files for user messages
+                        StringBuilder ocrTextsBuilder = new StringBuilder();
+                        if (msg.getNotebookBotMessageFiles() != null && !msg.getNotebookBotMessageFiles().isEmpty()) {
+                            for (NotebookBotMessageFile file : msg.getNotebookBotMessageFiles()) {
+                                if (file.getOcrText() != null && !file.getOcrText().trim().isEmpty()) {
+                                    // Skip error messages from OCR
+                                    if (!file.getOcrText().startsWith("OCR failed:")) {
+                                        if (ocrTextsBuilder.length() > 0) {
+                                            ocrTextsBuilder.append("\n\n");
+                                        }
+                                        ocrTextsBuilder.append(file.getOcrText());
+                                    }
                                 }
-                                ocrTextsBuilder.append(file.getOcrText());
                             }
                         }
-                    }
-                }
 
-                // Kết hợp nội dung message và OCR text
-                String fullContent = messageContent;
-                if (ocrTextsBuilder.length() > 0) {
-                    String ocrText = ocrTextsBuilder.toString().trim();
+                        // Join OCR text to content if exists
+                        String ocrText = ocrTextsBuilder.toString().trim();
+                        if (!ocrText.isEmpty()) {
+                            if (!content.isEmpty()) {
+                                content = String.format("%s\n\n[Câu hỏi bổ sung từ hình ảnh: %s]", content, ocrText);
+                            } else {
+                                content = String.format("[Câu hỏi từ hình ảnh: %s]", ocrText);
+                            }
+                        }
 
-                    // Format khác nhau cho user message và assistant message
-                    if ("user".equalsIgnoreCase(msg.getRole())) {
-                        // Với user message: OCR text là câu hỏi bổ sung từ hình ảnh
-                        if (!messageContent.isEmpty()) {
-                            fullContent = messageContent + "\n\n[Câu hỏi bổ sung từ hình ảnh: " + ocrText + "]";
+                        // Build prefix with mode
+                        if (isNewest) {
+                            prefix = mode.isEmpty() ? "[MỚI NHẤT] Người dùng: "
+                                    : String.format("[MỚI NHẤT] Người dùng [%s]: ", mode);
                         } else {
-                            fullContent = "[Câu hỏi từ hình ảnh: " + ocrText + "]";
+                            prefix = mode.isEmpty() ? "Người dùng: "
+                                    : String.format("Người dùng [%s]: ", mode);
                         }
                     } else if ("assistant".equalsIgnoreCase(msg.getRole())) {
-                        // Với assistant message: OCR text là thông tin tham khảo (nếu có)
-                        if (!messageContent.isEmpty()) {
-                            fullContent = messageContent + "\n\n[Thông tin từ hình ảnh: " + ocrText + "]";
+                        // Build prefix with mode for assistant
+                        if (isNewest) {
+                            prefix = mode.isEmpty() ? "[MỚI NHẤT] Trợ lý: "
+                                    : String.format("[MỚI NHẤT] Trợ lý [%s]: ", mode);
                         } else {
-                            fullContent = "[Thông tin từ hình ảnh: " + ocrText + "]";
+                            prefix = mode.isEmpty() ? "Trợ lý: "
+                                    : String.format("Trợ lý [%s]: ", mode);
                         }
+                    } else {
+                        continue; // Skip unknown role
                     }
-                }
 
-                if ("user".equalsIgnoreCase(msg.getRole())) {
-                    historyBuilder.append("Người dùng: ").append(fullContent).append("\n\n");
-                } else if ("assistant".equalsIgnoreCase(msg.getRole())) {
-                    historyBuilder.append("Trợ lý: ").append(fullContent).append("\n\n");
+                    // Truncate content if longer than 1000 characters
+                    if (content.length() > 1000) {
+                        content = content.substring(0, 1000) + "...";
+                    }
+
+                    historyBuilder.append(prefix).append(content).append("\n\n");
                 }
             }
 
             return historyBuilder.toString().trim();
 
         } catch (Exception e) {
-            // Nếu có lỗi thì trả về empty string
+            // Return empty string on error
             return "";
         }
     }
 
-    /**
-     * Xây dựng prompt từ llmInputData và chat history để gửi cho LLM model.
-     * 
-     * Ví dụ JSON output của llmInputData với dữ liệu thật từ database:
-     * 
-     * MODE = "RAG":
-     * {
-     * "mode": "RAG",
-     * "queryText": "Câu hỏi chính: Hãy giải thích về bài thực hành 6\n\nThông tin
-     * bổ sung từ hình ảnh (trọng số thấp hơn): Phương trình 2x + 3 = 9",
-     * "originalQueryText": "Hãy giải thích về bài thực hành 6",
-     * "imageTexts": "Phương trình 2x + 3 = 9",
-     * "ragChunks": [
-     * {
-     * "file_id": "987d2245-0466-4bc8-8a52-3a956e647e9a",
-     * "chunk_index": 0,
-     * "content": "BÀI THỰC HÀNH 6\nGV: Nguyễn Thị Minh Tâm 1. Đọc ảnh có các đường
-     * nét...",
-     * "similarity": 0.92,
-     * "distance": 0.08
-     * },
-     * {
-     * "file_id": "987d2245-0466-4bc8-8a52-3a956e647e9a",
-     * "chunk_index": 1,
-     * "content": "ền.\n· Lưu ảnh kết quả có đối tượng được tách khỏi nền...",
-     * "similarity": 0.85,
-     * "distance": 0.15
-     * }
-     * ],
-     * "hasRagContext": true,
-     * "hasWebResults": false
-     * }
-     * 
-     * MODE = "WEB":
-     * {
-     * "mode": "WEB",
-     * "queryText": "Tin tức mới nhất về AI năm 2025",
-     * "originalQueryText": "Tin tức mới nhất về AI năm 2025",
-     * "imageTexts": "",
-     * "webResults": [
-     * {
-     * "title": "AI News 2025 - Latest Updates",
-     * "link": "https://example.com/ai-news-2025",
-     * "snippet": "The latest AI developments in 2025 include...",
-     * "provider": "google"
-     * },
-     * {
-     * "title": "Artificial Intelligence Trends 2025",
-     * "link": "https://example.com/ai-trends",
-     * "snippet": "Key trends shaping AI in 2025...",
-     * "provider": "google"
-     * }
-     * ],
-     * "hasRagContext": false,
-     * "hasWebResults": true
-     * }
-     * 
-     * MODE = "HYBRID":
-     * {
-     * "mode": "HYBRID",
-     * "queryText": "So sánh bài thực hành 6 với các phương pháp AI hiện đại",
-     * "originalQueryText": "So sánh bài thực hành 6 với các phương pháp AI hiện
-     * đại",
-     * "imageTexts": "",
-     * "ragChunks": [
-     * {
-     * "file_id": "987d2245-0466-4bc8-8a52-3a956e647e9a",
-     * "chunk_index": 0,
-     * "content": "BÀI THỰC HÀNH 6...",
-     * "similarity": 0.88,
-     * "distance": 0.12
-     * }
-     * ],
-     * "webResults": [
-     * {
-     * "title": "Modern AI Methods 2025",
-     * "link": "https://example.com/modern-ai",
-     * "snippet": "Latest AI methods include deep learning...",
-     * "provider": "google"
-     * }
-     * ],
-     * "hasRagContext": true,
-     * "hasWebResults": true
-     * }
-     * 
-     * MODE = "LLM_ONLY":
-     * {
-     * "mode": "LLM_ONLY",
-     * "queryText": "Xin chào, bạn có khỏe không?",
-     * "originalQueryText": "Xin chào, bạn có khỏe không?",
-     * "imageTexts": "",
-     * "hasRagContext": false,
-     * "hasWebResults": false
-     * }
-     * 
-     * @param llmInputData Dữ liệu đã được tiền xử lý
-     * @param chatHistory  Lịch sử trò chuyện gần đây (5 câu hỏi + 5 câu trả lời)
-     * @return Prompt string để gửi cho LLM
-     */
     private String buildLlmPrompt(Map<String, Object> llmInputData, String chatHistory) {
         // Convert llmInputData sang JSON string
         String jsonInput;
@@ -790,281 +700,96 @@ public class ChatBotService {
 
         String prompt = String.format(
                 """
-                        Bạn là một trợ lý AI chuyên phân tích:
-                        - câu hỏi của người dùng,
-                        - tài liệu nội bộ (RAG) - dữ liệu cũ, kiến thức nền tảng,
-                        - kết quả tìm kiếm web - dữ liệu mới, thông tin cập nhật,
-                        - văn bản OCR từ hình ảnh.
+                        Bạn là trợ lý AI phân tích câu hỏi, tài liệu nội bộ (RAG), kết quả web, và OCR từ hình ảnh.
 
-                        NGUYÊN TẮC QUAN TRỌNG: ƯU TIÊN KẾT HỢP CẢ DỮ LIỆU CŨ (RAG) VÀ DỮ LIỆU MỚI (WEB) để có ngữ cảnh tốt nhất:
-                        - Dữ liệu cũ (RAG) giúp hiểu ngữ cảnh cơ bản, kiến thức nền tảng.
-                        - Dữ liệu mới (WEB) giúp bổ sung, làm mới, cập nhật thông tin.
-                        - ChatHistory (lịch sử trò chuyện) giúp hiểu ngữ cảnh câu hỏi, lấy thông tin chính xác từ các đoạn chat cũ liên quan.
-                        - Kết hợp cả ba (RAG + WEB + ChatHistory) tạo ra câu trả lời đầy đủ, chính xác và có ngữ cảnh tốt nhất.
-                        - BẮT BUỘC tận dụng chatHistory trong TẤT CẢ các mode để hiểu ngữ cảnh và lấy thông tin chính xác hơn.
+                        NGUYÊN TẮC:
+                        - RAG: kiến thức nền tảng từ tài liệu nội bộ.
+                        - WEB: thông tin cập nhật từ internet.
+                        - ChatHistory: BẮT BUỘC sử dụng để hiểu ngữ cảnh liên tục, trả lời follow-up questions.
+                        - OCR text (imageTexts): QUAN TRỌNG NHẤT khi có hình ảnh. PHẢI dùng từ khóa từ OCR để tìm trong RAG/WEB.
+                        - HYBRID: RAG có trọng số cao hơn WEB. Nếu RAG thỏa mãn → RAG chính, WEB bổ sung. Nếu RAG không thỏa mãn → WEB chính, RAG tham khảo.
 
-                        QUAN TRỌNG VỀ TẠO CODE:
-                        - Khi người dùng yêu cầu code (ví dụ: "cho tôi code", "viết code", "code của bài thực hành"):
-                          + Nếu RAG chunks có chứa code sẵn → sử dụng code đó.
-                          + Nếu RAG chunks chỉ mô tả các bước/yêu cầu mà không có code → BẮT BUỘC phải tự tạo code dựa trên mô tả đó.
-                          + Code phải tuân thủ đúng các bước/yêu cầu được mô tả trong RAG chunks.
-                          + Có thể kết hợp với kiến thức chuyên môn của LLM để tạo code hoàn chỉnh, chính xác.
-                          + Nếu có WEB results về code tương tự → có thể tham khảo nhưng vẫn phải ưu tiên tuân thủ mô tả từ RAG.
-                        - KHÔNG được từ chối tạo code chỉ vì RAG chunks không có code sẵn. PHẢI tạo code dựa trên mô tả.
+                        QUAN TRỌNG VỀ OCR TEXT:
+                        - queryText format: "câu hỏi chính\n\n[Câu hỏi bổ sung từ hình ảnh: OCR text]"
+                        - Khi tìm kiếm: PHẢI dùng CẢ từ khóa từ câu hỏi chính VÀ từ khóa từ OCR text.
+                        - Ưu tiên các kết quả có chứa từ khóa từ OCR text.
 
-                        Bạn phải tuân thủ đúng quy tắc từng chế độ xử lý và LUÔN LUÔN trả về JSON 100%% hợp lệ, không có bất kỳ ký tự hoặc giải thích nào bên ngoài JSON.
+                        TẠO CODE:
+                        - Nếu RAG/WEB có code sẵn → dùng code đó.
+                        - Nếu chỉ có mô tả bước/yêu cầu → BẮT BUỘC tạo code dựa trên mô tả, tuân thủ đúng yêu cầu.
 
                         ------------------------------------------------------------------
-                        LỊCH SỬ TRÒ CHUYỆN GẦN ĐÂY (QUAN TRỌNG: BẮT BUỘC tận dụng để hiểu ngữ cảnh liên tục và lấy thông tin chính xác)
+                        CHATHISTORY:
                         ------------------------------------------------------------------
+                        %s
+                        - BẮT BUỘC dùng chatHistory để hiểu follow-up questions và ngữ cảnh liên tục.
 
+                        ------------------------------------------------------------------
+                        DỮ LIỆU ĐẦU VÀO:
+                        ------------------------------------------------------------------
                         %s
 
-                        LƯU Ý VỀ CHATHISTORY (DỮ LIỆU CŨ - QUAN TRỌNG):
-                        - ChatHistory chứa các đoạn chat cũ liên quan đến câu hỏi hiện tại.
-                        - BẮT BUỘC phải KẾT HỢP ĐỦ TỐT chatHistory để hiểu ngữ cảnh người dùng một cách liên tục.
+                        CẤU TRÚC:
+                        - mode: "RAG" | "WEB" | "HYBRID" | "LLM_ONLY"
+                        - queryText: câu hỏi đã kết hợp (có thể có [Câu hỏi bổ sung từ hình ảnh: ...])
+                        - originalQueryText: câu hỏi gốc (chỉ text)
+                        - imageTexts: OCR text từ hình ảnh
+                        - ragChunks: [{file_id, chunk_index, content, similarity, distance}] (RAG/HYBRID)
+                        - webResults: [{title, link, snippet, provider, imageUrl}] (WEB/HYBRID)
 
-                        VÍ DỤ QUAN TRỌNG VỀ HIỂU NGỮ CẢNH:
-                        - Nếu người dùng hỏi: "Hãy giải thích về bài thực hành 6"
-                          Và sau đó hỏi: "cho tao xem chi tiết" hoặc "giải thích thêm" hoặc "nói rõ hơn"
-                        → Bot PHẢI hiểu được "chi tiết" là về "bài thực hành 6" đã hỏi trước đó.
-                        → PHẢI kết hợp thông tin từ câu hỏi trước và câu hỏi hiện tại để trả lời chính xác.
+                        QUY TẮC THEO MODE:
 
-                        - Nếu người dùng hỏi: "So sánh A và B"
-                          Và sau đó hỏi: "A có ưu điểm gì?"
-                        → Bot PHẢI hiểu được "A" là gì từ câu hỏi trước.
-                        → PHẢI sử dụng thông tin từ chatHistory để trả lời về "A" một cách chính xác.
+                        1) RAG:
+                        - CHỈ dùng ragChunks + chatHistory. KHÔNG dùng webResults.
+                        - Khi có imageTexts: PHẢI dùng từ khóa từ OCR text để tìm trong ragChunks.
+                        - Nếu không có ragChunks liên quan: "Tôi không tìm thấy thông tin phù hợp trong tài liệu nội bộ."
+                        - sources = RAG sources thực sự được dùng.
 
-                        QUY TẮC SỬ DỤNG CHATHISTORY:
-                        - BẮT BUỘC phải tận dụng chatHistory trong TẤT CẢ các mode để:
-                          + Hiểu ngữ cảnh câu hỏi hiện tại một cách liên tục
-                          + Lấy thông tin chính xác từ các đoạn chat cũ liên quan
-                          + Hiểu được các câu hỏi follow-up (ví dụ: "cho tao xem chi tiết", "giải thích thêm", "nói rõ hơn", "còn gì nữa không")
-                          + Bổ sung thông tin thiếu sót
-                          + Làm rõ ý định của người dùng
-                          + Kết nối câu hỏi hiện tại với các câu hỏi trước đó
-                        - Nếu chatHistory có thông tin liên quan đến câu hỏi hiện tại: PHẢI sử dụng để trả lời chính xác hơn.
-                        - Nếu câu hỏi hiện tại là câu hỏi follow-up (không rõ ràng, cần ngữ cảnh): PHẢI tìm trong chatHistory để hiểu người dùng đang hỏi về cái gì.
-                        - Kết hợp đủ tốt chatHistory để bot có thể hiểu được ngữ cảnh người dùng một cách liên tục và trả lời chính xác.
+                        2) WEB:
+                        - Dùng webResults + chatHistory. KHÔNG dùng ragChunks.
+                        - Nếu yêu cầu code: tạo code dựa trên webResults hoặc mô tả.
+                        - ƯU TIÊN hiển thị ảnh: Nếu webResults có imageUrl, PHẢI hiển thị ảnh trong answer bằng markdown ![mô tả](imageUrl).
+                        - Hiển thị ảnh từ các webResults có imageUrl để làm rõ nội dung.
+                        - sources = WEB sources thực sự được dùng.
 
-                        ------------------------------------------------------------------
-                        DỮ LIỆU ĐẦU VÀO (llmInputData - JSON)
-                        ------------------------------------------------------------------
+                        3) HYBRID:
+                        - Có cả RAG và WEB. RAG có trọng số cao hơn.
+                        - Nếu RAG thỏa mãn (liên quan, similarity >= 0.7): RAG chính, WEB bổ sung.
+                        - Nếu RAG không thỏa mãn: WEB chính, RAG tham khảo.
+                        - Khi có imageTexts: PHẢI kiểm tra ragChunks có chứa từ khóa từ OCR text không.
+                        - ƯU TIÊN hiển thị ảnh: Nếu webResults có imageUrl, PHẢI hiển thị ảnh trong answer bằng markdown ![mô tả](imageUrl).
+                        - Hiển thị ảnh từ các webResults có imageUrl để làm rõ nội dung.
+                        - sources = RAG sources (nếu dùng RAG) + WEB sources (nếu dùng WEB).
 
-                        %s
-
-                        ------------------------------------------------------------------
-                        CẤU TRÚC llmInputData (DỮ LIỆU ĐẦU VÀO)
-                        ------------------------------------------------------------------
-
-                        Các trường CHUNG (luôn có):
-                        ---------------------------
-                        {
-                          "mode": "RAG" | "WEB" | "HYBRID" | "LLM_ONLY",
-                          "queryText": "<string> - Câu hỏi đã kết hợp (có thể bao gồm cả imageTexts)",
-                          "originalQueryText": "<string> - Câu hỏi gốc từ user",
-                          "imageTexts": "<string> - Text từ OCR của hình ảnh (có thể rỗng)"
-                        }
-
-                        I. ragChunks (chỉ có trong RAG và HYBRID mode)
-                        ---------------------------------------------
-                        Mỗi phần tử:
-                        {
-                          "file_id": "<uuid>",
-                          "chunk_index": <int>,
-                          "content": "<string> - Nội dung của chunk",
-                          "similarity": <float>,
-                          "distance": <float>
-                        }
-                        → RAG mode chỉ được dùng nội dung trong ragChunks.
-                        → Để trả về nguồn RAG, chỉ cần dùng file_id và chunk_index từ ragChunks.
-
-                        II. webResults (chỉ có trong WEB và HYBRID mode)
-                        ------------------------------------------------
-                        Mỗi phần tử:
-                        {
-                          "title": "<string>",
-                          "link": "<url>",
-                          "snippet": "<string> - Mô tả ngắn",
-                          "provider": "<string> - Thường là 'google'",
-                          "imageUrl": "<url hoặc null> - URL hình ảnh nếu extract được"
-                        }
-                        → web_index = vị trí trong array (0, 1, 2, ...).
-                        → Để trả về nguồn WEB, phải lấy đúng url, title, snippet, provider từ webResults[web_index].
-                        → Nếu có imageUrl, hãy sử dụng nó để thêm vào markdown của answer bằng ![mô tả](imageUrl).
-
-                        III. Các trường bổ sung
-                        -----------------------
-                        - "hasRagContext": <boolean> - Có RAG context hay không
-                        - "hasWebResults": <boolean> - Có web results hay không
-                        - "webQuery": "<string>" - Query đã dùng để search web (chỉ có trong WEB và HYBRID)
-                        - "webSearchTimeMs": <long> - Thời gian search web (ms) (chỉ có trong WEB và HYBRID)
-
-                        ------------------------------------------------------------------
-                        QUY TẮC THEO MODE
-                        ------------------------------------------------------------------
-
-                        1) MODE = "RAG"
-                        ----------------
-                        - BẮT BUỘC tận dụng chatHistory để hiểu ngữ cảnh và lấy thông tin chính xác từ các đoạn chat cũ liên quan.
-                        - CHỈ được dùng nội dung trong ragChunks + chatHistory.
-                        - KHÔNG được dùng webResults.
-                        - KHÔNG được bịa nội dung nội bộ không nằm trong ragChunks.
-                        - Nếu chatHistory có thông tin liên quan đến câu hỏi hiện tại: PHẢI sử dụng để làm rõ ngữ cảnh, bổ sung thông tin.
-
-                        Nếu không có ragChunks liên quan:
-                          - Vẫn có thể dùng chatHistory để trả lời nếu có thông tin liên quan.
-                          - Nếu không có cả ragChunks và chatHistory liên quan: answer = "Tôi không tìm thấy thông tin phù hợp trong tài liệu nội bộ."
-                          - sources = []
-
-                        Nếu có ragChunks:
-                          - Dùng nội dung phù hợp từ ragChunks kết hợp với chatHistory để trả lời.
-                          - CHỈ được dùng nội dung có sẵn trong ragChunks, KHÔNG được tự tạo code hoặc nội dung mới.
-                          - sources = danh sách các nguồn RAG thực sự được dùng (source_type = "RAG", file_id, chunk_index).
-
-                        2) MODE = "WEB"
-                        ----------------
-                        - BẮT BUỘC tận dụng chatHistory để hiểu ngữ cảnh và lấy thông tin chính xác hơn.
-                        - Ưu tiên dùng webResults + chatHistory kết hợp để trả lời.
-                        - KHÔNG được dùng ragChunks.
-                        - Nếu chatHistory có thông tin liên quan đến câu hỏi hiện tại: PHẢI sử dụng để làm rõ ngữ cảnh, bổ sung thông tin.
-                        - Nếu người dùng yêu cầu code:
-                          + Nếu webResults có code hoặc hướng dẫn code → sử dụng hoặc tham khảo để tạo code.
-                          + Nếu webResults không có code nhưng có mô tả các bước/yêu cầu → BẮT BUỘC phải tự tạo code dựa trên mô tả đó, tuân thủ đúng các bước/yêu cầu.
-                          + Có thể kết hợp với kiến thức chuyên môn của LLM để tạo code hoàn chỉnh.
-                        - Nếu webResults có dữ liệu phù hợp: dùng snippet kết hợp với chatHistory để trả lời, sources = danh sách web_index thực sự được dùng (source_type = "WEB").
-                        - Nếu webResults KHÔNG có dữ liệu phù hợp: có thể dùng kiến thức tổng quát của LLM + chatHistory để trả lời, sources = [].
-                        - Nguyên tắc: ChatHistory giúp hiểu ngữ cảnh câu hỏi, webResults cung cấp thông tin cập nhật → Kết hợp cả hai để có câu trả lời chính xác nhất.
-
-                        3) MODE = "HYBRID"
-                        -------------------
-                        BẮT BUỘC tận dụng chatHistory để hiểu ngữ cảnh và lấy thông tin chính xác từ các đoạn chat cũ liên quan.
-                        ƯU TIÊN KẾT HỢP CẢ DỮ LIỆU CŨ (RAG), DỮ LIỆU MỚI (WEB) VÀ CHATHISTORY để có ngữ cảnh tốt nhất:
-
-                        - Nếu hasRagContext = true VÀ hasWebResults = true:
-                            + QUAN TRỌNG: Nếu nguồn RAG tồn tại và thỏa mãn câu hỏi → ƯU TIÊN RAG làm nguồn chính, WEB chỉ bổ sung thêm rìa bên ngoài (thông tin cập nhật, bổ sung, làm mới).
-                            + RAG là nguồn chính: cung cấp ngữ cảnh cơ bản, kiến thức nền tảng từ tài liệu nội bộ → PHẢI sử dụng để trả lời câu hỏi chính.
-                            + WEB là nguồn bổ sung: chỉ dùng để bổ sung thông tin cập nhật, làm mới, thêm chi tiết rìa bên ngoài → KHÔNG được dùng thay thế RAG.
-                            + ChatHistory giúp hiểu ngữ cảnh câu hỏi, lấy thông tin chính xác từ các đoạn chat cũ liên quan.
-                            + Nếu người dùng yêu cầu code và ragChunks có mô tả các bước/yêu cầu:
-                              * Nếu ragChunks có code sẵn → sử dụng code đó, có thể tham khảo WEB để cải thiện.
-                              * Nếu ragChunks chỉ mô tả các bước/yêu cầu → BẮT BUỘC phải tự tạo code dựa trên mô tả từ RAG, tuân thủ đúng các bước/yêu cầu. Có thể tham khảo WEB nhưng vẫn phải ưu tiên tuân thủ mô tả từ RAG.
-                              * Có thể kết hợp với kiến thức chuyên môn của LLM để tạo code hoàn chỉnh.
-                            + Kết hợp cả ba (RAG [ưu tiên] + WEB [bổ sung] + chatHistory) để tạo câu trả lời đầy đủ và chính xác nhất.
-                            + sources = danh sách gộp các nguồn RAG và WEB thực sự được dùng:
-                              * Nếu sử dụng RAG: BẮT BUỘC phải trả về sources cho RAG (source_type = "RAG", file_id, chunk_index).
-                              * Nếu sử dụng WEB: có thể trả về sources cho WEB (source_type = "WEB", web_index, url, title, snippet).
-                              * Ưu tiên liệt kê RAG sources trước (vì là nguồn chính), sau đó mới đến WEB sources (nếu có sử dụng).
-
-                        - Nếu hasRagContext = true nhưng hasWebResults = false:
-                            + Dùng RAG + chatHistory là nguồn chính (bắt buộc dùng nội dung từ ragChunks).
-                            + Nếu chatHistory có thông tin liên quan: PHẢI sử dụng để làm rõ ngữ cảnh, bổ sung thông tin.
-                            + Nếu người dùng yêu cầu code và ragChunks có mô tả các bước/yêu cầu:
-                              * Nếu ragChunks có code sẵn → sử dụng code đó.
-                              * Nếu ragChunks chỉ mô tả các bước/yêu cầu → BẮT BUỘC phải tự tạo code dựa trên mô tả đó, tuân thủ đúng các bước/yêu cầu.
-                              * Có thể kết hợp với kiến thức chuyên môn của LLM để tạo code hoàn chỉnh.
-                            + Có thể bổ sung bằng kiến thức tổng quát của LLM nếu cần.
-                            + sources = danh sách các nguồn RAG thực sự được dùng (BẮT BUỘC phải trả về sources cho RAG nếu sử dụng).
-
-                        - Nếu hasRagContext = false nhưng hasWebResults = true:
-                            + Ưu tiên dùng webResults + chatHistory kết hợp để trả lời.
-                            + Nếu chatHistory có thông tin liên quan: PHẢI sử dụng để làm rõ ngữ cảnh, bổ sung thông tin.
-                            + Nếu người dùng yêu cầu code:
-                              * Nếu webResults có code hoặc hướng dẫn code → sử dụng hoặc tham khảo để tạo code.
-                              * Nếu webResults không có code nhưng có mô tả các bước/yêu cầu → BẮT BUỘC phải tự tạo code dựa trên mô tả đó, tuân thủ đúng các bước/yêu cầu.
-                              * Có thể kết hợp với kiến thức chuyên môn của LLM để tạo code hoàn chỉnh.
-                            + Nếu webResults không phù hợp: có thể dùng kiến thức tổng quát của LLM + chatHistory.
-                            + sources = danh sách các nguồn WEB thực sự được dùng (nếu có).
-
-                        - Nếu cả RAG & WEB đều trống hoặc không phù hợp:
-                            + Vẫn có thể dùng chatHistory để trả lời nếu có thông tin liên quan.
-                            + Nếu không có cả RAG, WEB và chatHistory liên quan: có thể dùng kiến thức tổng quát của LLM.
-                            + sources = []
-
-                        NGUYÊN TẮC QUAN TRỌNG:
-                        - Khi có cả RAG và WEB: Nếu nguồn RAG tồn tại và thỏa mãn → ƯU TIÊN RAG làm nguồn chính, WEB chỉ bổ sung thêm rìa bên ngoài.
-                        - RAG = dữ liệu cũ, kiến thức nền tảng → dùng làm nguồn chính để trả lời câu hỏi, hiểu ngữ cảnh cơ bản.
-                        - WEB = dữ liệu mới, thông tin cập nhật → chỉ dùng để bổ sung, làm mới, thêm chi tiết rìa bên ngoài, KHÔNG thay thế RAG.
-                        - ChatHistory = thông tin từ các đoạn chat cũ → dùng để hiểu ngữ cảnh, lấy thông tin chính xác.
-                        - Kết hợp cả ba (RAG [ưu tiên] + WEB [bổ sung] + chatHistory) tạo ra câu trả lời đầy đủ, chính xác và có ngữ cảnh tốt nhất.
-                        - QUAN TRỌNG: Khi sử dụng RAG để trả lời → BẮT BUỘC phải trả về sources cho RAG (source_type = "RAG", file_id, chunk_index).
-
-                        4) MODE = "LLM_ONLY"
-                        ----------------------
-                        - BẮT BUỘC tận dụng chatHistory để hiểu ngữ cảnh và lấy thông tin chính xác từ các đoạn chat cũ liên quan.
-                        - Trả lời bằng kiến thức tổng quát của LLM + chatHistory.
-                        - Nếu chatHistory có thông tin liên quan đến câu hỏi hiện tại: PHẢI sử dụng để làm rõ ngữ cảnh, bổ sung thông tin.
-                        - Nếu người dùng yêu cầu code:
-                          + BẮT BUỘC phải tự tạo code dựa trên yêu cầu của người dùng và chatHistory (nếu có).
-                          + Có thể sử dụng kiến thức chuyên môn của LLM để tạo code hoàn chỉnh, chính xác.
-                          + Code phải tuân thủ đúng yêu cầu và ngữ cảnh từ câu hỏi và chatHistory.
-                        - KHÔNG được dùng chi tiết từ ragChunks hoặc webResults.
+                        4) LLM_ONLY:
+                        - Dùng kiến thức LLM + chatHistory. KHÔNG dùng ragChunks/webResults.
                         - sources = []
 
                         ------------------------------------------------------------------
-                        ĐỊNH DẠNG JSON ĐẦU RA BẮT BUỘC
+                        JSON ĐẦU RA (BẮT BUỘC):
                         ------------------------------------------------------------------
-
-                        Bạn PHẢI trả về duy nhất một JSON dạng:
-
                         {
-                          "answer": "<câu trả lời bằng tiếng Việt, dùng markdown hợp lệ. Ưu tiên thêm hình ảnh minh họa bằng URL trực tiếp trong markdown như ![mô tả](url_hình_ảnh) nếu câu hỏi liên quan đến hình ảnh hoặc webResults có chứa link đến trang web có hình ảnh. Sử dụng URL từ webResults hoặc tìm URL hình ảnh phù hợp từ các trang web đó>",
+                          "answer": "<markdown tiếng Việt. Link web: [text](url). Hình ảnh: ![mô tả](url)>",
                           "sources": [
-                            {
-                              "source_type": "RAG",
-                              "file_id": "<uuid>",
-                              "chunk_index": <int>,
-                              "score": <float từ 0.00 đến 1.00, chỉ 2 số sau dấu phẩy>,
-                              "provider": "rag"
-                            },
-                            {
-                              "source_type": "WEB",
-                              "web_index": <int>,
-                              "url": "<url>",
-                              "title": "<string>",
-                              "snippet": "<string>",
-                              "score": <float từ 0.00 đến 1.00, chỉ 2 số sau dấu phẩy>,
-                              "provider": "<string>"
-                            }
+                            {"source_type": "RAG", "file_id": "<uuid>", "chunk_index": <int>, "score": <0.00-1.00>, "provider": "rag"},
+                            {"source_type": "WEB", "web_index": <int>, "url": "<url>", "title": "<string>", "snippet": "<string>", "score": <0.00-1.00>, "provider": "<string>"}
                           ]
                         }
 
                         QUY TẮC NGHIÊM NGẶT:
+                        - CHỈ trả về sources THỰC SỰ được dùng. Sort theo score giảm dần.
+                        - Link web: Dùng markdown format [text](url). Frontend sẽ tự động mở tab mới khi click.
+                        - Hình ảnh: Dùng markdown format ![mô tả](imageUrl). Ưu tiên hiển thị ảnh từ webResults.imageUrl khi có (chế độ WEB/HYBRID).
+                        - RAG: file_id, chunk_index từ ragChunks. provider = "rag"
+                        - WEB: web_index, url, title, snippet từ webResults[web_index]. provider từ webResults. Nếu có imageUrl, ưu tiên hiển thị trong answer.
+                        - score: 0.00-1.00, 2 số sau dấu phẩy
+                        - JSON hợp lệ, không có text ngoài JSON, không codeblock markdown (```json hoặc ```).
 
-                        - CHỈ trả về những nguồn THỰC SỰ được sử dụng để tạo ra câu trả lời (answer). KHÔNG trả về đại trà tất cả nguồn có sẵn.
-                        - Nếu một nguồn (ragChunk hoặc webResult) KHÔNG được sử dụng để tạo answer, thì KHÔNG được liệt kê trong sources.
-                        - sources là mảng DUY NHẤT gộp cả RAG và WEB, PHẢI sort theo score giảm dần.
-                        - QUAN TRỌNG VỀ HÌNH ẢNH: Ưu tiên thêm hình ảnh minh họa (URL) trực tiếp vào markdown của answer bằng cú pháp ![mô tả](url_hình_ảnh) nếu có hình ảnh phù hợp.
-                          + Nếu webResults có chứa link đến trang web (url), hãy tìm và sử dụng URL hình ảnh từ các trang web đó.
-                          + Có thể sử dụng URL hình ảnh trực tiếp từ các trang web trong webResults hoặc tìm URL hình ảnh phù hợp.
-                          + Ví dụ: "Đây là câu trả lời. ![Hình ảnh minh họa](https://example.com/image.jpg)"
-                          + Frontend sẽ hiển thị hình ảnh này trong phần markdown.
-                        - Chỉ thêm hình ảnh nếu thực sự phù hợp và minh họa cho nội dung câu trả lời.
-                        - Với source_type = "RAG":
-                          + file_id và chunk_index PHẢI lấy từ ragChunks (tìm chunk có file_id và chunk_index tương ứng).
-                          + provider luôn là "rag".
-                        - Với source_type = "WEB":
-                          + web_index PHẢI trùng index trong webResults.
-                          + url, title, snippet PHẢI lấy từ webResults[web_index].
-                          + provider lấy từ webResults[web_index].provider (nếu có) hoặc "web".
-                        - score là mức độ đóng góp (0.00 – 1.00), PHẢI chỉ có 2 số sau dấu phẩy (ví dụ: 0.85, 0.92, 1.00). LLM tự đánh giá và cho điểm dựa trên mức độ sử dụng nguồn đó để tạo câu trả lời.
-                        - MODE = "RAG": chỉ có sources với source_type = "RAG".
-                        - MODE = "WEB": chỉ có sources với source_type = "WEB".
-                        - MODE = "LLM_ONLY": sources = [].
-                        - MODE = "HYBRID": có thể có cả RAG và WEB trong sources.
-
-                        JSON phải:
-                        - đúng định dạng,
-                        - không comment,
-                        - không dấu phẩy thừa,
-                        - không có text ngoài JSON,
-                        - không wrap trong codeblock (```).
-
-                        ------------------------------------------------------------------
-
-                        HÃY TRẢ VỀ JSON DUY NHẤT THEO ĐÚNG SCHEMA TRÊN.
-
-                        ------------------------------------------------------------------
+                        QUAN TRỌNG:
+                        - TRẢ VỀ CHỈ JSON, KHÔNG CÓ TEXT NÀO KHÁC TRƯỚC HOẶC SAU JSON.
+                        - KHÔNG DÙNG codeblock markdown (```json ... ```).
+                        - BẮT ĐẦU NGAY BẰNG DẤU { VÀ KẾT THÚC BẰNG DẤU }.
+                        - ĐẢM BẢO JSON HỢP LỆ, CÓ THỂ PARSE ĐƯỢC.
                         """,
                 chatHistory != null && !chatHistory.isEmpty() ? chatHistory : "(Không có lịch sử trò chuyện trước đó)",
                 jsonInput);
@@ -1203,158 +928,94 @@ public class ChatBotService {
     }
 
     /**
-     * Xác định mode từ Gemini dựa trên đầy đủ thông tin: text, OCR, loại file, số
-     * lượng ảnh, và chat history.
-     * 
-     * @param text        Câu hỏi của user
-     * @param imagesText  OCR text từ hình ảnh
-     * @param fileTypes   Danh sách loại file (image, document, ...)
-     * @param imageCount  Số lượng hình ảnh
-     * @param chatHistory Chat history để hiểu ngữ cảnh
-     * @return ChatMode được xác định (RAG, WEB, HYBRID, hoặc LLM_ONLY)
-     */
-    private ChatMode determineModeFromGemini(String text, String imagesText, List<String> fileTypes, int imageCount,
-            String chatHistory) {
-        // Tạo JSON dữ liệu đầu vào
-        Map<String, Object> inputData = new HashMap<>();
-        inputData.put("text", text != null ? text : "");
-        inputData.put("images_text", imagesText != null ? imagesText : "");
-        inputData.put("files", fileTypes != null ? fileTypes : Collections.emptyList());
-        inputData.put("image_count", imageCount);
-
-        String inputDataJson;
-        try {
-            inputDataJson = objectMapper.writeValueAsString(inputData);
-        } catch (Exception e) {
-            inputDataJson = "{}";
-        }
-
-        String prompt = String.format(
-                """
-                        Bạn là bộ ROUTER phân loại câu hỏi cho hệ thống Chat AI.
-
-                        Chọn đúng 1 mode duy nhất (KHÔNG được chọn RAG):
-
-                        - "WEB"       -> câu hỏi cần kiến thức cập nhật, internet, tin tức
-
-                        - "HYBRID"    -> vừa cần nội bộ vừa cần web (ưu tiên với những câu hỏi cần kiến thức hoặc thông tin cập nhật ngày tháng)
-
-                        - "LLM_ONLY"  -> trò chuyện, hỏi kiến thức chung, không cần tra cứu
-
-                        QUAN TRỌNG: KHÔNG được chọn "RAG" trong AUTO mode. RAG chỉ dùng khi user CHỦ ĐỘNG bật mode RAG.
-
-                        ------------------------------------------------------------------
-                        LỊCH SỬ TRÒ CHUYỆN GẦN ĐÂY (QUAN TRỌNG: BẮT BUỘC tận dụng để hiểu ngữ cảnh)
-                        ------------------------------------------------------------------
-
-                        %s
-
-                        LƯU Ý VỀ CHATHISTORY:
-                        - ChatHistory chứa các đoạn chat cũ liên quan đến câu hỏi hiện tại.
-                        - BẮT BUỘC phải tận dụng chatHistory để hiểu ngữ cảnh câu hỏi hiện tại.
-                        - Nếu câu hỏi hiện tại là câu hỏi follow-up (ví dụ: "cho tao xem chi tiết", "giải thích thêm", "nói rõ hơn"):
-                          + PHẢI xem chatHistory để hiểu người dùng đang hỏi về cái gì.
-                          + Nếu chatHistory có thông tin về file nội bộ hoặc tài liệu → ƯU TIÊN HYBRID hoặc WEB (tùy ngữ cảnh).
-                        - Nếu chatHistory có thông tin về chủ đề đang thảo luận → Sử dụng để xác định mode phù hợp.
-                        - Nếu không có chatHistory hoặc chatHistory không liên quan → Dựa vào câu hỏi hiện tại và dữ liệu đầu vào.
-
-                        ------------------------------------------------------------------
-                        DỮ LIỆU ĐẦU VÀO
-                        ------------------------------------------------------------------
-
-                        %s
-
-                        QUY TẮC PHÂN LOẠI:
-
-                        1. Thứ tự ưu tiên (từ cao xuống thấp):
-                           - LLM_ONLY: Câu hỏi chung, trò chuyện, kiến thức tổng quát → CHỌN LLM_ONLY
-                           - HYBRID: Cần cả kiến thức nội bộ VÀ thông tin web cập nhật → ƯU TIÊN HYBRID (cao hơn WEB)
-                           - WEB: Câu hỏi về tin tức, sự kiện mới, thông tin cập nhật → CHỌN WEB (khi không cần nội bộ)
-
-                        2. Các trường hợp cụ thể:
-                           - Nếu OCR chứa nội dung toán học → ƯU TIÊN HYBRID
-                           - Nếu nội dung mang tính thời sự → ƯU TIÊN HYBRID (có thể có thông tin nội bộ liên quan), nếu chắc chắn không có nội bộ → WEB
-                           - Nếu text hỏi về file nội bộ CỤ THỂ VÀ cần thông tin web cập nhật → HYBRID
-                           - Nếu text hỏi về thông tin cụ thể (tên tổ chức, câu lạc bộ, địa điểm, sự kiện cụ thể):
-                             Ví dụ: "Câu lạc bộ IT UP - Bình dân học vụ số", "Trường đại học X", "Sự kiện Y"
-                             → ƯU TIÊN HYBRID (có thể có thông tin nội bộ và cần thông tin web cập nhật)
-                           - Nếu text chỉ hỏi chung chung, không rõ ràng về file → LLM_ONLY hoặc HYBRID (ưu tiên HYBRID hơn WEB)
-                           - Nếu cả hai (nội bộ + thời sự) rõ ràng → HYBRID
-                           - Nếu câu hỏi là follow-up (dựa trên chatHistory) và chatHistory có thông tin về file/tài liệu → ƯU TIÊN HYBRID
-
-                        3. Nguyên tắc:
-                           - Khi hỏi về thông tin cụ thể (tên tổ chức, câu lạc bộ, địa điểm, sự kiện): ƯU TIÊN HYBRID để có thông tin đầy đủ nhất
-                           - Khi không chắc chắn → chọn LLM_ONLY hoặc HYBRID (ưu tiên HYBRID hơn WEB)
-                           - User muốn câu trả lời nhanh, không cần tra cứu chi tiết → LLM_ONLY
-                           - ƯU TIÊN HYBRID hơn WEB để có thông tin đầy đủ nhất (kết hợp cả nội bộ và web)
-                           - CHỈ chọn WEB khi chắc chắn không cần thông tin nội bộ
-                           - BẮT BUỘC tận dụng chatHistory để hiểu ngữ cảnh và xác định mode chính xác hơn
-                           - KHÔNG BAO GIỜ chọn RAG trong AUTO mode
-
-                        Yêu cầu:
-
-                        - CHỈ trả về JSON hợp lệ:
-
-                          {
-                            "mode": "WEB | HYBRID | LLM_ONLY"
-                          }
-
-                        - KHÔNG được chọn "RAG"
-                        - Không được viết thêm text ngoài JSON.
-
-                        """,
-                chatHistory != null && !chatHistory.trim().isEmpty() ? chatHistory
-                        : "(Không có lịch sử trò chuyện trước đó)",
-                inputDataJson);
-
-        try {
-            // Gọi Gemini để xác định mode
-            String response = aiModelService.callGeminiModel(prompt);
-
-            // Parse JSON response
-            String jsonResponse = extractJsonFromResponse(response);
-            @SuppressWarnings("unchecked")
-            Map<String, String> result = objectMapper.readValue(jsonResponse, Map.class);
-            String modeStr = result.get("mode");
-
-            // Convert string sang ChatMode enum
-            return ChatMode.valueOf(modeStr.toUpperCase());
-
-        } catch (Exception e) {
-            // Nếu lỗi thì fallback về LLM_ONLY
-            return ChatMode.LLM_ONLY;
-        }
-    }
-
-    /**
-     * Extract JSON từ response của Gemini (có thể có text thêm ngoài JSON).
+     * Extract JSON từ response của LLM (có thể có text thêm ngoài JSON hoặc
+     * codeblock markdown).
      */
     private String extractJsonFromResponse(String response) {
         if (response == null || response.trim().isEmpty()) {
-            throw new RuntimeException("Empty response from Gemini");
+            throw new RuntimeException("Empty response from LLM");
         }
 
-        // Tìm JSON object trong response
-        String trimmed = response.trim();
+        // Loại bỏ codeblock markdown nếu có (```json ... ``` hoặc ``` ... ```)
+        String cleaned = response.trim();
 
-        // Tìm vị trí bắt đầu của JSON object
-        int startIdx = trimmed.indexOf("{");
-        if (startIdx == -1) {
+        // Loại bỏ markdown codeblock
+        if (cleaned.startsWith("```")) {
+            int firstNewline = cleaned.indexOf("\n");
+            if (firstNewline != -1) {
+                cleaned = cleaned.substring(firstNewline + 1);
+            }
+            // Loại bỏ closing ```
+            int lastBacktick = cleaned.lastIndexOf("```");
+            if (lastBacktick != -1) {
+                cleaned = cleaned.substring(0, lastBacktick).trim();
+            }
+        }
+
+        // Tìm JSON trong response (có thể là object {} hoặc array [])
+        String trimmed = cleaned.trim();
+
+        // Tìm vị trí bắt đầu của JSON (object hoặc array)
+        int objectStart = trimmed.indexOf("{");
+        int arrayStart = trimmed.indexOf("[");
+
+        int startIdx = -1;
+        boolean isArray = false;
+
+        if (arrayStart != -1 && (objectStart == -1 || arrayStart < objectStart)) {
+            // Array xuất hiện trước hoặc chỉ có array
+            startIdx = arrayStart;
+            isArray = true;
+        } else if (objectStart != -1) {
+            // Object xuất hiện trước hoặc chỉ có object
+            startIdx = objectStart;
+            isArray = false;
+        } else {
             throw new RuntimeException("No JSON found in response: " + response);
         }
 
-        // Tìm vị trí kết thúc của JSON object (tìm dấu } tương ứng)
+        // Tìm vị trí kết thúc của JSON (tìm dấu } hoặc ] tương ứng)
         int braceCount = 0;
+        int bracketCount = 0;
         int endIdx = -1;
+        boolean inString = false;
+        boolean escapeNext = false;
+
         for (int i = startIdx; i < trimmed.length(); i++) {
             char c = trimmed.charAt(i);
-            if (c == '{') {
-                braceCount++;
-            } else if (c == '}') {
-                braceCount--;
-                if (braceCount == 0) {
-                    endIdx = i;
-                    break;
+
+            if (escapeNext) {
+                escapeNext = false;
+                continue;
+            }
+
+            if (c == '\\') {
+                escapeNext = true;
+                continue;
+            }
+
+            if (c == '"' && !escapeNext) {
+                inString = !inString;
+                continue;
+            }
+
+            if (!inString) {
+                if (c == '{') {
+                    braceCount++;
+                } else if (c == '}') {
+                    braceCount--;
+                    if (braceCount == 0 && !isArray) {
+                        endIdx = i;
+                        break;
+                    }
+                } else if (c == '[') {
+                    bracketCount++;
+                } else if (c == ']') {
+                    bracketCount--;
+                    if (bracketCount == 0 && isArray) {
+                        endIdx = i;
+                        break;
+                    }
                 }
             }
         }
@@ -1380,8 +1041,23 @@ public class ChatBotService {
             String jsonString = extractJsonFromResponse(llmResponse);
 
             // Parse JSON
-            return objectMapper.readValue(jsonString, Map.class);
+            Map<String, Object> result = objectMapper.readValue(jsonString, Map.class);
+
+            // Validate result có answer và sources
+            if (!result.containsKey("answer")) {
+                throw new RuntimeException("JSON response missing 'answer' field");
+            }
+            if (!result.containsKey("sources")) {
+                result.put("sources", new ArrayList<>());
+            }
+
+            return result;
         } catch (Exception e) {
+            // Log error để debug
+            System.err.println("Error parsing LLM response: " + e.getMessage());
+            System.err.println("Response: " + llmResponse);
+            e.printStackTrace();
+
             // Fallback: trả về answer là toàn bộ response
             Map<String, Object> fallback = new HashMap<>();
             fallback.put("answer", llmResponse);
@@ -1398,6 +1074,7 @@ public class ChatBotService {
             Map<String, Object> llmInputData) {
         Object sourcesObj = llmResponseJson.get("sources");
         if (sourcesObj == null) {
+            System.out.println("No sources found in llmResponseJson");
             return;
         }
 
@@ -1405,12 +1082,16 @@ public class ChatBotService {
         if (sourcesObj instanceof List) {
             sources = (List<Map<String, Object>>) sourcesObj;
         } else {
+            System.out.println("Sources is not a List, type: " + sourcesObj.getClass().getName());
             return;
         }
 
         if (sources.isEmpty()) {
+            System.out.println("Sources list is empty");
             return;
         }
+
+        System.out.println("Saving " + sources.size() + " sources");
 
         // Lấy ragChunks và webResults từ llmInputData để lấy thông tin đầy đủ
         List<Map<String, Object>> ragChunks = (List<Map<String, Object>>) llmInputData.get("ragChunks");
@@ -1511,11 +1192,16 @@ public class ChatBotService {
                 }
 
                 messageSourceRepository.save(messageSource);
+                System.out.println("Saved source: " + sourceType + " for message: " + assistantMessage.getId());
             } catch (Exception e) {
                 // Log error nhưng tiếp tục với các sources khác
-                // Note: Cần Logger để log error
+                System.err.println("Error saving source: " + e.getMessage());
+                System.err.println("Source data: " + source);
+                e.printStackTrace();
             }
         }
+
+        System.out.println("Finished saving sources");
     }
 
     /**
