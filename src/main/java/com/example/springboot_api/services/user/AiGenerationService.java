@@ -25,6 +25,8 @@ import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.ai.AiAsyncTaskService;
 import com.example.springboot_api.utils.UrlNormalizer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -51,6 +53,7 @@ public class AiGenerationService {
     private final NotebookAiSetFileRepository aiSetFileRepository;
     private final AiAsyncTaskService aiAsyncTaskService;
     private final UrlNormalizer urlNormalizer;
+    private final ObjectMapper objectMapper;
 
     // ================================
     // QUIZ GENERATION
@@ -130,6 +133,146 @@ public class AiGenerationService {
         }
 
         return result;
+    }
+
+    // ================================
+    // AUDIO OVERVIEW (SYNC)
+    // ================================
+
+    public Map<String, Object> generateAudioOverview(UUID notebookId, UUID userId, List<UUID> fileIds,
+            String voiceId, String outputFormat, String notes) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Notebook notebook = notebookRepository.findById(notebookId)
+                    .orElseThrow(() -> new NotFoundException("Notebook không tồn tại: " + notebookId));
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User không tồn tại: " + userId));
+
+            if (fileIds == null || fileIds.isEmpty()) {
+                result.put("error", "Danh sách file IDs không được để trống");
+                return result;
+            }
+
+            // Lấy files hợp lệ thuộc notebook
+            List<NotebookFile> selectedFiles = new ArrayList<>();
+            for (UUID fileId : fileIds) {
+                NotebookFile file = notebookFileRepository.findById(fileId).orElse(null);
+                if (file != null && file.getNotebook() != null && file.getNotebook().getId().equals(notebookId)) {
+                    selectedFiles.add(file);
+                }
+            }
+
+            if (selectedFiles.isEmpty()) {
+                result.put("error", "Không tìm thấy file hợp lệ nào");
+                return result;
+            }
+
+            // Sinh JSON script overview
+            String json = aiAsyncTaskService.generateAudioOverviewJson(selectedFiles, null);
+            JsonNode node = objectMapper.readTree(json);
+            String script = node.path("voice_script_overview").asText();
+            if (script == null || script.isBlank()) {
+                result.put("error", "voice_script_overview trống.");
+                return result;
+            }
+
+            // Gọi ElevenLabs TTS và lưu asset
+            var asset = aiAsyncTaskService.generateAudioOverviewAsset(
+                    script, voiceId, outputFormat, notebook, user, null);
+
+            result.put("success", true);
+            result.put("audioUrl", urlNormalizer.normalizeToFull(asset.getAudioUrl()));
+            result.put("voiceName", asset.getVoiceName());
+            result.put("setType", "tts");
+            return result;
+        } catch (Exception e) {
+            result.put("error", e.getMessage());
+            return result;
+        }
+    }
+
+    // ================================
+    // AUDIO OVERVIEW (ASYNC giống quiz)
+    // ================================
+
+    public Map<String, Object> generateAudioOverviewAsync(UUID notebookId, UUID userId, List<UUID> fileIds,
+            String voiceId, String outputFormat, String notes) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Notebook notebook = notebookRepository.findById(notebookId)
+                    .orElseThrow(() -> new NotFoundException("Notebook không tồn tại: " + notebookId));
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User không tồn tại: " + userId));
+
+            if (fileIds == null || fileIds.isEmpty()) {
+                result.put("error", "Danh sách file IDs không được để trống");
+                return result;
+            }
+
+            // Lấy files hợp lệ thuộc notebook
+            List<NotebookFile> selectedFiles = new ArrayList<>();
+            for (UUID fileId : fileIds) {
+                NotebookFile file = notebookFileRepository.findById(fileId).orElse(null);
+                if (file != null && file.getNotebook() != null && file.getNotebook().getId().equals(notebookId)) {
+                    selectedFiles.add(file);
+                }
+            }
+
+            if (selectedFiles.isEmpty()) {
+                result.put("error", "Không tìm thấy file hợp lệ nào");
+                return result;
+            }
+
+            OffsetDateTime now = OffsetDateTime.now();
+            Map<String, Object> inputConfig = new HashMap<>();
+            inputConfig.put("fileIds", fileIds);
+            if (voiceId != null && !voiceId.isBlank()) {
+                inputConfig.put("voiceId", voiceId);
+            }
+            if (outputFormat != null && !outputFormat.isBlank()) {
+                inputConfig.put("outputFormat", outputFormat);
+            }
+            if (notes != null && !notes.isBlank()) {
+                inputConfig.put("notes", notes);
+            }
+
+            NotebookAiSet aiSet = NotebookAiSet.builder()
+                    .notebook(notebook)
+                    .createdBy(user)
+                    .setType("tts")
+                    .status("queued")
+                    .title("Audio Overview từ " + selectedFiles.size() + " tài liệu")
+                    .inputConfig(inputConfig)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            NotebookAiSet savedAiSet = aiSetRepository.save(aiSet);
+
+            // Liên kết files
+            for (NotebookFile file : selectedFiles) {
+                NotebookAiSetFile aiSetFile = NotebookAiSetFile.builder()
+                        .aiSet(savedAiSet)
+                        .file(file)
+                        .createdAt(now)
+                        .build();
+                aiSetFileRepository.save(aiSetFile);
+            }
+
+            // Chạy async
+            aiAsyncTaskService.processAudioOverviewAsync(
+                    savedAiSet.getId(), notebookId, userId, fileIds, voiceId, outputFormat, notes);
+
+            result.put("aiSetId", savedAiSet.getId());
+            result.put("status", "queued");
+            result.put("success", true);
+            result.put("message", "Audio Overview đang được tạo ở nền. Dùng aiSetId để theo dõi.");
+            return result;
+        } catch (Exception e) {
+            result.put("error", e.getMessage());
+            return result;
+        }
     }
 
     /**
@@ -233,6 +376,17 @@ public class AiGenerationService {
 
         int fileCount = set.getNotebookAiSetFiles() != null ? set.getNotebookAiSetFiles().size() : 0;
 
+        // Prepare outputStats với normalized audioUrl
+        Map<String, Object> outputStats = null;
+        if (set.getOutputStats() != null && !set.getOutputStats().isEmpty()) {
+            outputStats = new HashMap<>(set.getOutputStats());
+            // Normalize audioUrl nếu có
+            Object audioUrlRaw = outputStats.get("audioUrl");
+            if (audioUrlRaw instanceof String audioUrl) {
+                outputStats.put("audioUrl", urlNormalizer.normalizeToFull(audioUrl));
+            }
+        }
+
         return AiSetResponse.builder()
                 .id(set.getId())
                 .notebookId(set.getNotebook() != null ? set.getNotebook().getId() : null)
@@ -250,6 +404,7 @@ public class AiGenerationService {
                 .updatedAt(set.getUpdatedAt())
                 .fileCount(fileCount)
                 .isOwner(isOwner)
+                .outputStats(outputStats)
                 .build();
     }
 

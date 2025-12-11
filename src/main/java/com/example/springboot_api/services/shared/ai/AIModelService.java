@@ -23,7 +23,7 @@ public class AIModelService {
 
     private static final Logger log = LoggerFactory.getLogger(AIModelService.class);
     private static final String GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+    private static final String DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
 
     private final com.google.genai.Client geminiClient;
     private final WebClient webClient;

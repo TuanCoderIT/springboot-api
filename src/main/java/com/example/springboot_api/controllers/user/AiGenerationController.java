@@ -81,6 +81,84 @@ public class AiGenerationController {
         return ResponseEntity.ok(result);
     }
 
+    // ================================
+    // AUDIO OVERVIEW (SYNC TTS)
+    // ================================
+
+    /**
+     * Tạo Audio Overview (script + ElevenLabs TTS) từ các file đã chọn.
+     * POST /user/notebooks/{notebookId}/ai/audio-overview/generate
+     *
+     * @param user         Current authenticated user
+     * @param notebookId   Notebook ID
+     * @param fileIds      Danh sách file IDs
+     * @param voiceId      Voice ElevenLabs (optional)
+     * @param outputFormat Định dạng audio (vd: mp3_44100_128; optional)
+     * @param notes        Yêu cầu bổ sung cho prompt (optional)
+     * @return Map chứa audioUrl và thông tin thành công
+     */
+    @PostMapping("/audio-overview/generate")
+    public ResponseEntity<Map<String, Object>> generateAudioOverview(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false) String voiceId,
+            @RequestParam(required = false) String outputFormat,
+            @RequestParam(required = false) String notes) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        Map<String, Object> result = aiGenerationService.generateAudioOverview(
+                notebookId, user.getId(), fileIds, voiceId, outputFormat, notes);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    // ================================
+    // AUDIO OVERVIEW (ASYNC, giống quiz)
+    // ================================
+
+    /**
+     * Tạo Audio Overview chạy nền (giống quiz): trả aiSetId để poll.
+     * POST /user/notebooks/{notebookId}/ai/audio-overview/generate-async
+     */
+    @PostMapping("/audio-overview/generate-async")
+    public ResponseEntity<Map<String, Object>> generateAudioOverviewAsync(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false) String voiceId,
+            @RequestParam(required = false) String outputFormat,
+            @RequestParam(required = false) String notes) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        Map<String, Object> result = aiGenerationService.generateAudioOverviewAsync(
+                notebookId, user.getId(), fileIds, voiceId, outputFormat, notes);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
     /**
      * Lấy chi tiết quiz theo AI Set ID.
      * Bao gồm tất cả câu hỏi và câu trả lời.
