@@ -60,7 +60,51 @@ curl -X POST "https://api.example.com/user/notebooks/123e4567-e89b-12d3-a456-426
 
 ---
 
-## 2. Lấy danh sách AI Tasks
+## 2. Tạo Flashcards (Async)
+
+### Endpoint
+
+```
+POST /user/notebooks/{notebookId}/ai/flashcards/generate
+```
+
+### Query Parameters
+
+| Parameter           | Type     | Required | Default      | Mô tả                                                     |
+| ------------------- | -------- | -------- | ------------ | --------------------------------------------------------- |
+| `fileIds`           | `UUID[]` | ✅ Yes   | -            | Danh sách file IDs để tạo flashcards                      |
+| `numberOfCards`     | `string` | No       | `"standard"` | Số lượng thẻ: `"few"` \| `"standard"` \| `"many"`         |
+| `additionalRequirements` | `string` | No | `null` | Yêu cầu bổ sung (ví dụ: tập trung công thức, thêm ví dụ) |
+
+### Request Example
+
+```bash
+curl -X POST "https://api.example.com/user/notebooks/123e4567-e89b-12d3-a456-426614174000/ai/flashcards/generate?fileIds=abc123,def456&numberOfCards=standard" \
+  -H "Authorization: Bearer <your-jwt-token>"
+```
+
+### Response - Success (200)
+
+```json
+{
+  "aiSetId": "789e0123-e89b-12d3-a456-426614174000",
+  "status": "queued",
+  "message": "Flashcards đang được tạo ở nền. Sử dụng aiSetId để theo dõi tiến trình.",
+  "success": true
+}
+```
+
+### Lấy danh sách flashcards theo AI Set
+
+```
+GET /user/notebooks/{notebookId}/ai/flashcards/{aiSetId}
+```
+
+**Response body:** gồm metadata của AI Set và mảng `flashcards` với các trường `frontText`, `backText`, `hint`, `example`, `imageUrl`, `audioUrl`, `extraMetadata`.
+
+---
+
+## 3. Lấy danh sách AI Tasks
 
 ### Endpoint
 
@@ -147,7 +191,7 @@ curl "https://api.example.com/user/notebooks/123e4567-e89b-12d3-a456-42661417400
 
 ---
 
-## 3. Status Flow
+## 4. Status Flow
 
 ```
 ┌─────────┐     ┌────────────┐     ┌──────┐
@@ -171,7 +215,7 @@ curl "https://api.example.com/user/notebooks/123e4567-e89b-12d3-a456-42661417400
 
 ---
 
-## 4. TypeScript Interfaces
+## 5. TypeScript Interfaces
 
 ```typescript
 // Request types
@@ -180,6 +224,13 @@ interface GenerateQuizParams {
   fileIds: string[];
   numberOfQuestions?: "few" | "standard" | "many";
   difficultyLevel?: "easy" | "medium" | "hard";
+}
+
+interface GenerateFlashcardsParams {
+  notebookId: string;
+  fileIds: string[];
+  numberOfCards?: "few" | "standard" | "many";
+  additionalRequirements?: string;
 }
 
 interface GetAiTasksParams {
@@ -193,6 +244,35 @@ interface GenerateQuizResponse {
   status: "queued";
   message: string;
   success: boolean;
+}
+
+interface GenerateFlashcardsResponse {
+  aiSetId: string;
+  status: "queued";
+  message: string;
+  success: boolean;
+}
+
+interface FlashcardItem {
+  id: string;
+  frontText: string;
+  backText: string;
+  hint?: string;
+  example?: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  extraMetadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+interface FlashcardListResponse {
+  aiSetId: string;
+  title?: string;
+  status: "queued" | "processing" | "done" | "failed";
+  errorMessage?: string | null;
+  notebookId: string;
+  flashcards: FlashcardItem[];
+  totalFlashcards: number;
 }
 
 interface AiTaskResponse {
@@ -213,7 +293,7 @@ interface AiTaskResponse {
 
 ---
 
-## 5. Frontend Implementation Guide
+## 6. Frontend Implementation Guide
 
 ### 5.1. Polling cho Task Status
 
@@ -332,7 +412,7 @@ function AiTaskCard({ task }: { task: AiTaskResponse }) {
 
 ---
 
-## 6. Error Handling
+## 7. Error Handling
 
 ### HTTP Status Codes
 
@@ -356,18 +436,19 @@ function AiTaskCard({ task }: { task: AiTaskResponse }) {
 
 ---
 
-## 7. API Endpoints Summary
+## 8. API Endpoints Summary
 
-| Method | Endpoint                                        | Mô tả                  |
-| ------ | ----------------------------------------------- | ---------------------- |
-| `POST` | `/user/notebooks/{notebookId}/ai/quiz/generate` | Tạo quiz (async)       |
-| `GET`  | `/user/notebooks/{notebookId}/ai/tasks`         | Lấy danh sách AI tasks |
+| Method | Endpoint                                                  | Mô tả                             |
+| ------ | --------------------------------------------------------- | --------------------------------- |
+| `POST` | `/user/notebooks/{notebookId}/ai/quiz/generate`           | Tạo quiz (async)                  |
+| `POST` | `/user/notebooks/{notebookId}/ai/flashcards/generate`     | Tạo flashcards (async)            |
+| `GET`  | `/user/notebooks/{notebookId}/ai/flashcards/{aiSetId}`    | Lấy bộ flashcards theo AI Set ID  |
+| `GET`  | `/user/notebooks/{notebookId}/ai/tasks`                   | Lấy danh sách AI tasks            |
 
 ### Coming Soon
 
 | Method | Endpoint                                              | Mô tả              |
 | ------ | ----------------------------------------------------- | ------------------ |
 | `POST` | `/user/notebooks/{notebookId}/ai/summary/generate`    | Tạo summary        |
-| `POST` | `/user/notebooks/{notebookId}/ai/flashcards/generate` | Tạo flashcards     |
 | `POST` | `/user/notebooks/{notebookId}/ai/tts/generate`        | Tạo text-to-speech |
 | `POST` | `/user/notebooks/{notebookId}/ai/video/generate`      | Tạo video          |

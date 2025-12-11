@@ -1,6 +1,7 @@
 package com.example.springboot_api.repositories.shared;
 
 import java.util.UUID;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +13,13 @@ import com.example.springboot_api.models.Flashcard;
 @Repository
 public interface FlashcardRepository extends JpaRepository<Flashcard, UUID> {
     long countByNotebookId(UUID notebookId);
+
+    @Query("""
+            SELECT f FROM Flashcard f
+            WHERE f.notebookAiSets.id = :aiSetId
+            ORDER BY f.createdAt ASC
+            """)
+    List<Flashcard> findByAiSetId(@Param("aiSetId") UUID aiSetId);
 
     @Query("""
             SELECT COUNT(f) FROM Flashcard f
