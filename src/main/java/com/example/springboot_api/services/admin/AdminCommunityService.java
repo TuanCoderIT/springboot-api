@@ -71,6 +71,8 @@ public class AdminCommunityService {
                 nb.setType("community");
                 nb.setVisibility(req.visibility());
                 nb.setCreatedBy(admin);
+                nb.setCreatedAt(OffsetDateTime.now());
+                nb.setUpdatedAt(OffsetDateTime.now());
 
                 // Xử lý upload thumbnail
                 if (thumbnail != null && !thumbnail.isEmpty()) {
