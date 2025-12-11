@@ -221,27 +221,4 @@ public class AiGenerationController {
         return ResponseEntity.noContent().build();
     }
 
-    // ================================
-    // FUTURE: SUMMARY GENERATION
-    // ================================
-
-    // TODO: POST /user/notebooks/{notebookId}/ai/summary/generate
-
-    // ================================
-    // FUTURE: FLASHCARDS GENERATION
-    // ================================
-
-    // TODO: POST /user/notebooks/{notebookId}/ai/flashcards/generate
-
-    // ================================
-    // FUTURE: TTS GENERATION
-    // ================================
-
-    // TODO: POST /user/notebooks/{notebookId}/ai/tts/generate
-
-    // ================================
-    // FUTURE: VIDEO GENERATION
-    // ================================
-
-    // TODO: POST /user/notebooks/{notebookId}/ai/video/generate
 }

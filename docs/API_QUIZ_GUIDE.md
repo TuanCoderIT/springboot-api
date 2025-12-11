@@ -238,7 +238,7 @@ DELETE /user/notebooks/{notebookId}/ai/sets/{aiSetId}
 
 ```bash
 curl -X DELETE 'http://localhost:8386/user/notebooks/{notebookId}/ai/sets/{aiSetId}' \
-  -H 'Authorization: Bearer YOUR_TOKEN'
+
 ```
 
 ### Đầu ra (204 No Content)

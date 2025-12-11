@@ -40,7 +40,6 @@ public class UserNotebookFileService {
     private final UrlNormalizer urlNormalizer;
     private final com.example.springboot_api.repositories.shared.FileChunkRepository fileChunkRepository;
 
-    @Transactional
     public List<NotebookFile> uploadFiles(
             UUID userId,
             UUID notebookId,
@@ -67,7 +66,18 @@ public class UserNotebookFileService {
             }
         }
 
-        String initStatus = isCommunity ? "pending" : "approved";
+        // Xác định status ban đầu cho file
+        // - Notebook thường: approved
+        // - Community + owner/admin: approved (không cần chờ duyệt)
+        // - Community + member thường: pending (chờ admin duyệt)
+        String initStatus;
+        if (isCommunity) {
+            String memberRole = memberOpt.get().getRole();
+            boolean isAdminOrOwner = "owner".equals(memberRole) || "admin".equals(memberRole);
+            initStatus = isAdminOrOwner ? "approved" : "pending";
+        } else {
+            initStatus = "approved";
+        }
 
         int defaultChunkSize = 3000;
         int defaultChunkOverlap = 250;
