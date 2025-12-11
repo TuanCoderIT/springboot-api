@@ -208,3 +208,4 @@ Stack: com.example.springboot_api.services.user.ChatBotService.getChatHistoryInt
 - Format `\n\n` được giữ nguyên để phân tách các message
 - OCR text được format rõ ràng để LLM hiểu đây là phần câu hỏi bổ sung từ hình ảnh
 
+

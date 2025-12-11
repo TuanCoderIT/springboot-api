@@ -11,9 +11,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @Builder
@@ -34,7 +32,11 @@ public class Flashcard implements Serializable {
     public static final String COLUMN_BACKTEXT_NAME = "back_text";
     public static final String COLUMN_EXTRAMETADATA_NAME = "extra_metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 4349479188106419749L;
+    public static final String COLUMN_HINT_NAME = "hint";
+    public static final String COLUMN_EXAMPLE_NAME = "example";
+    public static final String COLUMN_IMAGEURL_NAME = "image_url";
+    public static final String COLUMN_AUDIOURL_NAME = "audio_url";
+    private static final long serialVersionUID = -1596234167648093732L;
 
 
     private UUID id;
@@ -53,7 +55,13 @@ public class Flashcard implements Serializable {
 
     private NotebookAiSet notebookAiSets;
 
-    private Set<FlashcardReview> flashcardReviews = new LinkedHashSet<>();
+    private String hint;
+
+    private String example;
+
+    private String imageUrl;
+
+    private String audioUrl;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -108,9 +116,24 @@ public class Flashcard implements Serializable {
         return notebookAiSets;
     }
 
-    @OneToMany(mappedBy = "flashcard")
-    public Set<FlashcardReview> getFlashcardReviews() {
-        return flashcardReviews;
+    @Column(name = COLUMN_HINT_NAME, length = Integer.MAX_VALUE)
+    public String getHint() {
+        return hint;
+    }
+
+    @Column(name = COLUMN_EXAMPLE_NAME, length = Integer.MAX_VALUE)
+    public String getExample() {
+        return example;
+    }
+
+    @Column(name = COLUMN_IMAGEURL_NAME, length = Integer.MAX_VALUE)
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    @Column(name = COLUMN_AUDIOURL_NAME, length = Integer.MAX_VALUE)
+    public String getAudioUrl() {
+        return audioUrl;
     }
 
 }

@@ -57,7 +57,6 @@ public class User implements Serializable {
 
     private String avatar;
 
-    private Set<FlashcardReview> flashcardReviews = new LinkedHashSet<>();
 
     private Set<Flashcard> flashcards = new LinkedHashSet<>();
 
@@ -144,10 +143,6 @@ public class User implements Serializable {
         return avatar;
     }
 
-    @OneToMany(mappedBy = "user")
-    public Set<FlashcardReview> getFlashcardReviews() {
-        return flashcardReviews;
-    }
 
     @OneToMany(mappedBy = "createdBy")
     public Set<Flashcard> getFlashcards() {
