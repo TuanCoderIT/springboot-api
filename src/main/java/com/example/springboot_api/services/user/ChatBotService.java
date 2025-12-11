@@ -471,7 +471,8 @@ public class ChatBotService {
             llmResponse = aiModelService.callGroqModel(llmPrompt);
         } else {
             throw new BadRequestException(
-                    "Model code không được hỗ trợ: " + modelCode + ". Chỉ hỗ trợ 'gemini' hoặc 'groq'.");
+                    "Model code không được hỗ trợ: " + modelCode
+                            + ". Hỗ trợ 'gemini' hoặc 'groq'.");
         }
 
         // Parse JSON response từ LLM (loại bỏ code block markdown nếu có)

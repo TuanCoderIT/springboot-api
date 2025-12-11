@@ -1,6 +1,7 @@
 package com.example.springboot_api.dto.user.chatbot;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -34,4 +35,5 @@ public class AiSetResponse {
     private OffsetDateTime updatedAt;
     private int fileCount;
     private boolean isOwner;
+    private Map<String, Object> outputStats; // audioUrl, voiceName cho TTS; các thông tin khác cho setType khác
 }

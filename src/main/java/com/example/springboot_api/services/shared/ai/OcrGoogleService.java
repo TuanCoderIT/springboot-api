@@ -30,8 +30,8 @@ public class OcrGoogleService {
     private String uploadDir;
 
     private static final String OCR_PROMPT = "Trích xuất tất cả văn bản dưới dạng raw text, giữ nguyên định dạng dòng, từ file này:";
-    private static final String OCR_MODEL = "gemini-2.5-flash";
-    private static final String TEXT_MODEL = "gemini-2.5-flash"; // Dùng cho file Word đã trích xuất text
+    private static final String OCR_MODEL = "gemini-2.0-flash";
+    private static final String TEXT_MODEL = "gemini-2.0-flash"; // Dùng cho file Word đã trích xuất text
 
     public String extractTextFromDocument(String localFilePath, String mimeType) throws IOException {
         Path path = getValidPath(localFilePath);
