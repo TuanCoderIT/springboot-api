@@ -18,7 +18,9 @@ import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.config.security.UserPrincipal;
 import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
 import com.example.springboot_api.dto.user.quiz.QuizListResponse;
+import com.example.springboot_api.dto.user.flashcard.FlashcardListResponse;
 import com.example.springboot_api.services.user.AiGenerationService;
+import com.example.springboot_api.services.user.FlashcardService;
 import com.example.springboot_api.services.user.QuizService;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ public class AiGenerationController {
 
     private final AiGenerationService aiGenerationService;
     private final QuizService quizService;
+    private final FlashcardService flashcardService;
 
     // ================================
     // QUIZ GENERATION
@@ -103,6 +106,60 @@ public class AiGenerationController {
         }
 
         QuizListResponse response = quizService.getQuizzesByAiSetId(user.getId(), notebookId, aiSetId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ================================
+    // FLASHCARD GENERATION
+    // ================================
+
+    /**
+     * Tạo flashcards từ các notebook files (chạy nền).
+     * POST /user/notebooks/{notebookId}/ai/flashcards/generate
+     */
+    @PostMapping("/flashcards/generate")
+    public ResponseEntity<Map<String, Object>> generateFlashcards(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false, defaultValue = "standard") String numberOfCards,
+            @RequestParam(required = false) String additionalRequirements) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        Map<String, Object> result = aiGenerationService.generateFlashcards(
+                notebookId, user.getId(), fileIds, numberOfCards, additionalRequirements);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy danh sách flashcards theo AI Set ID.
+     *
+     * GET /user/notebooks/{notebookId}/ai/flashcards/{aiSetId}
+     */
+    @GetMapping("/flashcards/{aiSetId}")
+    public ResponseEntity<FlashcardListResponse> getFlashcards(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        FlashcardListResponse response = flashcardService.getFlashcardsByAiSetId(user.getId(), notebookId, aiSetId);
 
         return ResponseEntity.ok(response);
     }

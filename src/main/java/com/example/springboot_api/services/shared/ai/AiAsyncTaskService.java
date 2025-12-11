@@ -13,6 +13,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.springboot_api.models.Flashcard;
 import com.example.springboot_api.models.LlmModel;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookAiSet;
@@ -21,6 +22,7 @@ import com.example.springboot_api.models.NotebookQuizOption;
 import com.example.springboot_api.models.NotebookQuizz;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.shared.FileChunkRepository;
+import com.example.springboot_api.repositories.shared.FlashcardRepository;
 import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 import com.example.springboot_api.repositories.shared.QuizOptionRepository;
 import com.example.springboot_api.repositories.shared.QuizRepository;
@@ -43,6 +45,7 @@ public class AiAsyncTaskService {
     private final FileChunkRepository fileChunkRepository;
     private final QuizRepository quizRepository;
     private final QuizOptionRepository quizOptionRepository;
+    private final FlashcardRepository flashcardRepository;
     private final AIModelService aiModelService;
     private final ObjectMapper objectMapper;
 
@@ -161,6 +164,97 @@ public class AiAsyncTaskService {
     }
 
     /**
+     * Xử lý flashcard generation ở background (async).
+     * Nhận IDs để tránh LazyInitializationException.
+     */
+    @Async
+    @Transactional
+    public void processFlashcardGenerationAsync(UUID aiSetId, UUID notebookId, UUID userId,
+            List<UUID> fileIds, String numberOfCards, String additionalRequirements) {
+
+        System.out.println("🚀 [ASYNC] Bắt đầu tạo flashcards - AiSet: " + aiSetId + " | Thread: "
+                + Thread.currentThread().getName());
+
+        try {
+            updateAiSetStatus(aiSetId, "processing", null, null);
+
+            NotebookAiSet aiSet = aiSetRepository.findById(aiSetId).orElse(null);
+            if (aiSet == null) {
+                System.err.println("❌ [ASYNC] Không tìm thấy AiSet: " + aiSetId);
+                return;
+            }
+
+            Notebook notebook = aiSet.getNotebook();
+            User user = aiSet.getCreatedBy();
+
+            if (notebook == null || user == null) {
+                String errorMsg = "Không tìm thấy notebook hoặc user từ AiSet";
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
+                System.err.println("❌ [ASYNC] " + errorMsg);
+                return;
+            }
+
+            List<NotebookFile> selectedFiles = new ArrayList<>();
+            aiSet.getNotebookAiSetFiles().forEach(asf -> {
+                if (asf.getFile() != null) {
+                    selectedFiles.add(asf.getFile());
+                }
+            });
+
+            if (selectedFiles.isEmpty()) {
+                String errorMsg = "Không tìm thấy file nào từ AiSet";
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
+                System.err.println("❌ [ASYNC] " + errorMsg);
+                return;
+            }
+
+            System.out.println("📄 [ASYNC] Đang tóm tắt tài liệu cho flashcards...");
+            String summaryText = summarizeDocuments(selectedFiles, null);
+            if (summaryText == null || summaryText.isEmpty()) {
+                String errorMsg = "Không thể tóm tắt tài liệu (có thể không có chunks)";
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
+                System.err.println("❌ [ASYNC] " + errorMsg);
+                return;
+            }
+
+            String flashcardPrompt = buildFlashcardPrompt(summaryText, numberOfCards, additionalRequirements);
+
+            System.out.println("🤖 [ASYNC] Đang gọi LLM tạo flashcards...");
+            String llmResponse = aiModelService.callGeminiModel(flashcardPrompt);
+            if (llmResponse == null || llmResponse.trim().isEmpty()) {
+                String errorMsg = "LLM trả về response rỗng";
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
+                System.err.println("❌ [ASYNC] " + errorMsg);
+                return;
+            }
+
+            List<Map<String, Object>> flashcards = parseFlashcardJsonResponse(llmResponse);
+            if (flashcards == null || flashcards.isEmpty()) {
+                String errorMsg = "Không thể parse flashcards từ LLM response";
+                updateAiSetStatus(aiSetId, "failed", errorMsg, null);
+                System.err.println("❌ [ASYNC] " + errorMsg);
+                return;
+            }
+
+            List<UUID> savedCardIds = saveFlashcardsToDatabase(notebook, user, aiSet, flashcards);
+
+            Map<String, Object> outputStats = new HashMap<>();
+            outputStats.put("flashcardIds", savedCardIds);
+            outputStats.put("flashcardCount", savedCardIds.size());
+            updateAiSetStatus(aiSetId, "done", null, outputStats);
+
+            System.out.println("✅ [ASYNC] Hoàn thành tạo flashcards - AiSet: " + aiSetId + " | Số flashcards: "
+                    + savedCardIds.size());
+
+        } catch (Exception e) {
+            String errorMsg = "Lỗi khi tạo flashcards: " + e.getMessage();
+            updateAiSetStatus(aiSetId, "failed", errorMsg, null);
+            System.err.println("❌ [ASYNC] " + errorMsg);
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * Cập nhật status của NotebookAiSet.
      */
     @Transactional
@@ -241,6 +335,59 @@ public class AiAsyncTaskService {
     }
 
     /**
+     * Lưu flashcards vào database với foreign key tới NotebookAiSet.
+     */
+    @Transactional
+    public List<UUID> saveFlashcardsToDatabase(Notebook notebook, User user, NotebookAiSet aiSet,
+            List<Map<String, Object>> flashcards) {
+        List<UUID> savedIds = new ArrayList<>();
+        OffsetDateTime now = OffsetDateTime.now();
+
+        for (Map<String, Object> cardData : flashcards) {
+            String frontText = (String) (cardData.get("front_text") != null ? cardData.get("front_text")
+                    : cardData.get("frontText"));
+            String backText = (String) (cardData.get("back_text") != null ? cardData.get("back_text")
+                    : cardData.get("backText"));
+            if (frontText == null || frontText.isBlank() || backText == null || backText.isBlank()) {
+                continue;
+            }
+
+            String hint = (String) cardData.get("hint");
+            String example = (String) cardData.get("example");
+            String imageUrl = (String) (cardData.get("image_url") != null ? cardData.get("image_url")
+                    : cardData.get("imageUrl"));
+            String audioUrl = (String) (cardData.get("audio_url") != null ? cardData.get("audio_url")
+                    : cardData.get("audioUrl"));
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> extraMetadata = (Map<String, Object>) cardData.get("extra_metadata");
+            if (extraMetadata == null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> camelMeta = (Map<String, Object>) cardData.get("extraMetadata");
+                extraMetadata = camelMeta;
+            }
+
+            Flashcard flashcard = Flashcard.builder()
+                    .notebook(notebook)
+                    .createdBy(user)
+                    .notebookAiSets(aiSet)
+                    .frontText(frontText.trim())
+                    .backText(backText.trim())
+                    .hint(hint != null ? hint.trim() : null)
+                    .example(example != null ? example.trim() : null)
+                    .imageUrl(imageUrl != null ? imageUrl.trim() : null)
+                    .audioUrl(audioUrl != null ? audioUrl.trim() : null)
+                    .extraMetadata(extraMetadata)
+                    .createdAt(now)
+                    .build();
+            Flashcard saved = flashcardRepository.save(flashcard);
+            savedIds.add(saved.getId());
+        }
+
+        return savedIds;
+    }
+
+    /**
      * Parse JSON response từ LLM thành list quiz.
      */
     public List<Map<String, Object>> parseQuizJsonResponse(String llmResponse) {
@@ -255,6 +402,26 @@ public class AiAsyncTaskService {
             return quizList;
         } catch (Exception e) {
             System.err.println("❌ Lỗi parse quiz JSON: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Parse JSON response từ LLM thành list flashcards.
+     */
+    public List<Map<String, Object>> parseFlashcardJsonResponse(String llmResponse) {
+        try {
+            String jsonString = extractJsonFromResponse(llmResponse);
+            if (jsonString == null) {
+                return null;
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> cardList = objectMapper.readValue(jsonString, List.class);
+            return cardList;
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi parse flashcard JSON: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
@@ -350,6 +517,59 @@ public class AiAsyncTaskService {
 
                 CHỈ TRẢ VỀ JSON ARRAY, KHÔNG CÓ TEXT KHÁC.
                 """, summaryText, additionalSection, numberOfQuestions, difficultyLevel);
+    }
+
+    /**
+     * Tạo prompt cho flashcard generation.
+     */
+    private String buildFlashcardPrompt(String summaryText, String numberOfCards, String additionalRequirements) {
+        String additionalSection = "";
+        if (additionalRequirements != null && !additionalRequirements.trim().isEmpty()) {
+            additionalSection = String.format("""
+
+                    ---
+                    YÊU CẦU BỔ SUNG TỪ NGƯỜI DÙNG:
+
+                    %s
+
+                    (Hãy ưu tiên tuân thủ yêu cầu bổ sung này khi tạo flashcards)
+                    """, additionalRequirements.trim());
+        }
+
+        return String.format("""
+                Bạn là chuyên gia tạo flashcard học tập ngắn gọn, dễ nhớ.
+
+                Dưới đây là phần nội dung đã được tóm tắt từ nhiều tài liệu trong notebook.
+                Hãy tạo bộ flashcard bám sát nội dung, chú trọng tính súc tích, dễ ôn tập.
+
+                ---
+                NỘI DUNG TÓM TẮT:
+
+                %s
+
+                ---%s
+
+                Mục tiêu:
+                - Số lượng flashcard: %s (few = 5-8, standard = 10-15, many = 16-25)
+                - Front: câu hỏi/khái niệm/ngắn gọn.
+                - Back: giải thích ngắn, chính xác; có thể kèm bước, công thức, bullet ngắn.
+                - Có thể kèm hint và example nếu hữu ích cho ghi nhớ.
+
+                Format JSON response:
+                [
+                  {
+                    "front_text": "Thuật ngữ hay câu hỏi ngắn",
+                    "back_text": "Giải thích súc tích, dễ nhớ",
+                    "hint": "Gợi ý (optional)",
+                    "example": "Ví dụ minh họa ngắn (optional)",
+                    "image_url": null,
+                    "audio_url": null,
+                    "extra_metadata": {"tags": ["topic1", "topic2"]}
+                  }
+                ]
+
+                CHỈ TRẢ VỀ JSON ARRAY, KHÔNG CÓ TEXT KHÁC.
+                """, summaryText, additionalSection, numberOfCards);
     }
 
     // ================================
