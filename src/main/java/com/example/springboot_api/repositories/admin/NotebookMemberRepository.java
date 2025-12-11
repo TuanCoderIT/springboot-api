@@ -113,4 +113,58 @@ public interface NotebookMemberRepository extends JpaRepository<NotebookMember, 
                AND (:notebookId IS NULL OR nm.notebook.id = :notebookId)
                """)
      List<NotebookMember> findAllPendingRequests(@Param("notebookId") UUID notebookId);
+
+     /**
+      * Cursor-based pagination: lấy members lần đầu (không có cursor)
+      */
+     @Query("""
+               SELECT nm FROM Notebook_Member nm
+               JOIN FETCH nm.user u
+               WHERE nm.notebook.id = :notebookId
+               AND nm.status = 'approved'
+               AND (:q IS NULL OR :q = '' OR
+                    LOWER(u.fullName) LIKE LOWER(CONCAT('%', :q, '%')) OR
+                    LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%')))
+               ORDER BY nm.joinedAt DESC
+               """)
+     List<NotebookMember> findMembersFirstPage(
+               @Param("notebookId") UUID notebookId,
+               @Param("q") String keyword,
+               Pageable pageable);
+
+     /**
+      * Cursor-based pagination: lấy members với cursor (các lần sau)
+      */
+     @Query("""
+               SELECT nm FROM Notebook_Member nm
+               JOIN FETCH nm.user u
+               WHERE nm.notebook.id = :notebookId
+               AND nm.status = 'approved'
+               AND (:q IS NULL OR :q = '' OR
+                    LOWER(u.fullName) LIKE LOWER(CONCAT('%', :q, '%')) OR
+                    LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%')))
+               AND nm.joinedAt < :cursorJoinedAt
+               ORDER BY nm.joinedAt DESC
+               """)
+     List<NotebookMember> findMembersAfterCursor(
+               @Param("notebookId") UUID notebookId,
+               @Param("q") String keyword,
+               @Param("cursorJoinedAt") java.time.OffsetDateTime cursorJoinedAt,
+               Pageable pageable);
+
+     /**
+      * Đếm tổng số members approved trong notebook (để frontend biết total)
+      */
+     @Query("""
+               SELECT COUNT(nm) FROM Notebook_Member nm
+               JOIN nm.user u
+               WHERE nm.notebook.id = :notebookId
+               AND nm.status = 'approved'
+               AND (:q IS NULL OR :q = '' OR
+                    LOWER(u.fullName) LIKE LOWER(CONCAT('%', :q, '%')) OR
+                    LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%')))
+               """)
+     long countMembersWithSearch(
+               @Param("notebookId") UUID notebookId,
+               @Param("q") String keyword);
 }
