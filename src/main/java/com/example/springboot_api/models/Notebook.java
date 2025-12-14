@@ -1,37 +1,21 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -56,7 +40,8 @@ public class Notebook implements Serializable {
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = 5856045495641142828L;
+    private static final long serialVersionUID = -3545786868454328411L;
+
 
     private UUID id;
 
@@ -97,6 +82,8 @@ public class Notebook implements Serializable {
     private Set<NotebookMember> notebookMembers = new LinkedHashSet<>();
 
     private Set<NotebookMessage> notebookMessages = new LinkedHashSet<>();
+
+    private Set<NotebookMindmap> notebookMindmaps = new LinkedHashSet<>();
 
     private Set<NotebookQuizz> notebookQuizzes = new LinkedHashSet<>();
 
@@ -218,6 +205,11 @@ public class Notebook implements Serializable {
     @OneToMany(mappedBy = "notebook")
     public Set<NotebookMessage> getNotebookMessages() {
         return notebookMessages;
+    }
+
+    @OneToMany(mappedBy = "notebook")
+    public Set<NotebookMindmap> getNotebookMindmaps() {
+        return notebookMindmaps;
     }
 
     @OneToMany(mappedBy = "notebook")

@@ -27,6 +27,7 @@ import com.example.springboot_api.dto.user.notebook.MyMembershipResponse;
 import com.example.springboot_api.dto.user.notebook.NotebookMemberItem;
 import com.example.springboot_api.dto.user.notebook.NotebookMembersResponse;
 import com.example.springboot_api.dto.user.notebook.PersonalNotebookResponse;
+import com.example.springboot_api.mappers.NotebookMapper;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookMember;
 import com.example.springboot_api.models.User;
@@ -37,7 +38,6 @@ import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
 import com.example.springboot_api.services.shared.ai.AIModelService;
 import com.example.springboot_api.services.shared.ai.WebSearchService;
-import com.example.springboot_api.utils.UrlNormalizer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -55,7 +55,7 @@ public class UserNotebookService {
     private final UserRepository userRepository;
     private final NotebookFileRepository fileRepository;
     private final FileStorageService fileStorageService;
-    private final UrlNormalizer urlNormalizer;
+    private final NotebookMapper notebookMapper;
     private final WebSearchService webSearchService;
     private final AIModelService aiModelService;
     private final ObjectMapper objectMapper;
@@ -378,23 +378,7 @@ public class UserNotebookService {
 
     private PersonalNotebookResponse mapToResponse(Notebook notebook) {
         Long fileCount = fileRepository.countByNotebookId(notebook.getId());
-        String thumbnailUrl = notebook.getThumbnailUrl();
-
-        // Chỉ normalize nếu là file local
-        if (thumbnailUrl != null && !thumbnailUrl.startsWith("http")) {
-            thumbnailUrl = urlNormalizer.normalizeToFull(thumbnailUrl);
-        }
-
-        return new PersonalNotebookResponse(
-                notebook.getId(),
-                notebook.getTitle(),
-                notebook.getDescription(),
-                notebook.getType(),
-                notebook.getVisibility(),
-                thumbnailUrl,
-                fileCount,
-                notebook.getCreatedAt(),
-                notebook.getUpdatedAt());
+        return notebookMapper.toPersonalNotebookResponse(notebook, fileCount);
     }
 
     /**
@@ -488,23 +472,7 @@ public class UserNotebookService {
     }
 
     private NotebookMemberItem mapToMemberItem(NotebookMember member) {
-        User user = member.getUser();
-        String avatarUrl = user.getAvatarUrl();
-
-        // Normalize avatar URL nếu là file local
-        if (avatarUrl != null && !avatarUrl.startsWith("http")) {
-            avatarUrl = urlNormalizer.normalizeToFull(avatarUrl);
-        }
-
-        return new NotebookMemberItem(
-                member.getId(),
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                avatarUrl,
-                member.getRole(),
-                member.getStatus(),
-                member.getJoinedAt());
+        return notebookMapper.toNotebookMemberItem(member);
     }
 
     // Internal records

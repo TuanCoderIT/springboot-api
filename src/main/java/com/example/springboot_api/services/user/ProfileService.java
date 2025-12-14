@@ -10,10 +10,10 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.shared.auth.AuthResponse;
 import com.example.springboot_api.dto.user.profile.UpdateProfileRequest;
+import com.example.springboot_api.mappers.UserMapper;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.shared.AuthRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
-import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,7 +23,7 @@ public class ProfileService {
 
     private final AuthRepository userRepository;
     private final FileStorageService fileStorageService;
-    private final UrlNormalizer urlNormalizer;
+    private final UserMapper userMapper;
 
     @Transactional
     public AuthResponse updateProfile(UUID userId, UpdateProfileRequest req, MultipartFile avatar) {
@@ -50,16 +50,14 @@ public class ProfileService {
         user.setUpdatedAt(java.time.Instant.now());
         userRepository.save(user);
 
-        String avatarUrl = urlNormalizer.normalizeToFull(user.getAvatarUrl());
-        return new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(), avatarUrl);
+        return userMapper.toAuthResponse(user);
     }
 
     public AuthResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Người dùng không tồn tại"));
 
-        String avatarUrl = urlNormalizer.normalizeToFull(user.getAvatarUrl());
-        return new AuthResponse(user.getId(), user.getFullName(), user.getEmail(), user.getRole(), avatarUrl);
+        return userMapper.toAuthResponse(user);
     }
 
 }

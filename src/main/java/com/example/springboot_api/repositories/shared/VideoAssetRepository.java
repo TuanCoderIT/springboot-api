@@ -11,12 +11,17 @@ import com.example.springboot_api.models.VideoAsset;
 
 @Repository
 public interface VideoAssetRepository extends JpaRepository<VideoAsset, UUID> {
-    
+
     @Query("""
             SELECT COUNT(v) FROM Video_Asset v
             WHERE v.notebook.id = :notebookId
             AND v.createdBy.id = :userId
             """)
     long countByNotebookIdAndUserId(@Param("notebookId") UUID notebookId, @Param("userId") UUID userId);
-}
 
+    @Query("""
+            SELECT v FROM Video_Asset v
+            WHERE v.notebookAiSets.id = :aiSetId
+            """)
+    java.util.Optional<VideoAsset> findByAiSetId(@Param("aiSetId") UUID aiSetId);
+}
