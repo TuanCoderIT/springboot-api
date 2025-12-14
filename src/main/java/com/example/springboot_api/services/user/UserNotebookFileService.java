@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.shared.notebook.NotebookFileResponse;
+import com.example.springboot_api.mappers.NotebookFileMapper;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookFile;
 import com.example.springboot_api.models.NotebookMember;
@@ -23,7 +24,6 @@ import com.example.springboot_api.repositories.admin.UserRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
 import com.example.springboot_api.services.shared.ai.FileProcessingTaskService;
-import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,7 +37,7 @@ public class UserNotebookFileService {
     private final NotebookFileRepository notebookFileRepository;
     private final NotebookMemberRepository notebookMemberRepository;
     private final FileProcessingTaskService fileProcessingTaskService;
-    private final UrlNormalizer urlNormalizer;
+    private final NotebookFileMapper notebookFileMapper;
     private final com.example.springboot_api.repositories.shared.FileChunkRepository fileChunkRepository;
 
     public List<NotebookFile> uploadFiles(
@@ -220,12 +220,9 @@ public class UserNotebookFileService {
         // Contributor
         NotebookFileResponse.UploaderInfo contributor = null;
         if (file.getUploadedBy() != null) {
-            String normalizedAvatarUrl = urlNormalizer.normalizeToFull(file.getUploadedBy().getAvatarUrl());
-            contributor = new NotebookFileResponse.UploaderInfo(
-                    file.getUploadedBy().getId(),
-                    file.getUploadedBy().getFullName(),
-                    file.getUploadedBy().getEmail(),
-                    normalizedAvatarUrl);
+            // Use mapper to get normalized info
+            NotebookFileResponse tempResponse = notebookFileMapper.toNotebookFileResponse(file);
+            contributor = tempResponse.uploadedBy();
         }
 
         return new com.example.springboot_api.dto.user.notebook.UserNotebookFileDetailResponse(
@@ -321,51 +318,8 @@ public class UserNotebookFileService {
         notebookFileRepository.delete(file);
     }
 
-    /**
-     * Map NotebookFile sang NotebookFileResponse với URL normalization
-     */
     public NotebookFileResponse toResponse(NotebookFile file) {
-        String normalizedStorageUrl = urlNormalizer.normalizeToFull(file.getStorageUrl());
-
-        NotebookFileResponse.UploaderInfo uploaderInfo = null;
-        if (file.getUploadedBy() != null) {
-            String normalizedAvatarUrl = urlNormalizer.normalizeToFull(file.getUploadedBy().getAvatarUrl());
-            uploaderInfo = new NotebookFileResponse.UploaderInfo(
-                    file.getUploadedBy().getId(),
-                    file.getUploadedBy().getFullName(),
-                    file.getUploadedBy().getEmail(),
-                    normalizedAvatarUrl);
-        }
-
-        NotebookFileResponse.NotebookInfo notebookInfo = null;
-        if (file.getNotebook() != null) {
-            String normalizedThumbnailUrl = urlNormalizer.normalizeToFull(file.getNotebook().getThumbnailUrl());
-            notebookInfo = new NotebookFileResponse.NotebookInfo(
-                    file.getNotebook().getId(),
-                    file.getNotebook().getTitle(),
-                    file.getNotebook().getDescription(),
-                    file.getNotebook().getType(),
-                    file.getNotebook().getVisibility(),
-                    normalizedThumbnailUrl);
-        }
-
-        return new NotebookFileResponse(
-                file.getId(),
-                file.getOriginalFilename(),
-                file.getMimeType(),
-                file.getFileSize(),
-                normalizedStorageUrl,
-                file.getStatus(),
-                file.getPagesCount(),
-                file.getOcrDone(),
-                file.getEmbeddingDone(),
-                file.getChunkSize(),
-                file.getChunkOverlap(),
-                null, // chunksCount
-                uploaderInfo,
-                notebookInfo,
-                file.getCreatedAt(),
-                file.getUpdatedAt());
+        return notebookFileMapper.toNotebookFileResponse(file);
     }
 
 }

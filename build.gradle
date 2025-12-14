@@ -33,6 +33,9 @@ dependencies {
     implementation 'org.apache.poi:poi-ooxml:5.2.5' // Hoặc phiên bản mới nhất
     implementation 'org.apache.poi:poi:5.2.5' // Cần thiết cho các cấu trúc cơ bản
 
+    // Playwright cho HTML rendering
+    implementation 'com.microsoft.playwright:playwright:1.40.0'
+
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
 
     // JWT

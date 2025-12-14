@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
+import com.example.springboot_api.mappers.AiSetMapper;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookAiSet;
 import com.example.springboot_api.models.NotebookAiSetFile;
@@ -24,9 +25,8 @@ import com.example.springboot_api.repositories.shared.NotebookAiSetFileRepositor
 import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.ai.AiAsyncTaskService;
-import com.example.springboot_api.utils.UrlNormalizer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -52,7 +52,8 @@ public class AiGenerationService {
     private final NotebookAiSetRepository aiSetRepository;
     private final NotebookAiSetFileRepository aiSetFileRepository;
     private final AiAsyncTaskService aiAsyncTaskService;
-    private final UrlNormalizer urlNormalizer;
+    private final AiSetMapper aiSetMapper;
+    private final com.example.springboot_api.utils.UrlNormalizer urlNormalizer;
     private final ObjectMapper objectMapper;
 
     // ================================
@@ -327,7 +328,8 @@ public class AiGenerationService {
      * @param notebookId             Notebook ID
      * @param userId                 ID của user tạo flashcards
      * @param fileIds                Danh sách file IDs
-     * @param numberOfCards          Số lượng flashcards: "few" | "standard" | "many"
+     * @param numberOfCards          Số lượng flashcards: "few" | "standard" |
+     *                               "many"
      * @param additionalRequirements Yêu cầu bổ sung từ người dùng (optional)
      * @return Map chứa aiSetId để track tiến trình
      */
@@ -470,55 +472,226 @@ public class AiGenerationService {
     }
 
     // ================================
-    // PRIVATE HELPER METHODS
+    // MINDMAP GENERATION
     // ================================
 
     /**
-     * Convert NotebookAiSet entity sang AiSetResponse DTO.
+     * Tạo mindmap từ các notebook files (chạy nền).
+     * API trả về aiSetId ngay lập tức, việc tạo mindmap xử lý ở background.
+     *
+     * @param notebookId             Notebook ID
+     * @param userId                 ID của user tạo mindmap
+     * @param fileIds                Danh sách file IDs
+     * @param additionalRequirements Yêu cầu bổ sung từ người dùng (optional)
+     * @return Map chứa aiSetId để track tiến trình
      */
-    private AiSetResponse convertToAiSetResponse(NotebookAiSet set, boolean isOwner) {
-        String userFullName = null;
-        String userAvatar = null;
-        UUID userId = null;
+    public Map<String, Object> generateMindmap(UUID notebookId, UUID userId, List<UUID> fileIds,
+            String additionalRequirements) {
+        Map<String, Object> result = new HashMap<>();
 
-        if (set.getCreatedBy() != null) {
-            userId = set.getCreatedBy().getId();
-            userFullName = set.getCreatedBy().getFullName();
-            userAvatar = urlNormalizer.normalizeToFull(set.getCreatedBy().getAvatarUrl());
-        }
+        try {
+            // Validate notebook và user
+            Notebook notebook = notebookRepository.findById(notebookId)
+                    .orElseThrow(() -> new NotFoundException("Notebook không tồn tại: " + notebookId));
 
-        int fileCount = set.getNotebookAiSetFiles() != null ? set.getNotebookAiSetFiles().size() : 0;
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User không tồn tại: " + userId));
 
-        // Prepare outputStats với normalized audioUrl
-        Map<String, Object> outputStats = null;
-        if (set.getOutputStats() != null && !set.getOutputStats().isEmpty()) {
-            outputStats = new HashMap<>(set.getOutputStats());
-            // Normalize audioUrl nếu có
-            Object audioUrlRaw = outputStats.get("audioUrl");
-            if (audioUrlRaw instanceof String audioUrl) {
-                outputStats.put("audioUrl", urlNormalizer.normalizeToFull(audioUrl));
+            if (fileIds == null || fileIds.isEmpty()) {
+                result.put("error", "Danh sách file IDs không được để trống");
+                return result;
             }
+
+            // Lấy files từ fileIds
+            List<NotebookFile> selectedFiles = new ArrayList<>();
+            for (UUID fileId : fileIds) {
+                NotebookFile file = notebookFileRepository.findById(fileId).orElse(null);
+                if (file != null && file.getNotebook() != null && file.getNotebook().getId().equals(notebookId)) {
+                    selectedFiles.add(file);
+                }
+            }
+
+            if (selectedFiles.isEmpty()) {
+                result.put("error", "Không tìm thấy file hợp lệ nào");
+                return result;
+            }
+
+            // Tạo NotebookAiSet với trạng thái queued
+            NotebookAiSet savedAiSet = createMindmapAiSet(notebook, user, selectedFiles, fileIds,
+                    additionalRequirements);
+
+            // Trả về aiSetId ngay lập tức
+            result.put("aiSetId", savedAiSet.getId());
+            result.put("status", "queued");
+            result.put("message", "Mindmap đang được tạo ở nền. Sử dụng aiSetId để theo dõi tiến trình.");
+            result.put("success", true);
+
+            // Chạy mindmap generation ở background
+            aiAsyncTaskService.processMindmapGenerationAsync(
+                    savedAiSet.getId(),
+                    notebookId,
+                    userId,
+                    fileIds,
+                    additionalRequirements);
+
+        } catch (Exception e) {
+            result.put("error", "Lỗi khi khởi tạo mindmap: " + e.getMessage());
+            e.printStackTrace();
         }
 
-        return AiSetResponse.builder()
-                .id(set.getId())
-                .notebookId(set.getNotebook() != null ? set.getNotebook().getId() : null)
-                .userId(userId)
-                .userFullName(userFullName)
-                .userAvatar(userAvatar)
-                .setType(set.getSetType())
-                .status(set.getStatus())
-                .errorMessage(set.getErrorMessage())
-                .title(set.getTitle())
-                .description(set.getDescription())
-                .createdAt(set.getCreatedAt())
-                .startedAt(set.getStartedAt())
-                .finishedAt(set.getFinishedAt())
-                .updatedAt(set.getUpdatedAt())
-                .fileCount(fileCount)
-                .isOwner(isOwner)
-                .outputStats(outputStats)
+        return result;
+    }
+
+    /**
+     * Tạo NotebookAiSet cho mindmap và liên kết files.
+     */
+    @Transactional
+    public NotebookAiSet createMindmapAiSet(Notebook notebook, User user, List<NotebookFile> selectedFiles,
+            List<UUID> fileIds, String additionalRequirements) {
+
+        OffsetDateTime now = OffsetDateTime.now();
+        Map<String, Object> inputConfig = new HashMap<>();
+        inputConfig.put("fileIds", fileIds);
+        if (additionalRequirements != null && !additionalRequirements.trim().isEmpty()) {
+            inputConfig.put("additionalRequirements", additionalRequirements.trim());
+        }
+
+        NotebookAiSet aiSet = NotebookAiSet.builder()
+                .notebook(notebook)
+                .createdBy(user)
+                .setType("mindmap")
+                .status("queued")
+                .title("Mindmap từ " + selectedFiles.size() + " tài liệu")
+                .inputConfig(inputConfig)
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
+        NotebookAiSet savedAiSet = aiSetRepository.save(aiSet);
+
+        // Liên kết tất cả files với AI Set
+        for (NotebookFile file : selectedFiles) {
+            NotebookAiSetFile aiSetFile = NotebookAiSetFile.builder()
+                    .aiSet(savedAiSet)
+                    .file(file)
+                    .createdAt(now)
+                    .build();
+            aiSetFileRepository.save(aiSetFile);
+        }
+
+        return savedAiSet;
+    }
+
+    // ================================
+    // SUGGESTION GENERATION
+    // ================================
+
+    /**
+     * Tạo câu hỏi gợi mở từ các notebook files (chạy nền).
+     * API trả về aiSetId ngay lập tức, việc tạo suggestion xử lý ở background.
+     *
+     * @param notebookId Notebook ID
+     * @param userId     ID của user tạo suggestion
+     * @param fileIds    Danh sách file IDs
+     * @return Map chứa aiSetId để track tiến trình
+     */
+    public Map<String, Object> generateSuggestions(UUID notebookId, UUID userId, List<UUID> fileIds,
+            String additionalRequirements) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            // Validate notebook và user
+            Notebook notebook = notebookRepository.findById(notebookId)
+                    .orElseThrow(() -> new NotFoundException("Notebook không tồn tại: " + notebookId));
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User không tồn tại: " + userId));
+
+            if (fileIds == null || fileIds.isEmpty()) {
+                result.put("error", "Danh sách file IDs không được để trống");
+                return result;
+            }
+
+            // Lấy files từ fileIds
+            List<NotebookFile> selectedFiles = new ArrayList<>();
+            for (UUID fileId : fileIds) {
+                NotebookFile file = notebookFileRepository.findById(fileId).orElse(null);
+                if (file != null && file.getNotebook() != null && file.getNotebook().getId().equals(notebookId)) {
+                    selectedFiles.add(file);
+                }
+            }
+
+            if (selectedFiles.isEmpty()) {
+                result.put("error", "Không tìm thấy file hợp lệ nào");
+                return result;
+            }
+
+            // Tạo NotebookAiSet với trạng thái queued
+            NotebookAiSet savedAiSet = createSuggestionAiSet(notebook, user, selectedFiles, fileIds);
+
+            // Trả về aiSetId ngay lập tức
+            result.put("aiSetId", savedAiSet.getId());
+            result.put("status", "queued");
+            result.put("message", "Suggestions đang được tạo ở nền. Sử dụng aiSetId để theo dõi tiến trình.");
+            result.put("success", true);
+
+            // Chạy suggestion generation ở background
+            aiAsyncTaskService.processSuggestionGenerationAsync(
+                    savedAiSet.getId(),
+                    notebookId,
+                    userId,
+                    fileIds,
+                    additionalRequirements);
+
+        } catch (Exception e) {
+            result.put("error", "Lỗi khi khởi tạo suggestions: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    /**
+     * Tạo NotebookAiSet cho suggestion và liên kết files.
+     */
+    @Transactional
+    public NotebookAiSet createSuggestionAiSet(Notebook notebook, User user, List<NotebookFile> selectedFiles,
+            List<UUID> fileIds) {
+
+        OffsetDateTime now = OffsetDateTime.now();
+        Map<String, Object> inputConfig = new HashMap<>();
+        inputConfig.put("fileIds", fileIds);
+
+        NotebookAiSet aiSet = NotebookAiSet.builder()
+                .notebook(notebook)
+                .createdBy(user)
+                .setType("suggestion")
+                .status("queued")
+                .title("Câu hỏi gợi mở từ " + selectedFiles.size() + " tài liệu")
+                .inputConfig(inputConfig)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        NotebookAiSet savedAiSet = aiSetRepository.save(aiSet);
+
+        // Liên kết tất cả files với AI Set
+        for (NotebookFile file : selectedFiles) {
+            NotebookAiSetFile aiSetFile = NotebookAiSetFile.builder()
+                    .aiSet(savedAiSet)
+                    .file(file)
+                    .createdAt(now)
+                    .build();
+            aiSetFileRepository.save(aiSetFile);
+        }
+
+        return savedAiSet;
+    }
+
+    // ================================
+    // PRIVATE HELPER METHODS
+    // ================================
+
+    private AiSetResponse convertToAiSetResponse(NotebookAiSet set, boolean isOwner) {
+        return aiSetMapper.toAiSetResponse(set, isOwner);
     }
 
     // ================================
@@ -550,5 +723,119 @@ public class AiGenerationService {
 
         // Xóa AI Set (cascade sẽ xóa quizzes, options, flashcards, etc.)
         aiSetRepository.delete(aiSet);
+    }
+
+    // ================================
+    // VIDEO GENERATION
+    // ================================
+
+    /**
+     * Tạo video từ các notebook files (chạy nền).
+     * API trả về aiSetId ngay lập tức, việc tạo video xử lý ở background.
+     *
+     * @param notebookId             Notebook ID
+     * @param userId                 ID của user tạo video
+     * @param fileIds                Danh sách file IDs
+     * @param numberOfSlides         Số slides (mặc định 5)
+     * @param generateImages         Có sinh ảnh AI hay không
+     * @param additionalRequirements Yêu cầu bổ sung từ người dùng (optional)
+     * @return Map chứa aiSetId để track tiến trình
+     */
+    public Map<String, Object> generateVideo(UUID notebookId, UUID userId, List<UUID> fileIds,
+            int numberOfSlides, boolean generateImages, String additionalRequirements) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            // Validate notebook và user
+            Notebook notebook = notebookRepository.findById(notebookId)
+                    .orElseThrow(() -> new NotFoundException("Notebook không tồn tại: " + notebookId));
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User không tồn tại: " + userId));
+
+            if (fileIds == null || fileIds.isEmpty()) {
+                result.put("error", "Danh sách file IDs không được để trống");
+                return result;
+            }
+
+            // Lấy files từ fileIds
+            List<NotebookFile> selectedFiles = new ArrayList<>();
+            for (UUID fileId : fileIds) {
+                NotebookFile file = notebookFileRepository.findById(fileId).orElse(null);
+                if (file != null && file.getNotebook() != null && file.getNotebook().getId().equals(notebookId)) {
+                    selectedFiles.add(file);
+                }
+            }
+
+            if (selectedFiles.isEmpty()) {
+                result.put("error", "Không tìm thấy file hợp lệ nào");
+                return result;
+            }
+
+            // Tạo NotebookAiSet với trạng thái queued
+            NotebookAiSet savedAiSet = createVideoAiSet(notebook, user, selectedFiles, fileIds,
+                    numberOfSlides, generateImages, additionalRequirements);
+
+            // Trả về aiSetId ngay lập tức
+            result.put("aiSetId", savedAiSet.getId());
+            result.put("status", "queued");
+            result.put("message", "Video đang được tạo ở nền. Sử dụng aiSetId để theo dõi tiến trình.");
+            result.put("success", true);
+
+            // Chạy video generation ở background
+            aiAsyncTaskService.processVideoGenerationAsync(
+                    savedAiSet.getId(),
+                    notebookId,
+                    userId,
+                    fileIds,
+                    "CORPORATE",
+                    additionalRequirements,
+                    numberOfSlides,
+                    generateImages);
+
+        } catch (Exception e) {
+            result.put("error", "Lỗi khi khởi tạo video: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    /**
+     * Tạo NotebookAiSet cho Video generation.
+     */
+    @Transactional
+    public NotebookAiSet createVideoAiSet(Notebook notebook, User user, List<NotebookFile> selectedFiles,
+            List<UUID> fileIds, int numberOfSlides, boolean generateImages, String additionalRequirements) {
+
+        OffsetDateTime now = OffsetDateTime.now();
+        Map<String, Object> inputConfig = new HashMap<>();
+        inputConfig.put("numberOfSlides", numberOfSlides);
+        inputConfig.put("generateImages", generateImages);
+        inputConfig.put("additionalRequirements", additionalRequirements);
+        inputConfig.put("fileIds", fileIds);
+
+        NotebookAiSet aiSet = NotebookAiSet.builder()
+                .notebook(notebook)
+                .createdBy(user)
+                .setType("video")
+                .status("queued")
+                .inputConfig(inputConfig)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        NotebookAiSet savedAiSet = aiSetRepository.save(aiSet);
+
+        // Liên kết tất cả files với AI Set
+        for (NotebookFile file : selectedFiles) {
+            NotebookAiSetFile aiSetFile = NotebookAiSetFile.builder()
+                    .aiSet(savedAiSet)
+                    .file(file)
+                    .createdAt(now)
+                    .build();
+            aiSetFileRepository.save(aiSetFile);
+        }
+
+        return savedAiSet;
     }
 }

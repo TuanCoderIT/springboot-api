@@ -16,12 +16,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.config.security.UserPrincipal;
+import com.example.springboot_api.dto.user.ai.MindmapResponse;
+import com.example.springboot_api.dto.user.audio.AudioListResponse;
 import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
-import com.example.springboot_api.dto.user.quiz.QuizListResponse;
 import com.example.springboot_api.dto.user.flashcard.FlashcardListResponse;
+import com.example.springboot_api.dto.user.quiz.QuizListResponse;
+import com.example.springboot_api.dto.user.suggestion.SuggestionResponse;
 import com.example.springboot_api.services.user.AiGenerationService;
+import com.example.springboot_api.services.user.AudioService;
 import com.example.springboot_api.services.user.FlashcardService;
+import com.example.springboot_api.services.user.MindmapService;
 import com.example.springboot_api.services.user.QuizService;
+import com.example.springboot_api.services.user.SuggestionService;
+import com.example.springboot_api.services.user.VideoService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,6 +47,10 @@ public class AiGenerationController {
     private final AiGenerationService aiGenerationService;
     private final QuizService quizService;
     private final FlashcardService flashcardService;
+    private final AudioService audioService;
+    private final MindmapService mindmapService;
+    private final SuggestionService suggestionService;
+    private final VideoService videoService;
 
     // ================================
     // QUIZ GENERATION
@@ -163,6 +174,31 @@ public class AiGenerationController {
     }
 
     /**
+     * Lấy chi tiết audio theo AI Set ID.
+     * 
+     * GET /user/notebooks/{notebookId}/ai/audio/{aiSetId}
+     * 
+     * @param user       Current authenticated user
+     * @param notebookId Notebook ID
+     * @param aiSetId    AI Set ID chứa audio
+     * @return AudioListResponse
+     */
+    @GetMapping("/audio/{aiSetId}")
+    public ResponseEntity<AudioListResponse> getAudioDetails(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        AudioListResponse response = audioService.getAudioByAiSetId(user.getId(), notebookId, aiSetId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Lấy chi tiết quiz theo AI Set ID.
      * Bao gồm tất cả câu hỏi và câu trả lời.
      * 
@@ -243,6 +279,70 @@ public class AiGenerationController {
     }
 
     // ================================
+    // MINDMAP GENERATION
+    // ================================
+
+    /**
+     * Tạo mindmap từ các notebook files (chạy nền).
+     * POST /user/notebooks/{notebookId}/ai/mindmap/generate
+     *
+     * @param user                   Current authenticated user
+     * @param notebookId             Notebook ID
+     * @param fileIds                Danh sách file IDs
+     * @param additionalRequirements Yêu cầu bổ sung (optional)
+     * @return Map chứa aiSetId để track tiến trình
+     */
+    @PostMapping("/mindmap/generate")
+    public ResponseEntity<Map<String, Object>> generateMindmap(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false) String additionalRequirements) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        Map<String, Object> result = aiGenerationService.generateMindmap(
+                notebookId, user.getId(), fileIds, additionalRequirements);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy mindmap theo AI Set ID.
+     *
+     * GET /user/notebooks/{notebookId}/ai/mindmap/{aiSetId}
+     *
+     * @param user       Current authenticated user
+     * @param notebookId Notebook ID
+     * @param aiSetId    AI Set ID chứa mindmap
+     * @return MindmapResponse
+     */
+    @GetMapping("/mindmap/{aiSetId}")
+    public ResponseEntity<MindmapResponse> getMindmap(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        MindmapResponse response = mindmapService.getMindmapByAiSetId(user.getId(), notebookId, aiSetId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ================================
     // AI SETS (thay thế AI Tasks)
     // ================================
 
@@ -297,6 +397,133 @@ public class AiGenerationController {
         aiGenerationService.deleteAiSet(user.getId(), aiSetId);
 
         return ResponseEntity.noContent().build();
+    }
+
+    // ================================
+    // SUGGESTION GENERATION
+    // ================================
+
+    /**
+     * Tạo suggestions từ các notebook files (chạy nền).
+     * POST /user/notebooks/{notebookId}/ai/suggestions/generate
+     */
+    @PostMapping("/suggestions/generate")
+    public ResponseEntity<Map<String, Object>> generateSuggestions(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false) String additionalRequirements) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        Map<String, Object> result = aiGenerationService.generateSuggestions(
+                notebookId, user.getId(), fileIds, additionalRequirements);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy danh sách suggestions theo AI Set ID.
+     * GET /user/notebooks/{notebookId}/ai/suggestions/{aiSetId}
+     */
+    @GetMapping("/suggestions/{aiSetId}")
+    public ResponseEntity<SuggestionResponse> getSuggestions(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        SuggestionResponse response = suggestionService.getSuggestionsByAiSetId(user.getId(), notebookId, aiSetId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ================================
+    // VIDEO GENERATION
+    // ================================
+
+    /**
+     * Tạo video từ các notebook files (chạy nền).
+     * POST /user/notebooks/{notebookId}/ai/video/generate
+     *
+     * @param user                   Current authenticated user
+     * @param notebookId             Notebook ID
+     * @param fileIds                Danh sách file IDs
+     * @param videoLength            Độ dài video: short (5), medium (10), long (15)
+     *                               - default: medium
+     * @param additionalRequirements Yêu cầu bổ sung (optional)
+     * @return Map chứa aiSetId để track tiến trình
+     */
+    @PostMapping("/video/generate")
+    public ResponseEntity<Map<String, Object>> generateVideo(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false, defaultValue = "medium") String videoLength,
+            @RequestParam(required = false) String additionalRequirements) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        // Chuyển đổi videoLength sang số slides
+        int numberOfSlides = switch (videoLength.toLowerCase()) {
+            case "short" -> 5;
+            case "long" -> 15;
+            default -> 10; // medium
+        };
+
+        // generateImages luôn bật
+        Map<String, Object> result = aiGenerationService.generateVideo(
+                notebookId, user.getId(), fileIds, numberOfSlides, true, additionalRequirements);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy video theo AI Set ID.
+     * GET /user/notebooks/{notebookId}/ai/video/{aiSetId}
+     *
+     * @param user       Current authenticated user
+     * @param notebookId Notebook ID
+     * @param aiSetId    AI Set ID chứa video
+     * @return VideoResponse
+     */
+    @GetMapping("/video/{aiSetId}")
+    public ResponseEntity<com.example.springboot_api.dto.user.video.VideoResponse> getVideo(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        com.example.springboot_api.dto.user.video.VideoResponse response = videoService.getVideoByAiSetId(
+                user.getId(), notebookId, aiSetId);
+
+        return ResponseEntity.ok(response);
     }
 
 }

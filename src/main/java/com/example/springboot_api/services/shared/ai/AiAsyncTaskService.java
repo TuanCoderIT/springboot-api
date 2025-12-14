@@ -1,10 +1,9 @@
 package com.example.springboot_api.services.shared.ai;
 
-import java.time.OffsetDateTime;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,11 +12,11 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.example.springboot_api.models.Flashcard;
@@ -27,6 +26,7 @@ import com.example.springboot_api.models.NotebookAiSet;
 import com.example.springboot_api.models.NotebookFile;
 import com.example.springboot_api.models.NotebookQuizOption;
 import com.example.springboot_api.models.NotebookQuizz;
+import com.example.springboot_api.models.TtsAsset;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.shared.FileChunkRepository;
 import com.example.springboot_api.repositories.shared.FlashcardRepository;
@@ -34,11 +34,10 @@ import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 import com.example.springboot_api.repositories.shared.QuizOptionRepository;
 import com.example.springboot_api.repositories.shared.QuizRepository;
 import com.example.springboot_api.repositories.shared.TtsAssetRepository;
-import com.example.springboot_api.models.TtsAsset;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -60,8 +59,13 @@ public class AiAsyncTaskService {
     private final FlashcardRepository flashcardRepository;
     private final AIModelService aiModelService;
     private final TtsAssetRepository ttsAssetRepository;
+    private final com.example.springboot_api.repositories.shared.VideoAssetRepository videoAssetRepository;
     private final ObjectMapper objectMapper;
     private final WebClient.Builder webClientBuilder;
+    private final VideoFrameService videoFrameService;
+    private final com.example.springboot_api.repositories.admin.NotebookRepository notebookRepository;
+    private final com.example.springboot_api.repositories.admin.UserRepository userRepository;
+    private final com.example.springboot_api.repositories.shared.NotebookFileRepository notebookFileRepository;
 
     @Value("${google.api.gemini_key:}")
     private String geminiApiKeyConfig;
@@ -1170,4 +1174,342 @@ public class AiAsyncTaskService {
         return cleaned;
     }
 
+    // ================================
+    // VIDEO GENERATION
+    // ================================
+
+    /**
+     * Xử lý video generation ở background.
+     * Pipeline: Summarize → LLM Plan → Render → TTS → Merge
+     */
+    @Async
+    @Transactional
+    public void processVideoGenerationAsync(UUID aiSetId, UUID notebookId, UUID userId,
+            List<UUID> fileIds, String templateName, String additionalRequirements,
+            int numberOfSlides, boolean generateImages) {
+
+        String sessionId = aiSetId.toString().substring(0, 8);
+        String videoTitle = "Video";
+
+        try {
+            System.out.println("🎬 [VIDEO] Session: " + sessionId + " | slides=" + numberOfSlides);
+            updateAiSetStatus(aiSetId, "processing", null, null);
+
+            // Validate entities
+            Notebook notebook = notebookRepository.findById(notebookId).orElse(null);
+            User user = userRepository.findById(userId).orElse(null);
+            if (notebook == null || user == null) {
+                updateAiSetStatus(aiSetId, "failed", "Notebook/User không tồn tại", null);
+                return;
+            }
+
+            List<NotebookFile> files = fileIds.stream()
+                    .map(id -> notebookFileRepository.findById(id).orElse(null))
+                    .filter(f -> f != null)
+                    .toList();
+            if (files.isEmpty()) {
+                updateAiSetStatus(aiSetId, "failed", "Không có file", null);
+                return;
+            }
+
+            // Step 1: Summarize
+            System.out.println("📝 [VIDEO] Step 1: Tóm tắt...");
+            String summary = summarizeDocuments(files, null);
+            if (summary == null || summary.isBlank()) {
+                updateAiSetStatus(aiSetId, "failed", "Không thể tóm tắt", null);
+                return;
+            }
+
+            // Step 2: LLM Plan
+            System.out.println("🤖 [VIDEO] Step 2: Tạo plan...");
+            String llmResponse = aiModelService
+                    .callGeminiModel(buildVideoPrompt(summary, numberOfSlides, additionalRequirements));
+            Map<String, Object> plan = parseVideoJson(llmResponse);
+            if (plan == null) {
+                updateAiSetStatus(aiSetId, "failed", "Không thể parse plan", null);
+                return;
+            }
+
+            videoTitle = (String) plan.getOrDefault("title", "Video");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> slidesData = (List<Map<String, Object>>) plan.get("slides");
+            if (slidesData == null || slidesData.isEmpty()) {
+                updateAiSetStatus(aiSetId, "failed", "Không có slides", null);
+                return;
+            }
+
+            // Build slides
+            List<com.example.springboot_api.dto.shared.VideoSlide> slides = new ArrayList<>();
+            for (int i = 0; i < slidesData.size(); i++) {
+                Map<String, Object> sd = slidesData.get(i);
+                slides.add(com.example.springboot_api.dto.shared.VideoSlide.builder()
+                        .index(i)
+                        .title((String) sd.get("title"))
+                        .body((String) sd.get("body"))
+                        .imagePrompt(generateImages ? (String) sd.get("imagePrompt") : null)
+                        .audioScript((String) sd.get("audioScript"))
+                        .build());
+            }
+            System.out.println("✅ [VIDEO] Plan: " + slides.size() + " slides, title: " + videoTitle);
+
+            // Setup directories
+            Path workDir = Paths.get("uploads", "videos", sessionId);
+            Files.createDirectories(workDir.resolve("slides"));
+            Files.createDirectories(workDir.resolve("audio"));
+            Files.createDirectories(workDir.resolve("clips"));
+
+            // Step 3: Render frames (trả về base64)
+            System.out.println("🎨 [VIDEO] Step 3: Render frames...");
+            List<String> frameBase64List = videoFrameService.renderVideoFrames(videoTitle,
+                    slides.stream().map(s -> VideoFrameService.FrameContent.builder()
+                            .title(s.getTitle()).body(s.getBody())
+                            .imagePrompt(s.getImagePrompt()).audioScript(s.getAudioScript())
+                            .build()).toList(),
+                    generateImages);
+
+            // Lưu base64 thành file PNG trong work directory
+            for (int i = 0; i < Math.min(frameBase64List.size(), slides.size()); i++) {
+                Path dst = workDir.resolve("slides").resolve(String.format("frame_%02d.png", i + 1));
+                byte[] imageBytes = java.util.Base64.getDecoder().decode(frameBase64List.get(i));
+                Files.write(dst, imageBytes);
+                slides.get(i).setImagePath(dst.toString());
+                slides.get(i).setImageReady(true);
+            }
+
+            // Step 4: Generate audio
+            System.out.println("🔊 [VIDEO] Step 4: Generate audio...");
+            for (var slide : slides) {
+                try {
+                    String script = slide.getAudioScript();
+                    if (script == null || script.isBlank()) {
+                        script = slide.getTitle() + ". "
+                                + (slide.getBody() != null ? slide.getBody().replaceAll("[•\\-*]", "") : "");
+                    }
+                    Path audioPath = workDir.resolve("audio")
+                            .resolve(String.format("slide_%02d.wav", slide.getIndex() + 1));
+                    double duration = generateVideoTts(prepareTtsText(script), audioPath);
+                    slide.setAudioPath(audioPath.toString());
+                    slide.setAudioDuration(duration);
+                    slide.setAudioReady(true);
+                    System.out.println(
+                            "  ✅ Audio " + (slide.getIndex() + 1) + ": " + String.format("%.1f", duration) + "s");
+                    Thread.sleep(2500);
+                } catch (Exception e) {
+                    System.err.println("  ❌ Audio " + (slide.getIndex() + 1) + ": " + e.getMessage());
+                }
+            }
+
+            // Step 5: Create clips
+            System.out.println("🎬 [VIDEO] Step 5: Create clips...");
+            List<Path> clipPaths = new ArrayList<>();
+            for (var slide : slides) {
+                if (slide.isImageReady() && slide.isAudioReady()) {
+                    Path clipPath = workDir.resolve("clips")
+                            .resolve(String.format("clip_%02d.mp4", slide.getIndex() + 1));
+                    if (createClip(slide.getImagePath(), slide.getAudioPath(), slide.getAudioDuration(), clipPath)) {
+                        clipPaths.add(clipPath);
+                    }
+                }
+            }
+
+            // Step 6: Merge
+            Path finalVideo = workDir.resolve("final.mp4");
+            if (!clipPaths.isEmpty()) {
+                System.out.println("🎬 [VIDEO] Step 6: Merge " + clipPaths.size() + " clips...");
+                mergeClips(clipPaths, workDir, finalVideo);
+            }
+
+            // Finalize
+            if (Files.exists(finalVideo)) {
+                String fileName = "video_" + sessionId + ".mp4";
+                Path destPath = Paths.get("uploads", "videos", fileName);
+                Files.move(finalVideo, destPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                cleanupDirectory(workDir);
+
+                double totalDuration = slides.stream().mapToDouble(s -> s.getAudioDuration()).sum();
+                String videoUrl = "/uploads/videos/" + fileName;
+
+                // Save VideoAsset
+                NotebookAiSet aiSet = aiSetRepository.findById(aiSetId).orElse(null);
+                var videoAsset = com.example.springboot_api.models.VideoAsset.builder()
+                        .notebook(notebook).createdBy(user).style(templateName)
+                        .textSource(videoTitle).videoUrl(videoUrl)
+                        .durationSeconds((int) totalDuration).createdAt(OffsetDateTime.now())
+                        .notebookAiSets(aiSet).build();
+                videoAssetRepository.save(videoAsset);
+
+                // Update AiSet title
+                if (aiSet != null) {
+                    aiSet.setTitle(videoTitle);
+                    aiSetRepository.save(aiSet);
+                }
+
+                Map<String, Object> stats = Map.of(
+                        "slideCount", slides.size(), "clipCount", clipPaths.size(),
+                        "title", videoTitle, "videoUrl", videoUrl,
+                        "videoAssetId", videoAsset.getId().toString(),
+                        "totalDuration", totalDuration);
+                updateAiSetStatus(aiSetId, "done", null, stats);
+                System.out.println("🎉 [VIDEO] Done! " + destPath);
+            } else {
+                updateAiSetStatus(aiSetId, "failed", "Video merge failed", Map.of("title", videoTitle));
+            }
+
+        } catch (Exception e) {
+            updateAiSetStatus(aiSetId, "failed", "Error: " + e.getMessage(), null);
+            System.err.println("❌ [VIDEO] " + e.getMessage());
+        }
+    }
+
+    private void cleanupDirectory(Path dir) {
+        try {
+            if (Files.exists(dir)) {
+                Files.walk(dir).sorted(java.util.Comparator.reverseOrder())
+                        .forEach(p -> {
+                            try {
+                                Files.deleteIfExists(p);
+                            } catch (Exception ignored) {
+                            }
+                        });
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Cleanup failed: " + e.getMessage());
+        }
+    }
+
+    private String buildVideoPrompt(String summary, int slides, String extra) {
+        String additional = (extra != null && !extra.isBlank()) ? "\nYêu cầu thêm: " + extra : "";
+        return String.format(
+                """
+                        Bạn là YouTuber giáo dục nổi tiếng, tạo video giải thích dễ hiểu và cuốn hút.
+
+                        TẠO SCRIPT VIDEO GỒM %d SLIDES từ nội dung sau:
+                        ---
+                        %s
+                        ---%s
+
+                        THÔNG TIN KÊNH:
+                        - Video do nhóm F4 phát triển
+                        - Kênh NotebookAI - Công cụ học tập thông minh
+
+                        QUY TẮC QUAN TRỌNG:
+                        1. VIDEO PHẢI CÓ FLOW LIÊN TỤC - mỗi slide nối tiếp slide trước như một câu chuyện
+                        2. Slide ĐẦU TIÊN (INTRO): Chào đón, giới thiệu nhóm F4 phát triển video, nói rõ video này sẽ tìm hiểu về gì
+                        3. Slide CUỐI CÙNG (OUTRO): Tóm tắt nội dung đã học, cảm ơn, kêu gọi like/subscribe kênh NotebookAI
+                        4. Các slide giữa giải thích từng ý một cách TUẦN TỰ, có câu chuyển tiếp mượt mà
+
+                        CHO MỖI SLIDE:
+                        - title: Tiêu đề ngắn gọn (tối đa 10 từ)
+                        - body: 2-3 bullet points ngắn (hiển thị trên màn hình)
+                        - imagePrompt: Mô tả hình ảnh minh họa (tiếng Anh, cartoon/illustration style, colorful, friendly)
+                        - audioScript: SCRIPT ĐẦY ĐỦ để đọc (80-120 từ), viết như đang nói chuyện tự nhiên, xưng "mình" với "các bạn"
+
+                        VÍ DỤ audioScript:
+                        - INTRO: "Chào các bạn! Video này do nhóm F4 gồm Huỳnh, Tuấn, An, Truyền phát triển để mang đến cho các bạn cách nhìn hay nhất về [chủ đề]. Hôm nay mình sẽ cùng các bạn tìm hiểu về [nội dung cụ thể]. Đây là kiến thức rất thú vị và mình tin các bạn sẽ thấy hữu ích. Bây giờ mình cùng bắt đầu nhé!"
+                        - Content: "Được rồi, tiếp theo mình sẽ giải thích về [ý chính]. [Giải thích chi tiết 2-3 câu]. Ví dụ như [ví dụ thực tế]. Các bạn thấy không, khi hiểu được điều này thì mọi thứ sẽ dễ dàng hơn rất nhiều."
+                        - OUTRO: "Vậy là mình đã cùng các bạn tìm hiểu xong về [chủ đề]. Tóm lại, [điểm chính 1], [điểm chính 2]. Hy vọng video này hữu ích cho các bạn. Nếu thấy hay, đừng quên bấm like và đăng ký kênh NotebookAI của nhóm F4 nhé. Hẹn gặp lại các bạn trong video tiếp theo!"
+
+                        LƯU Ý QUAN TRỌNG:
+                        - audioScript phải HOÀN CHỈNH, đọc được trọn vẹn, không cắt giữa chừng
+                        - Có câu nối mượt giữa các slide: "Được rồi, tiếp theo...", "Bây giờ mình sẽ...", "Một điều quan trọng nữa là..."
+                        - Giọng văn thân thiện, gần gũi như đang trò chuyện với bạn bè
+                        - Không dùng ký tự đặc biệt như *, #, markdown
+
+                        TRẢ VỀ JSON (KHÔNG có markdown):
+                        {"title": "Tên video hấp dẫn", "slides": [{"title": "...", "body": "• Point 1\\n• Point 2", "imagePrompt": "...", "audioScript": "..."}]}
+                        """,
+                slides, summary, additional);
+    }
+
+    private Map<String, Object> parseVideoJson(String response) {
+        try {
+            String json = extractJsonFromResponse(response);
+            if (json == null)
+                return null;
+            System.out.println("📝 [VIDEO] JSON: " + json.substring(0, Math.min(150, json.length())) + "...");
+
+            json = json.trim();
+            if (json.startsWith("[")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> slides = objectMapper.readValue(json, List.class);
+                return Map.of("title", "Video", "slides", slides);
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = objectMapper.readValue(json, Map.class);
+            return data;
+        } catch (Exception e) {
+            System.err.println("❌ Parse JSON: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private double generateVideoTts(String text, Path outputPath) throws Exception {
+        String apiKey = geminiApiKeyConfig != null && !geminiApiKeyConfig.isBlank()
+                ? geminiApiKeyConfig
+                : System.getenv("GEMINI_API_KEY");
+        if (apiKey == null || apiKey.isBlank())
+            throw new IllegalStateException("Missing API Key");
+
+        WebClient client = webClientBuilder.codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024)).build();
+        String resp = client.post()
+                .uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent")
+                .header("x-goog-api-key", apiKey).contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("contents", List.of(Map.of("parts", List.of(Map.of("text", text)))),
+                        "generationConfig", Map.of("responseModalities", List.of("AUDIO"),
+                                "speechConfig",
+                                Map.of("voiceConfig", Map.of("prebuiltVoiceConfig", Map.of("voiceName", "Aoede"))))))
+                .retrieve().bodyToMono(String.class).block();
+
+        JsonNode data = objectMapper.readTree(resp).path("candidates").path(0).path("content").path("parts").path(0)
+                .path("inlineData");
+        if (!data.has("data"))
+            throw new RuntimeException("No audio");
+
+        byte[] pcm = java.util.Base64.getDecoder().decode(data.path("data").asText());
+        Files.write(outputPath, convertPcmToWav(pcm, 24000, 1, 16));
+        return (double) pcm.length / (24000.0 * 2);
+    }
+
+    private boolean createClip(String img, String audio, double duration, Path out) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("ffmpeg", "-y", "-loop", "1", "-i", img, "-i", audio,
+                    "-c:v", "libx264", "-tune", "stillimage", "-c:a", "aac", "-b:a", "192k",
+                    "-pix_fmt", "yuv420p", "-t", String.format("%.2f", duration), out.toString());
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            p.getInputStream().transferTo(java.io.OutputStream.nullOutputStream());
+            return p.waitFor() == 0 && Files.exists(out);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void mergeClips(List<Path> clips, Path dir, Path out) {
+        try {
+            Path list = dir.resolve("clips.txt");
+            Files.write(list, clips.stream().map(p -> "file '" + p.toAbsolutePath() + "'").toList());
+            new ProcessBuilder("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list.toString(), "-c", "copy",
+                    out.toString())
+                    .redirectErrorStream(true).start().waitFor();
+        } catch (Exception e) {
+            System.err.println("Merge error: " + e.getMessage());
+        }
+    }
+
+    // ================================
+    // MINDMAP / SUGGESTION (TODO)
+    // ================================
+    @Async
+    @Transactional
+    public void processMindmapGenerationAsync(UUID aiSetId, UUID notebookId, UUID userId, List<UUID> fileIds,
+            String additionalRequirements) {
+        updateAiSetStatus(aiSetId, "failed", "Mindmap chưa implement", null);
+    }
+
+    @Async
+    @Transactional
+    public void processSuggestionGenerationAsync(UUID aiSetId, UUID notebookId, UUID userId, List<UUID> fileIds,
+            String additionalRequirements) {
+        updateAiSetStatus(aiSetId, "failed", "Suggestion chưa implement", null);
+    }
 }

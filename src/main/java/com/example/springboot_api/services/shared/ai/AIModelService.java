@@ -94,4 +94,35 @@ public class AIModelService {
             throw new RuntimeException("Error calling Gemini API: " + ex.getMessage(), ex);
         }
     }
+
+    /**
+     * Generate image using Gemini Imagen model.
+     * Returns image bytes or null if generation fails.
+     * 
+     * Note: Gemini Imagen API requires specific setup.
+     * For now, this returns null as placeholder.
+     */
+    public byte[] generateImage(String prompt) {
+        if (prompt == null || prompt.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            // TODO: Implement Gemini Imagen API when available
+            // For now, return null - slides will render without AI images
+            log.info("🖼️ Image generation requested for: {}", prompt.substring(0, Math.min(50, prompt.length())));
+
+            // Gemini Imagen is not yet available in the Java SDK
+            // When available, it would be:
+            // ImagenModel model = ImagenModel.create("gemini-imagen-3");
+            // ImagenGenerateImagesResponse response = model.generateImages(prompt);
+            // return response.getImages().get(0).asByteArray();
+
+            return null;
+
+        } catch (Exception ex) {
+            log.warn("⚠️ Image generation failed: {}", ex.getMessage());
+            return null;
+        }
+    }
 }

@@ -34,6 +34,7 @@ import com.example.springboot_api.dto.user.chatbot.ListMessagesResponse;
 import com.example.springboot_api.dto.user.chatbot.LlmModelResponse;
 import com.example.springboot_api.dto.user.chatbot.ModelResponse;
 import com.example.springboot_api.dto.user.chatbot.SourceResponse;
+import com.example.springboot_api.mappers.ChatBotMapper;
 import com.example.springboot_api.models.LlmModel;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookBotConversation;
@@ -56,7 +57,6 @@ import com.example.springboot_api.services.shared.ai.EmbeddingService;
 import com.example.springboot_api.services.shared.ai.ImageExtractionService;
 import com.example.springboot_api.services.shared.ai.OcrService;
 import com.example.springboot_api.services.shared.ai.WebSearchService;
-import com.example.springboot_api.utils.UrlNormalizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.persistence.EntityManager;
@@ -86,7 +86,7 @@ public class ChatBotService {
     private final NotebookRepository notebookRepository;
     private final UserRepository userRepository;
     private final EntityManager entityManager;
-    private final UrlNormalizer urlNormalizer;
+    private final ChatBotMapper chatBotMapper;
 
     /**
      * Record chứa kết quả RAG chunk.
@@ -248,18 +248,7 @@ public class ChatBotService {
      */
     public List<LlmModelResponse> listModels() {
         List<LlmModel> models = llmModelRepository.findByIsActiveTrueOrderByIsDefaultDescDisplayNameAsc();
-
-        return models.stream()
-                .map(model -> new LlmModelResponse(
-                        model.getId(),
-                        model.getCode(),
-                        model.getProvider(),
-                        model.getDisplayName(),
-                        model.getIsActive(),
-                        model.getIsDefault(),
-                        model.getMetadata(),
-                        model.getCreatedAt()))
-                .collect(Collectors.toList());
+        return chatBotMapper.toLlmModelResponseList(models);
     }
 
     /**
@@ -327,7 +316,6 @@ public class ChatBotService {
         // Thu thập OCR text từ danh sách hình ảnh
         StringBuilder imageTextsBuilder = new StringBuilder();
         List<String> fileTypes = new ArrayList<>();
-        int imageCount = 0;
 
         // Xử lý upload và OCR cho danh sách hình ảnh nếu có
         if (files != null && !files.isEmpty()) {
@@ -355,12 +343,9 @@ public class ChatBotService {
                     String mimeType = file.getContentType();
                     String fileName = file.getOriginalFilename();
 
-                    // Thu thập thông tin file type và đếm số lượng hình ảnh
+                    // Thu thập thông tin file type
                     if (fileType != null && !fileType.isEmpty()) {
                         fileTypes.add(fileType);
-                        if ("image".equals(fileType)) {
-                            imageCount++;
-                        }
                     }
 
                     // Lưu thông tin file và OCR text vào database
@@ -840,21 +825,7 @@ public class ChatBotService {
      * Convert List<RagChunk> sang format JSON (List<Map>).
      */
     private List<Map<String, Object>> convertRagChunksToJson(List<RagChunk> ragChunks) {
-        if (ragChunks == null || ragChunks.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        return ragChunks.stream()
-                .map(chunk -> {
-                    Map<String, Object> chunkMap = new HashMap<>();
-                    chunkMap.put("file_id", chunk.fileId().toString());
-                    chunkMap.put("chunk_index", chunk.chunkIndex());
-                    chunkMap.put("content", chunk.content());
-                    chunkMap.put("similarity", chunk.similarity());
-                    chunkMap.put("distance", chunk.distance());
-                    return chunkMap;
-                })
-                .collect(Collectors.toList());
+        return chatBotMapper.toRagChunksJson(ragChunks);
     }
 
     /**
@@ -1226,217 +1197,13 @@ public class ChatBotService {
         return "image"; // default
     }
 
-    /**
-     * Xác định file type từ file path/URL.
-     */
-    private String determineFileType(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
-            return "image";
-        }
-
-        String lowerPath = filePath.toLowerCase();
-        if (lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg")) {
-            return "image";
-        } else if (lowerPath.endsWith(".png")) {
-            return "image";
-        } else if (lowerPath.endsWith(".gif")) {
-            return "image";
-        } else if (lowerPath.endsWith(".pdf")) {
-            return "document";
-        } else if (lowerPath.endsWith(".docx") || lowerPath.endsWith(".doc")) {
-            return "document";
-        }
-
-        return "image"; // default
-    }
-
-    /**
-     * Xác định MIME type từ file path/URL.
-     */
-    private String determineMimeType(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
-            return "image/jpeg";
-        }
-
-        String lowerPath = filePath.toLowerCase();
-        if (lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg")) {
-            return "image/jpeg";
-        } else if (lowerPath.endsWith(".png")) {
-            return "image/png";
-        } else if (lowerPath.endsWith(".gif")) {
-            return "image/gif";
-        } else if (lowerPath.endsWith(".pdf")) {
-            return "application/pdf";
-        } else if (lowerPath.endsWith(".docx")) {
-            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        } else if (lowerPath.endsWith(".doc")) {
-            return "application/msword";
-        }
-
-        return "image/jpeg"; // default
-    }
-
-    /**
-     * Extract file name từ file path/URL.
-     */
-    private String extractFileName(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
-            return "unknown";
-        }
-
-        // Xử lý cả full URL và relative path
-        String path = filePath;
-        if (path.contains("/")) {
-            path = path.substring(path.lastIndexOf("/") + 1);
-        }
-
-        // Loại bỏ query parameters nếu có
-        if (path.contains("?")) {
-            path = path.substring(0, path.indexOf("?"));
-        }
-
-        return path.isEmpty() ? "unknown" : path;
-    }
-
-    /**
-     * Build List<SourceResponse> từ database sources và llmInputData (gộp RAG và
-     * WEB).
-     */
-    @SuppressWarnings("unchecked")
     private List<SourceResponse> buildSourcesResponse(Set<NotebookBotMessageSource> dbSources,
             Map<String, Object> llmInputData) {
-        List<SourceResponse> allSources = new ArrayList<>();
-
-        if (dbSources == null || dbSources.isEmpty()) {
-            return allSources;
-        }
-
-        // Lấy ragChunks và webResults từ llmInputData để có thông tin đầy đủ
-        List<Map<String, Object>> ragChunks = (List<Map<String, Object>>) llmInputData.get("ragChunks");
-        if (ragChunks == null) {
-            ragChunks = new ArrayList<>();
-        }
-
-        List<Map<String, Object>> webResults = (List<Map<String, Object>>) llmInputData.get("webResults");
-        if (webResults == null) {
-            webResults = new ArrayList<>();
-        }
-
-        for (NotebookBotMessageSource source : dbSources) {
-            if ("RAG".equalsIgnoreCase(source.getSourceType())) {
-                // Tìm chunk tương ứng trong ragChunks để lấy content, similarity, distance
-                Map<String, Object> matchingChunk = ragChunks.stream()
-                        .filter(chunk -> source.getFileId() != null
-                                && source.getFileId().toString().equals(chunk.get("file_id"))
-                                && source.getChunkIndex() != null
-                                && source.getChunkIndex().equals(chunk.get("chunk_index")))
-                        .findFirst()
-                        .orElse(null);
-
-                SourceResponse ragSource = SourceResponse.builder()
-                        .sourceType("RAG")
-                        .fileId(source.getFileId())
-                        .chunkIndex(source.getChunkIndex())
-                        .score(source.getScore())
-                        .provider(source.getProvider() != null ? source.getProvider() : "rag")
-                        .content(matchingChunk != null ? (String) matchingChunk.get("content") : null)
-                        .similarity(matchingChunk != null
-                                ? (matchingChunk.get("similarity") instanceof Double
-                                        ? (Double) matchingChunk.get("similarity")
-                                        : matchingChunk.get("similarity") != null
-                                                ? ((Number) matchingChunk.get("similarity")).doubleValue()
-                                                : null)
-                                : null)
-                        .distance(matchingChunk != null
-                                ? (matchingChunk.get("distance") instanceof Double
-                                        ? (Double) matchingChunk.get("distance")
-                                        : matchingChunk.get("distance") != null
-                                                ? ((Number) matchingChunk.get("distance")).doubleValue()
-                                                : null)
-                                : null)
-                        // WEB fields = null
-                        .webIndex(null)
-                        .url(null)
-                        .title(null)
-                        .snippet(null)
-                        .imageUrl(null)
-                        .favicon(null)
-                        .build();
-
-                allSources.add(ragSource);
-            } else if ("WEB".equalsIgnoreCase(source.getSourceType())) {
-                // Tìm web result tương ứng để lấy imageUrl
-                Map<String, Object> matchingWebResult = null;
-                if (source.getWebIndex() != null && source.getWebIndex() >= 0
-                        && source.getWebIndex() < webResults.size()) {
-                    matchingWebResult = webResults.get(source.getWebIndex());
-                }
-
-                SourceResponse webSource = SourceResponse.builder()
-                        .sourceType("WEB")
-                        .webIndex(source.getWebIndex())
-                        .url(source.getUrl())
-                        .title(source.getTitle())
-                        .snippet(source.getSnippet())
-                        .score(source.getScore())
-                        .provider(source.getProvider() != null ? source.getProvider() : "web")
-                        .imageUrl(matchingWebResult != null ? (String) matchingWebResult.get("imageUrl") : null)
-                        .favicon(null) // TODO: Extract favicon từ URL nếu cần
-                        // RAG fields = null
-                        .fileId(null)
-                        .chunkIndex(null)
-                        .content(null)
-                        .similarity(null)
-                        .distance(null)
-                        .build();
-
-                allSources.add(webSource);
-            }
-        }
-
-        // Sort theo score giảm dần
-        allSources.sort((a, b) -> {
-            if (a.getScore() == null && b.getScore() == null) {
-                return 0;
-            }
-            if (a.getScore() == null) {
-                return 1;
-            }
-            if (b.getScore() == null) {
-                return -1;
-            }
-            return Double.compare(b.getScore(), a.getScore());
-        });
-
-        return allSources;
+        return chatBotMapper.toSourceResponseList(dbSources, llmInputData);
     }
 
-    /**
-     * Convert Set<NotebookBotMessageFile> sang List<FileResponse>.
-     * Normalize fileUrl từ relative path sang full URL.
-     */
     private List<FileResponse> convertToFileResponseList(Set<NotebookBotMessageFile> files) {
-        if (files == null || files.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        return files.stream()
-                .map(file -> {
-                    // Normalize fileUrl từ relative path sang full URL
-                    String normalizedFileUrl = urlNormalizer.normalizeToFull(file.getFileUrl());
-
-                    return FileResponse.builder()
-                            .id(file.getId())
-                            .fileType(file.getFileType())
-                            .fileUrl(normalizedFileUrl)
-                            .mimeType(file.getMimeType())
-                            .fileName(file.getFileName())
-                            .ocrText(file.getOcrText())
-                            .caption(file.getCaption())
-                            .metadata(file.getMetadata())
-                            .build();
-                })
-                .collect(Collectors.toList());
+        return chatBotMapper.toFileResponseList(files);
     }
 
     /**
@@ -1482,35 +1249,18 @@ public class ChatBotService {
      * @return ChatResponse
      */
     private ChatResponse convertToChatResponse(NotebookBotMessage message) {
-        ChatResponse response = ChatResponse.builder()
-                .id(message.getId())
-                .content(message.getContent())
-                .mode(message.getMode())
-                .role(message.getRole())
-                .context(message.getContext())
-                .createdAt(message.getCreatedAt())
-                .metadata(message.getMetadata())
-                .build();
-
-        // Set model nếu có
-        if (message.getLlmModel() != null) {
-            response.setModel(ModelResponse.builder()
-                    .id(message.getLlmModel().getId())
-                    .code(message.getLlmModel().getCode())
-                    .provider(message.getLlmModel().getProvider())
-                    .build());
+        ChatResponse response = chatBotMapper.toChatResponse(message);
+        if (response == null) {
+            return null;
         }
 
         // Set sources (RAG và WEB) - lấy từ database
-        // Note: Vì đã eager load sources trong query, nên có thể lấy trực tiếp
         Set<NotebookBotMessageSource> dbSources = message.getNotebookBotMessageSources();
         if (dbSources != null && !dbSources.isEmpty()) {
-            // Tạo llmInputData giả để build sources response
-            // Trong trường hợp này, ta chỉ cần lấy thông tin từ database
             Map<String, Object> emptyLlmInputData = new HashMap<>();
             emptyLlmInputData.put("ragChunks", new ArrayList<>());
             emptyLlmInputData.put("webResults", new ArrayList<>());
-            response.setSources(buildSourcesResponse(dbSources, emptyLlmInputData));
+            response.setSources(chatBotMapper.toSourceResponseList(dbSources, emptyLlmInputData));
         } else {
             response.setSources(new ArrayList<>());
         }
@@ -1518,7 +1268,7 @@ public class ChatBotService {
         // Set files nếu có
         Set<NotebookBotMessageFile> files = message.getNotebookBotMessageFiles();
         if (files != null && !files.isEmpty()) {
-            response.setFiles(convertToFileResponseList(files));
+            response.setFiles(chatBotMapper.toFileResponseList(files));
         } else {
             response.setFiles(new ArrayList<>());
         }

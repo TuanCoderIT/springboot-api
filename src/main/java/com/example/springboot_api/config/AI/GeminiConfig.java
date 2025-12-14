@@ -1,5 +1,6 @@
 package com.example.springboot_api.config.AI;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,16 @@ public class GeminiConfig {
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Failed to create Gemini client: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Bean cung cấp Gemini API key cho các service khác.
+     * Inject bằng: @Qualifier("geminiApiKey") String apiKey
+     */
+    @Bean
+    @Qualifier("geminiApiKey")
+    public String geminiApiKey() {
+        return resolveApiKey();
     }
 
     /**
