@@ -44,13 +44,15 @@ public class SecurityConfig {
                 // Auth public
                 .requestMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
 
-
                 // WS public
                 .requestMatchers("/ws/**", "/chat-test.html").permitAll()
 
-
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/db-test").permitAll()
+
+                // Test AI Image generation (có thể remove sau)
+                .requestMatchers("/user/ai-images/**").permitAll()
+                .requestMatchers("/user/slides/**").permitAll()
 
                 // ========== PHÂN QUYỀN ==========
                 .requestMatchers("/admin/**").hasRole("ADMIN") // ROLE_ADMIN
@@ -60,7 +62,6 @@ public class SecurityConfig {
 
                 // Chỉ cần login
                 .requestMatchers("/auth/me").authenticated()
-
 
                 .anyRequest().authenticated());
 

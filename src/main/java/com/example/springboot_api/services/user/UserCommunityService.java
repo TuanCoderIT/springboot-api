@@ -21,6 +21,7 @@ import com.example.springboot_api.dto.user.community.JoinGroupRequest;
 import com.example.springboot_api.dto.user.community.JoinGroupResponse;
 import com.example.springboot_api.dto.user.community.JoinedGroupResponse;
 import com.example.springboot_api.dto.user.community.MembershipStatusResponse;
+import com.example.springboot_api.mappers.CommunityMapper;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookMember;
 import com.example.springboot_api.models.User;
@@ -31,7 +32,6 @@ import com.example.springboot_api.repositories.shared.FlashcardRepository;
 import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.repositories.shared.NotebookMessageRepository;
 import com.example.springboot_api.repositories.shared.QuizRepository;
-import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,7 +46,8 @@ public class UserCommunityService {
     private final NotebookMessageRepository messageRepository;
     private final QuizRepository quizRepository;
     private final FlashcardRepository flashcardRepository;
-    private final UrlNormalizer urlNormalizer;
+    private final CommunityMapper communityMapper;
+    private final com.example.springboot_api.utils.UrlNormalizer urlNormalizer;
 
     @Transactional
     public JoinGroupResponse joinGroup(JoinGroupRequest req, UUID userId) {
@@ -178,17 +179,7 @@ public class UserCommunityService {
 
     private AvailableGroupResponse mapToAvailableGroup(Notebook nb) {
         Long memberCount = memberRepository.countByNotebookIdAndStatus(nb.getId(), "approved");
-
-        String thumbnailUrl = urlNormalizer.normalizeToFull(nb.getThumbnailUrl());
-
-        return new AvailableGroupResponse(
-                nb.getId(),
-                nb.getTitle(),
-                nb.getDescription(),
-                nb.getVisibility(),
-                thumbnailUrl,
-                memberCount,
-                nb.getCreatedAt());
+        return communityMapper.toAvailableGroupResponse(nb, memberCount);
     }
 
     public CommunityPreviewResponse getCommunityPreview(UUID notebookId) {
@@ -351,21 +342,8 @@ public class UserCommunityService {
     }
 
     private JoinedGroupResponse mapToJoinedGroup(NotebookMember member) {
-        Notebook notebook = member.getNotebook();
-        Long memberCount = memberRepository.countByNotebookIdAndStatus(notebook.getId(), "approved");
-        String thumbnailUrl = urlNormalizer.normalizeToFull(notebook.getThumbnailUrl());
-
-        return new JoinedGroupResponse(
-                notebook.getId(),
-                notebook.getTitle(),
-                notebook.getDescription(),
-                notebook.getVisibility(),
-                thumbnailUrl,
-                memberCount,
-                member.getStatus(),
-                member.getRole(),
-                member.getJoinedAt(),
-                notebook.getCreatedAt());
+        Long memberCount = memberRepository.countByNotebookIdAndStatus(member.getNotebook().getId(), "approved");
+        return communityMapper.toJoinedGroupResponse(member, memberCount);
     }
 
     public MembershipStatusResponse checkMembershipStatus(UUID notebookId, UUID userId) {

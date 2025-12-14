@@ -1,10 +1,8 @@
 package com.example.springboot_api.services.user;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,18 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.user.quiz.QuizListResponse;
-import com.example.springboot_api.dto.user.quiz.QuizOptionResponse;
 import com.example.springboot_api.dto.user.quiz.QuizResponse;
+import com.example.springboot_api.mappers.QuizMapper;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookAiSet;
 import com.example.springboot_api.models.NotebookMember;
-import com.example.springboot_api.models.NotebookQuizOption;
 import com.example.springboot_api.models.NotebookQuizz;
 import com.example.springboot_api.repositories.admin.NotebookMemberRepository;
 import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 import com.example.springboot_api.repositories.shared.QuizRepository;
-import com.example.springboot_api.utils.UrlNormalizer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -39,7 +35,7 @@ public class QuizService {
         private final NotebookAiSetRepository aiSetRepository;
         private final NotebookRepository notebookRepository;
         private final NotebookMemberRepository notebookMemberRepository;
-        private final UrlNormalizer urlNormalizer;
+        private final QuizMapper quizMapper;
 
         /**
          * Lấy danh sách quiz theo NotebookAiSet ID.
@@ -86,85 +82,10 @@ public class QuizService {
                         throw new BadRequestException("AI Set không thuộc notebook này");
                 }
 
-                // Lấy danh sách quiz kèm options (sử dụng JOIN FETCH để tránh N+1)
+                // Lấy danh sách quiz kèm options và convert sang DTO
                 List<NotebookQuizz> quizzes = quizRepository.findByAiSetIdWithOptions(notebookAiSetId);
+                List<QuizResponse> quizResponses = quizMapper.toQuizResponseList(quizzes);
 
-                // Convert sang DTO
-                List<QuizResponse> quizResponses = quizzes.stream()
-                                .map(this::convertToQuizResponse)
-                                .collect(Collectors.toList());
-
-                // Build response
-                return buildQuizListResponse(aiSet, quizResponses);
-        }
-
-        /**
-         * Convert NotebookQuizz entity sang QuizResponse DTO.
-         */
-        private QuizResponse convertToQuizResponse(NotebookQuizz quiz) {
-                // Convert options, sort theo position
-                List<QuizOptionResponse> optionResponses = quiz.getNotebookQuizOptions().stream()
-                                .sorted(Comparator
-                                                .comparingInt(opt -> opt.getPosition() != null ? opt.getPosition()
-                                                                : Integer.MAX_VALUE))
-                                .map(this::convertToQuizOptionResponse)
-                                .collect(Collectors.toList());
-
-                return QuizResponse.builder()
-                                .id(quiz.getId())
-                                .question(quiz.getQuestion())
-                                .explanation(quiz.getExplanation())
-                                .difficultyLevel(quiz.getDifficultyLevel())
-                                .createdAt(quiz.getCreatedAt())
-                                .options(optionResponses)
-                                .build();
-        }
-
-        /**
-         * Convert NotebookQuizOption entity sang QuizOptionResponse DTO.
-         */
-        private QuizOptionResponse convertToQuizOptionResponse(NotebookQuizOption option) {
-                return QuizOptionResponse.builder()
-                                .id(option.getId())
-                                .text(option.getText())
-                                .isCorrect(option.getIsCorrect())
-                                .feedback(option.getFeedback())
-                                .position(option.getPosition())
-                                .build();
-        }
-
-        /**
-         * Build QuizListResponse từ AI Set và danh sách quiz responses.
-         */
-        private QuizListResponse buildQuizListResponse(NotebookAiSet aiSet, List<QuizResponse> quizResponses) {
-                // Lấy thông tin user tạo
-                UUID createdById = null;
-                String createdByName = null;
-                String createdByAvatar = null;
-
-                if (aiSet.getCreatedBy() != null) {
-                        createdById = aiSet.getCreatedBy().getId();
-                        createdByName = aiSet.getCreatedBy().getFullName();
-                        createdByAvatar = urlNormalizer.normalizeToFull(aiSet.getCreatedBy().getAvatarUrl());
-                }
-
-                // Lấy notebook ID
-                UUID notebookId = aiSet.getNotebook() != null ? aiSet.getNotebook().getId() : null;
-
-                return QuizListResponse.builder()
-                                .aiSetId(aiSet.getId())
-                                .title(aiSet.getTitle())
-                                .description(aiSet.getDescription())
-                                .status(aiSet.getStatus())
-                                .errorMessage(aiSet.getErrorMessage())
-                                .createdAt(aiSet.getCreatedAt())
-                                .finishedAt(aiSet.getFinishedAt())
-                                .createdById(createdById)
-                                .createdByName(createdByName)
-                                .createdByAvatar(createdByAvatar)
-                                .notebookId(notebookId)
-                                .quizzes(quizResponses)
-                                .totalQuizzes(quizResponses.size())
-                                .build();
+                return quizMapper.toQuizListResponse(aiSet, quizResponses);
         }
 }
