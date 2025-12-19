@@ -22,12 +22,14 @@ import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
 import com.example.springboot_api.dto.user.flashcard.FlashcardListResponse;
 import com.example.springboot_api.dto.user.quiz.QuizListResponse;
 import com.example.springboot_api.dto.user.suggestion.SuggestionResponse;
-import com.example.springboot_api.services.user.AiGenerationService;
+import com.example.springboot_api.dto.user.summary.SummaryResponse;
+import com.example.springboot_api.services.user.AiSetService;
 import com.example.springboot_api.services.user.AudioService;
 import com.example.springboot_api.services.user.FlashcardService;
 import com.example.springboot_api.services.user.MindmapService;
 import com.example.springboot_api.services.user.QuizService;
 import com.example.springboot_api.services.user.SuggestionService;
+import com.example.springboot_api.services.user.SummaryService;
 import com.example.springboot_api.services.user.VideoService;
 
 import lombok.RequiredArgsConstructor;
@@ -44,12 +46,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AiGenerationController {
 
-    private final AiGenerationService aiGenerationService;
+    private final AiSetService aiSetService;
     private final QuizService quizService;
     private final FlashcardService flashcardService;
     private final AudioService audioService;
     private final MindmapService mindmapService;
     private final SuggestionService suggestionService;
+    private final SummaryService summaryService;
     private final VideoService videoService;
 
     // ================================
@@ -85,7 +88,7 @@ public class AiGenerationController {
             throw new BadRequestException("Danh sách file IDs không được để trống");
         }
 
-        Map<String, Object> result = aiGenerationService.generateQuiz(
+        Map<String, Object> result = quizService.generateQuiz(
                 notebookId, user.getId(), fileIds, numberOfQuestions, difficultyLevel, additionalRequirements);
 
         if (result.containsKey("error")) {
@@ -128,7 +131,7 @@ public class AiGenerationController {
             throw new BadRequestException("Danh sách file IDs không được để trống");
         }
 
-        Map<String, Object> result = aiGenerationService.generateAudioOverview(
+        Map<String, Object> result = audioService.generateAudioOverview(
                 notebookId, user.getId(), fileIds, voiceId, outputFormat, notes);
 
         if (result.containsKey("error")) {
@@ -163,7 +166,7 @@ public class AiGenerationController {
             throw new BadRequestException("Danh sách file IDs không được để trống");
         }
 
-        Map<String, Object> result = aiGenerationService.generateAudioOverviewAsync(
+        Map<String, Object> result = audioService.generateAudioOverview(
                 notebookId, user.getId(), fileIds, voiceId, outputFormat, notes);
 
         if (result.containsKey("error")) {
@@ -248,7 +251,7 @@ public class AiGenerationController {
             throw new BadRequestException("Danh sách file IDs không được để trống");
         }
 
-        Map<String, Object> result = aiGenerationService.generateFlashcards(
+        Map<String, Object> result = flashcardService.generateFlashcards(
                 notebookId, user.getId(), fileIds, numberOfCards, additionalRequirements);
 
         if (result.containsKey("error")) {
@@ -307,7 +310,7 @@ public class AiGenerationController {
             throw new BadRequestException("Danh sách file IDs không được để trống");
         }
 
-        Map<String, Object> result = aiGenerationService.generateMindmap(
+        Map<String, Object> result = mindmapService.generateMindmap(
                 notebookId, user.getId(), fileIds, additionalRequirements);
 
         if (result.containsKey("error")) {
@@ -368,7 +371,7 @@ public class AiGenerationController {
             throw new RuntimeException("User chưa đăng nhập.");
         }
 
-        List<AiSetResponse> sets = aiGenerationService.getAiSets(notebookId, user.getId(), setType);
+        List<AiSetResponse> sets = aiSetService.getAiSets(notebookId, user.getId(), setType);
 
         return ResponseEntity.ok(sets);
     }
@@ -394,7 +397,7 @@ public class AiGenerationController {
             throw new RuntimeException("User chưa đăng nhập.");
         }
 
-        aiGenerationService.deleteAiSet(user.getId(), aiSetId);
+        aiSetService.deleteAiSet(user.getId(), aiSetId);
 
         return ResponseEntity.noContent().build();
     }
@@ -422,7 +425,7 @@ public class AiGenerationController {
             throw new BadRequestException("Danh sách file IDs không được để trống");
         }
 
-        Map<String, Object> result = aiGenerationService.generateSuggestions(
+        Map<String, Object> result = suggestionService.generateSuggestions(
                 notebookId, user.getId(), fileIds, additionalRequirements);
 
         if (result.containsKey("error")) {
@@ -491,7 +494,7 @@ public class AiGenerationController {
         };
 
         // generateImages luôn bật
-        Map<String, Object> result = aiGenerationService.generateVideo(
+        Map<String, Object> result = videoService.generateVideo(
                 notebookId, user.getId(), fileIds, numberOfSlides, true, additionalRequirements);
 
         if (result.containsKey("error")) {
@@ -522,6 +525,74 @@ public class AiGenerationController {
 
         com.example.springboot_api.dto.user.video.VideoResponse response = videoService.getVideoByAiSetId(
                 user.getId(), notebookId, aiSetId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ================================
+    // SUMMARY GENERATION
+    // ================================
+
+    /**
+     * Tạo summary từ các notebook files (chạy nền).
+     * POST /user/notebooks/{notebookId}/ai/summary/generate
+     *
+     * @param user                   Current authenticated user
+     * @param notebookId             Notebook ID
+     * @param fileIds                Danh sách file IDs
+     * @param voiceId                Giọng đọc TTS (optional, null = không tạo
+     *                               audio)
+     * @param language               Ngôn ngữ (vi, en...), default: vi
+     * @param additionalRequirements Yêu cầu bổ sung (optional)
+     * @return Map chứa aiSetId để track tiến trình
+     */
+    @PostMapping("/summary/generate")
+    public ResponseEntity<Map<String, Object>> generateSummary(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false) String voiceId,
+            @RequestParam(required = false, defaultValue = "vi") String language,
+            @RequestParam(required = false) String additionalRequirements) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        Map<String, Object> result = summaryService.generateSummary(
+                notebookId, user.getId(), fileIds, voiceId, language, additionalRequirements);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy summary theo AI Set ID.
+     * GET /user/notebooks/{notebookId}/ai/summary/{aiSetId}
+     *
+     * @param user       Current authenticated user
+     * @param notebookId Notebook ID
+     * @param aiSetId    AI Set ID chứa summary
+     * @return SummaryResponse
+     */
+    @GetMapping("/summary/{aiSetId}")
+    public ResponseEntity<SummaryResponse> getSummary(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        SummaryResponse response = summaryService.getSummaryByAiSetId(user.getId(), notebookId, aiSetId);
 
         return ResponseEntity.ok(response);
     }

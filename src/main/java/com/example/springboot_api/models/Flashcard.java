@@ -36,7 +36,7 @@ public class Flashcard implements Serializable {
     public static final String COLUMN_EXAMPLE_NAME = "example";
     public static final String COLUMN_IMAGEURL_NAME = "image_url";
     public static final String COLUMN_AUDIOURL_NAME = "audio_url";
-    private static final long serialVersionUID = -1596234167648093732L;
+    private static final long serialVersionUID = 188030891111568613L;
 
 
     private UUID id;

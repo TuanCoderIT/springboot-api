@@ -59,11 +59,11 @@ public class FileChunk implements Serializable {
 
     private NotebookFile file;
 
+    private List<Double> embedding;
+
     private Integer chunkIndex;
 
     private String content;
-
-    private List<Double> embedding;
 
     private Map<String, Object> metadata;
     private OffsetDateTime createdAt;

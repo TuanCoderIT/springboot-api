@@ -1,0 +1,57 @@
+{
+  "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+  "title": "Xử lý ảnh",
+  "summary": "Tổng quan các kỹ thuật xử lý ảnh cơ bản.",
+  "children": [
+    {
+      "id": "b2c3d4e5-f678-9012-3456-7890abcdef01",
+      "title": "Giới thiệu",
+      "summary": "Thị giác máy tính và quy trình xử lý ảnh.",
+      "children": [
+        {
+          "id": "c3d4e5f6-7890-1234-5678-90abcdef0123",
+          "title": "Thị giác máy tính",
+          "summary": "Giúp máy tính 'nhìn' và 'hiểu' ảnh.",
+          "children": []
+        },
+        {
+          "id": "d4e5f678-9012-3456-7890-abcdef012345",
+          "title": "Quy trình xử lý ảnh",
+          "summary": "Thu nhận, tiền xử lý, trích xuất, nhận dạng.",
+          "children": []
+        },
+        {
+          "id": "e5f67890-1234-5678-90ab-cdef01234567",
+          "title": "Công cụ và thư viện",
+          "summary": "OpenCV, Anaconda cho Python.",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "f6789012-3456-7890-abcd-ef0123456789",
+      "title": "Biểu diễn ảnh",
+      "summary": "Ảnh xám, ảnh màu và ma trận pixel.",
+      "children": [
+        {
+          "id": "78901234-5678-90ab-cdef-0123456789ab",
+          "title": "Ảnh xám và ảnh màu",
+          "summary": "Giá trị pixel, kênh màu RGB.",
+          "children": []
+        },
+        {
+          "id": "90123456-7890-abcd-ef01-23456789abcd",
+          "title": "Ma trận ảnh",
+          "summary": "Chiều rộng, chiều cao, độ sâu.",
+          "children": []
+        },
+        {
+          "id": "12345678-90ab-cdef-0123-456789abcdef",
+          "title": "Đọc và hiển thị ảnh",
+          "summary": "cv2.imread, cv2.imshow.",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

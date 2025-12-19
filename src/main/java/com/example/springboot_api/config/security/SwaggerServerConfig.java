@@ -9,12 +9,12 @@ import io.swagger.v3.oas.models.servers.Server;
 @Configuration
 public class SwaggerServerConfig {
 
-    @Bean
-    public OpenAPI customOpenAPI() {
-        return new OpenAPI()
-                .addServersItem(new Server()
-                        .url("https://unshapen-splenetically-cheyenne.ngrok-free.dev"))
-                .addServersItem(new Server()
-                        .url("http://localhost:8386"));
-    }
+        @Bean
+        public OpenAPI customOpenAPI() {
+                return new OpenAPI()
+                                .addServersItem(new Server()
+                                                .url("http://localhost:8386"))
+                                .addServersItem(new Server()
+                                                .url("https://unshapen-splenetically-cheyenne.ngrok-free.dev"));
+        }
 }

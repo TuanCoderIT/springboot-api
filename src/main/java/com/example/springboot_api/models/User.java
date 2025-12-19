@@ -36,7 +36,7 @@ public class User implements Serializable {
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_AVATAR_NAME = "avatar";
-    private static final long serialVersionUID = 6769117090793078512L;
+    private static final long serialVersionUID = -6538775550842250442L;
 
 
     private UUID id;
@@ -66,6 +66,8 @@ public class User implements Serializable {
     private Set<NotebookAiSetSuggestion> notebookAiSetSuggestions = new LinkedHashSet<>();
 
     private Set<NotebookAiSet> notebookAiSets = new LinkedHashSet<>();
+
+    private Set<NotebookAiSummary> notebookAiSummaries = new LinkedHashSet<>();
 
     private Set<NotebookBotConversationState> notebookBotConversationStates = new LinkedHashSet<>();
 
@@ -151,14 +153,12 @@ public class User implements Serializable {
         return flashcards;
     }
 
-    @OneToMany
-    @JoinColumn(name = "user_id")
+    @OneToMany(mappedBy = "user")
     public Set<MessageReaction> getMessageReactions() {
         return messageReactions;
     }
 
-    @OneToMany
-    @JoinColumn(name = "user_id")
+    @OneToMany(mappedBy = "user")
     public Set<NotebookActivityLog> getNotebookActivityLogs() {
         return notebookActivityLogs;
     }
@@ -173,8 +173,12 @@ public class User implements Serializable {
         return notebookAiSets;
     }
 
-    @OneToMany
-    @JoinColumn(name = "user_id")
+    @OneToMany(mappedBy = "createBy")
+    public Set<NotebookAiSummary> getNotebookAiSummaries() {
+        return notebookAiSummaries;
+    }
+
+    @OneToMany(mappedBy = "user")
     public Set<NotebookBotConversationState> getNotebookBotConversationStates() {
         return notebookBotConversationStates;
     }
@@ -184,26 +188,22 @@ public class User implements Serializable {
         return notebookBotConversations;
     }
 
-    @OneToMany
-    @JoinColumn(name = "user_id")
+    @OneToMany(mappedBy = "user")
     public Set<NotebookBotMessage> getNotebookBotMessages() {
         return notebookBotMessages;
     }
 
-    @OneToMany
-    @JoinColumn(name = "uploaded_by")
+    @OneToMany(mappedBy = "uploadedBy")
     public Set<NotebookFile> getNotebookFiles() {
         return notebookFiles;
     }
 
-    @OneToMany
-    @JoinColumn(name = "user_id")
+    @OneToMany(mappedBy = "user")
     public Set<NotebookMember> getNotebookMembers() {
         return notebookMembers;
     }
 
-    @OneToMany
-    @JoinColumn(name = "user_id")
+    @OneToMany(mappedBy = "user")
     public Set<NotebookMessage> getNotebookMessages() {
         return notebookMessages;
     }
@@ -223,8 +223,7 @@ public class User implements Serializable {
         return notebooks;
     }
 
-    @OneToMany
-    @JoinColumn(name = "user_id")
+    @OneToMany(mappedBy = "user")
     public Set<Notification> getNotifications() {
         return notifications;
     }

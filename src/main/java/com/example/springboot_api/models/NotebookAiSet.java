@@ -42,7 +42,7 @@ public class NotebookAiSet implements Serializable {
     public static final String COLUMN_STARTEDAT_NAME = "started_at";
     public static final String COLUMN_FINISHEDAT_NAME = "finished_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = 1588312863440532501L;
+    private static final long serialVersionUID = -560452432615436163L;
 
 
     private UUID id;
@@ -86,6 +86,8 @@ public class NotebookAiSet implements Serializable {
     private Set<NotebookAiSetFile> notebookAiSetFiles = new LinkedHashSet<>();
 
     private Set<NotebookAiSetSuggestion> notebookAiSetSuggestions = new LinkedHashSet<>();
+
+    private NotebookAiSummary notebookAiSummary;
 
     private Set<NotebookMindmap> notebookMindmaps = new LinkedHashSet<>();
 
@@ -201,14 +203,12 @@ public class NotebookAiSet implements Serializable {
         return updatedAt;
     }
 
-    @OneToMany
-    @JoinColumn(name = "notebook_ai_sets_id")
+    @OneToMany(mappedBy = "notebookAiSets")
     public Set<Flashcard> getFlashcards() {
         return flashcards;
     }
 
-    @OneToMany
-    @JoinColumn(name = "ai_set_id")
+    @OneToMany(mappedBy = "aiSet")
     public Set<NotebookAiSetFile> getNotebookAiSetFiles() {
         return notebookAiSetFiles;
     }
@@ -218,26 +218,27 @@ public class NotebookAiSet implements Serializable {
         return notebookAiSetSuggestions;
     }
 
-    @OneToMany
-    @JoinColumn(name = "source_ai_set_id")
+    @OneToOne(mappedBy = "notebookAiSets")
+    public NotebookAiSummary getNotebookAiSummary() {
+        return notebookAiSummary;
+    }
+
+    @OneToMany(mappedBy = "sourceAiSet")
     public Set<NotebookMindmap> getNotebookMindmaps() {
         return notebookMindmaps;
     }
 
-    @OneToMany
-    @JoinColumn(name = "notebook_ai_sets_id")
+    @OneToMany(mappedBy = "notebookAiSets")
     public Set<NotebookQuizz> getNotebookQuizzes() {
         return notebookQuizzes;
     }
 
-    @OneToMany
-    @JoinColumn(name = "notebook_ai_sets")
+    @OneToMany(mappedBy = "notebookAiSets")
     public Set<TtsAsset> getTtsAssets() {
         return ttsAssets;
     }
 
-    @OneToMany
-    @JoinColumn(name = "notebook_ai_sets_id")
+    @OneToMany(mappedBy = "notebookAiSets")
     public Set<VideoAsset> getVideoAssets() {
         return videoAssets;
     }

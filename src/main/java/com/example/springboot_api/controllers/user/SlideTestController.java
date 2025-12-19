@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.springboot_api.services.shared.ai.AiAsyncTaskService;
+import com.example.springboot_api.services.shared.ai.generation.VideoGenerationService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,14 +21,14 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SlideTestController {
 
-        private final AiAsyncTaskService aiAsyncTaskService;
+        private final VideoGenerationService videoGenerationService;
 
         // ================================
         // VIDEO GENERATION TEST
         // ================================
 
         /**
-         * Test video generation - gọi TRỰC TIẾP AiAsyncTaskService.
+         * Test video generation - gọi TRỰC TIẾP VideoGenerationService.
          * POST /user/slides/video-test
          */
         @PostMapping("/video-test")
@@ -37,7 +37,7 @@ public class SlideTestController {
                         UUID aiSetId = UUID.randomUUID();
                         System.out.println("🎬 [TEST] Video generation started: " + aiSetId);
 
-                        aiAsyncTaskService.processVideoGenerationAsync(
+                        videoGenerationService.processVideoGenerationAsync(
                                         aiSetId,
                                         request.getNotebookId(),
                                         request.getUserId(),
@@ -75,7 +75,7 @@ public class SlideTestController {
                 UUID aiSetId = UUID.randomUUID();
                 System.out.println("🎬 [QUICK TEST] aiSetId: " + aiSetId);
 
-                aiAsyncTaskService.processVideoGenerationAsync(
+                videoGenerationService.processVideoGenerationAsync(
                                 aiSetId, notebookId, userId, List.of(fileId),
                                 "CORPORATE", null, slides, generateImages);
 

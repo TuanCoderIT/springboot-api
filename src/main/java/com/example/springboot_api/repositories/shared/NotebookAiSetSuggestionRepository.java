@@ -1,5 +1,6 @@
 package com.example.springboot_api.repositories.shared;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,4 +10,6 @@ import com.example.springboot_api.models.NotebookAiSetSuggestion;
 
 @Repository
 public interface NotebookAiSetSuggestionRepository extends JpaRepository<NotebookAiSetSuggestion, UUID> {
+
+    Optional<NotebookAiSetSuggestion> findByNotebookAiSetId(UUID aiSetId);
 }

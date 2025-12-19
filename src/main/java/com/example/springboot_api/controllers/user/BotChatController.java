@@ -26,8 +26,9 @@ import com.example.springboot_api.dto.user.chatbot.ConversationItem;
 import com.example.springboot_api.dto.user.chatbot.ListConversationsResponse;
 import com.example.springboot_api.dto.user.chatbot.ListMessagesResponse;
 import com.example.springboot_api.dto.user.chatbot.LlmModelResponse;
-import com.example.springboot_api.services.user.AiGenerationService;
+import com.example.springboot_api.services.user.AiSetService;
 import com.example.springboot_api.services.user.ChatBotService;
+import com.example.springboot_api.services.user.QuizService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,8 @@ import lombok.RequiredArgsConstructor;
 public class BotChatController {
 
     private final ChatBotService chatBotService;
-    private final AiGenerationService aiGenerationService;
+    private final AiSetService aiSetService;
+    private final QuizService quizService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -296,8 +298,8 @@ public class BotChatController {
             throw new BadRequestException("Danh sách file IDs không được để trống");
         }
 
-        // Forward sang AiGenerationService
-        Map<String, Object> result = aiGenerationService.generateQuiz(notebookId, user.getId(), fileIds,
+        // Forward sang QuizService
+        Map<String, Object> result = quizService.generateQuiz(notebookId, user.getId(), fileIds,
                 numberOfQuestions, difficultyLevel, null);
 
         if (result.containsKey("error")) {
@@ -323,8 +325,8 @@ public class BotChatController {
             throw new RuntimeException("User chưa đăng nhập.");
         }
 
-        // Forward sang AiGenerationService (sử dụng getAiSets thay vì getAiTasks)
-        List<AiSetResponse> sets = aiGenerationService.getAiSets(
+        // Forward sang AiSetService
+        List<AiSetResponse> sets = aiSetService.getAiSets(
                 notebookId,
                 user.getId(), taskType);
 
