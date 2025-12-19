@@ -38,3 +38,7 @@ out/
 ### Google Credentials ###
 **/credentials/*.json
 **/google-service-account.json
+
+
+src/main/resources/application-local.yml
+.env
