@@ -163,18 +163,85 @@ Lấy danh sách phân công giảng dạy của giảng viên.
   "data": [
     {
       "id": "uuid",
+      "subjectId": "uuid",
       "subjectCode": "INF30087",
       "subjectName": "Cấu trúc dữ liệu",
+      "subjectCredit": 3,
+      "termId": "uuid",
+      "termCode": "2024_HK1",
       "termName": "Học kỳ 1 - 2024-2025",
+      "termStartDate": "2024-09-01",
+      "termEndDate": "2025-01-15",
       "status": "ACTIVE",
       "approvalStatus": "APPROVED",
       "classCount": 3,
       "studentCount": 120,
-      "termStatus": "ACTIVE",
-      "createdAt": "2024-09-01T00:00:00+07:00"
+      "fileCount": 25,
+      "quizCount": 50,
+      "flashcardCount": 100,
+      "summaryCount": 10,
+      "videoCount": 5,
+      "note": "Ghi chú phân công",
+      "notebookId": "uuid",
+      "createdAt": "2024-09-01T00:00:00+07:00",
+      "termStatus": "ACTIVE"
     }
   ],
   "meta": { "page": 0, "size": 10, "totalElements": 5, "totalPages": 1 }
+}
+```
+
+### GET /lecturer/teaching-assignments/{assignmentId}
+
+Lấy **chi tiết đầy đủ** 1 phân công giảng dạy.
+
+**Path Params:** `assignmentId` (UUID)
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "subjectId": "uuid",
+  "subjectCode": "INF30087",
+  "subjectName": "Cấu trúc dữ liệu",
+  "subjectCredit": 3,
+  "termId": "uuid",
+  "termCode": "2024_HK1",
+  "termName": "Học kỳ 1 - 2024-2025",
+  "termStartDate": "2024-09-01",
+  "termEndDate": "2025-01-15",
+  "termIsActive": true,
+  "status": "ACTIVE",
+  "approvalStatus": "APPROVED",
+  "termStatus": "ACTIVE",
+  "classCount": 3,
+  "studentCount": 120,
+  "fileCount": 25,
+  "quizCount": 50,
+  "flashcardCount": 100,
+  "summaryCount": 10,
+  "videoCount": 0,
+  "notebookId": "uuid",
+  "notebookTitle": "Cấu trúc dữ liệu - HK1 2024",
+  "notebookDescription": "Tài liệu môn CTDL",
+  "notebookThumbnailUrl": "https://...",
+  "notebookCreatedAt": "2024-09-01T00:00:00+07:00",
+  "notebookUpdatedAt": "2024-09-15T00:00:00+07:00",
+  "note": "Ghi chú phân công",
+  "createdBy": "ADMIN",
+  "createdAt": "2024-09-01T00:00:00+07:00",
+  "recentClasses": [
+    {
+      "id": "uuid",
+      "classCode": "INF30087-01",
+      "room": "A201",
+      "dayOfWeek": 2,
+      "periods": "1-3",
+      "studentCount": 45,
+      "isActive": true
+    }
+  ]
 }
 ```
 
@@ -257,15 +324,24 @@ Lấy danh sách lớp học phần của một phân công.
 
 ---
 
-## 6. Sinh viên của phân công (tất cả lớp)
+## 6. Sinh viên của phân công
 
 ### GET /lecturer/teaching-assignments/{assignmentId}/students
 
-Lấy **toàn bộ sinh viên** trong 1 phân công (gộp từ tất cả lớp).
+Lấy sinh viên trong 1 phân công (có thể lọc theo lớp cụ thể).
 
 **Path Params:** `assignmentId` (UUID)
 
-**Query Params:** Giống API 7
+**Query Params:**
+
+| Param     | Type   | Default     | Mô tả                   |
+| --------- | ------ | ----------- | ----------------------- |
+| `classId` | UUID   | -           | **Lọc theo lớp cụ thể** |
+| `q`       | string | -           | Tìm theo mã SV, họ tên  |
+| `page`    | number | 0           | Trang                   |
+| `size`    | number | 10          | Số item mỗi trang       |
+| `sortBy`  | string | studentCode | Sắp xếp theo field      |
+| `sortDir` | string | asc         | Hướng sắp xếp           |
 
 **Response:** Giống API 7
 
@@ -310,4 +386,276 @@ Lấy danh sách sinh viên trong **1 lớp cụ thể**.
   ],
   "meta": { "page": 0, "size": 10, "totalElements": 45, "totalPages": 5 }
 }
+```
+
+---
+
+## 7. Thành viên của 1 lớp cụ thể
+
+### GET /lecturer/classes/{classId}/members
+
+Lấy danh sách sinh viên trong **1 lớp cụ thể**.
+
+**Path Params:** `classId` (UUID)
+
+**Query Params:**
+
+| Param     | Type   | Default     | Mô tả                  |
+| --------- | ------ | ----------- | ---------------------- |
+| `q`       | string | -           | Tìm theo mã SV, họ tên |
+| `page`    | number | 0           | Trang                  |
+| `size`    | number | 10          | Số item mỗi trang      |
+| `sortBy`  | string | studentCode | Sắp xếp theo field     |
+| `sortDir` | string | asc         | Hướng sắp xếp          |
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "studentCode": "20110001",
+      "fullName": "Nguyễn Văn A",
+      "firstName": "A",
+      "lastName": "Nguyễn Văn",
+      "dob": "2002-05-15",
+      "classCode": "INF30087-01",
+      "subjectCode": "INF30087",
+      "subjectName": "Cấu trúc dữ liệu",
+      "termName": "Học kỳ 1 - 2024-2025",
+      "createdAt": "2024-09-01T00:00:00+07:00"
+    }
+  ],
+  "meta": { "page": 0, "size": 10, "totalElements": 45, "totalPages": 5 }
+}
+```
+
+---
+
+## 8. Quản lý Chương (Chapters) - Cho dndkit
+
+### GET /lecturer/notebooks/{notebookId}/chapters
+
+Lấy danh sách chương của Notebook (đã sắp xếp theo `sortOrder`).
+
+**Path Params:** `notebookId` (UUID)
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "title": "Chương 1: Giới thiệu",
+    "description": "Mô tả chương",
+    "sortOrder": 0,
+    "createdAt": "2024-12-20T10:00:00Z",
+    "updatedAt": "2024-12-20T10:00:00Z"
+  },
+  {
+    "id": "uuid",
+    "title": "Chương 2: Cài đặt môi trường",
+    "description": null,
+    "sortOrder": 1,
+    "createdAt": "2024-12-20T10:05:00Z",
+    "updatedAt": "2024-12-20T10:05:00Z"
+  }
+]
+```
+
+### POST /lecturer/notebooks/{notebookId}/chapters
+
+Tạo chương mới (thêm vào cuối danh sách).
+
+**Path Params:** `notebookId` (UUID)
+
+**Request Body:**
+
+```json
+{
+  "title": "Chương mới"
+}
+```
+
+**Response:** Object `ChapterResponse` (như trên).
+
+### PUT /lecturer/chapters/{chapterId}
+
+Cập nhật thông tin chương.
+
+**Path Params:** `chapterId` (UUID)
+
+**Request Body:**
+
+```json
+{
+  "title": "Tên mới",
+  "description": "Mô tả mới"
+}
+```
+
+**Response:** Object `ChapterResponse`.
+
+### DELETE /lecturer/chapters/{chapterId}
+
+Xóa chương.
+
+**Path Params:** `chapterId` (UUID)
+
+**Response:** 204 No Content.
+
+### PUT /lecturer/notebooks/{notebookId}/chapters/reorder
+
+Sắp xếp lại thứ tự chương (dùng cho DnD Kit).
+
+**Path Params:** `notebookId` (UUID)
+
+**Request Body:**
+
+```json
+{
+  "orderedIds": ["chapter-uuid-1", "chapter-uuid-2", "chapter-uuid-3"]
+}
+```
+
+**Response:** 200 OK.
+
+---
+
+## 9. Quản lý Nội dung Chương (Chapter Items)
+
+### Item Types
+
+| Type         | Mô tả                             | ref_id trỏ đến         |
+| ------------ | --------------------------------- | ---------------------- |
+| `FILE`       | File tài liệu (PDF, Word, PPT)    | `notebook_files.id`    |
+| `LECTURE`    | Bài giảng                         | `lectures.id` (nếu có) |
+| `QUIZ`       | Câu hỏi trắc nghiệm               | `notebook_quizzes.id`  |
+| `ASSIGNMENT` | Bài tập                           | `assignments.id`       |
+| `NOTE`       | Ghi chú (nội dung trong metadata) | null                   |
+| `VIDEO`      | Video                             | `video_assets.id`      |
+| `FLASHCARD`  | Bộ flashcard                      | `notebook_ai_sets.id`  |
+
+### GET /lecturer/chapters/{chapterId}/items
+
+Lấy danh sách item trong chương (đã sắp xếp theo `sortOrder`).
+
+**Path Params:** `chapterId` (UUID)
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "itemType": "FILE",
+    "refId": "notebook-file-uuid",
+    "title": "Bài giảng Chương 1.pdf",
+    "sortOrder": 0,
+    "metadata": {
+      "mimeType": "application/pdf",
+      "fileSize": 1024000,
+      "storageUrl": "/uploads/..."
+    },
+    "createdAt": "2024-12-22T10:00:00Z"
+  },
+  {
+    "id": "uuid",
+    "itemType": "NOTE",
+    "refId": null,
+    "title": "Ghi chú quan trọng",
+    "sortOrder": 1,
+    "metadata": {
+      "content": "Nội dung ghi chú..."
+    },
+    "createdAt": "2024-12-22T10:05:00Z"
+  }
+]
+```
+
+### POST /lecturer/chapters/{chapterId}/items
+
+Tạo item mới (trừ FILE - dùng API upload riêng).
+
+**Path Params:** `chapterId` (UUID)
+
+**Request Body:**
+
+```json
+{
+  "itemType": "NOTE",
+  "refId": null,
+  "title": "Ghi chú quan trọng",
+  "metadata": {
+    "content": "Nội dung ghi chú..."
+  }
+}
+```
+
+**Response:** Object `ChapterItemResponse`.
+
+### PUT /lecturer/chapter-items/{itemId}
+
+Cập nhật item (title, metadata).
+
+**Path Params:** `itemId` (UUID)
+
+**Request Body:**
+
+```json
+{
+  "title": "Tiêu đề mới",
+  "metadata": {
+    "content": "Nội dung mới..."
+  }
+}
+```
+
+**Response:** Object `ChapterItemResponse`.
+
+### POST /lecturer/chapters/{chapterId}/files
+
+Upload file vào chương (itemType=FILE). File sẽ được lưu vào `NotebookFile`, tạo `ChapterItem` tham chiếu, và tự động chạy AI processing.
+
+**Path Params:** `chapterId` (UUID)
+
+**Content-Type:** `multipart/form-data`
+
+**Form Fields:**
+
+| Field          | Type   | Default | Mô tả                            |
+| -------------- | ------ | ------- | -------------------------------- |
+| `files`        | File[] | -       | Danh sách file (PDF, Word, PPT)  |
+| `chunkSize`    | number | 3000    | Kích thước chunk (3000-5000)     |
+| `chunkOverlap` | number | 250     | Overlap giữa các chunk (200-500) |
+
+**Response:** Array of `ChapterItemResponse`.
+
+### DELETE /lecturer/chapter-items/{itemId}
+
+Xóa item khỏi chương. Nếu là FILE, sẽ xóa cả `NotebookFile` liên quan.
+
+**Path Params:** `itemId` (UUID)
+
+**Response:** 204 No Content.
+
+### PUT /lecturer/chapters/{chapterId}/items/reorder
+
+Sắp xếp lại thứ tự item trong chương (dùng cho DnD Kit).
+
+**Path Params:** `chapterId` (UUID)
+
+**Request Body:**
+
+```json
+{
+  "orderedIds": ["item-uuid-1", "item-uuid-2", "item-uuid-3"]
+}
+```
+
+**Response:** 200 OK.
+
+```
+
 ```

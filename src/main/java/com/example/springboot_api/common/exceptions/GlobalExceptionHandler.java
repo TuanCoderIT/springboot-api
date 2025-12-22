@@ -86,6 +86,21 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
   }
 
+  @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatch(
+      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
+    String message = "Định dạng tham số không hợp lệ";
+    if (ex.getName() != null) {
+      message = "Tham số không hợp lệ: " + ex.getName();
+    }
+
+    ErrorResponse error = new ErrorResponse(
+        HttpStatus.BAD_REQUEST.value(),
+        message,
+        LocalDateTime.now());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
     ex.printStackTrace();
