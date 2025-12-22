@@ -3,6 +3,7 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -16,7 +17,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = NotebookQuizOption.ENTITY_NAME)
 @Table(name = NotebookQuizOption.TABLE_NAME, schema = "public")
 public class NotebookQuizOption implements Serializable {
@@ -28,7 +30,7 @@ public class NotebookQuizOption implements Serializable {
     public static final String COLUMN_FEEDBACK_NAME = "feedback";
     public static final String COLUMN_POSITION_NAME = "\"position\"";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -6592381505567713276L;
+    private static final long serialVersionUID = 600268712314852277L;
 
 
     private UUID id;

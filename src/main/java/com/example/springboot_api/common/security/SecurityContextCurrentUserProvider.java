@@ -12,10 +12,15 @@ public class SecurityContextCurrentUserProvider implements CurrentUserProvider {
     @Override
     public UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        // TODO: cast sang UserDetails/CustomPrincipal của bạn để lấy ID
-        // Ví dụ:
-        // CustomUserDetails user = (CustomUserDetails) auth.getPrincipal();
-        // return user.getId();
-        throw new UnsupportedOperationException("Implement getCurrentUserId() theo cấu trúc security của bạn");
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+
+        Object principal = auth.getPrincipal();
+        if (principal instanceof com.example.springboot_api.config.security.UserPrincipal) {
+            return ((com.example.springboot_api.config.security.UserPrincipal) principal).getId();
+        }
+
+        return null;
     }
 }

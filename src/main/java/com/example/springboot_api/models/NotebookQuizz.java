@@ -3,6 +3,7 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -21,7 +22,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = NotebookQuizz.ENTITY_NAME)
 @Table(name = NotebookQuizz.TABLE_NAME, schema = "public")
 public class NotebookQuizz implements Serializable {
@@ -34,7 +36,7 @@ public class NotebookQuizz implements Serializable {
     public static final String COLUMN_EMBEDDING_NAME = "embedding";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -8119844456468888863L;
+    private static final long serialVersionUID = 4595429602578855925L;
 
 
     private UUID id;
@@ -49,11 +51,14 @@ public class NotebookQuizz implements Serializable {
 
     private User createdBy;
 
+    private Object embedding;
+
     private Map<String, Object> metadata;
 
     private OffsetDateTime createdAt;
 
     private NotebookAiSet notebookAiSets;
+
     private Set<NotebookQuizOption> notebookQuizOptions = new LinkedHashSet<>();
 
     @Id
@@ -94,6 +99,11 @@ public class NotebookQuizz implements Serializable {
         return createdBy;
     }
 
+    @Column(name = COLUMN_EMBEDDING_NAME)
+    public Object getEmbedding() {
+        return embedding;
+    }
+
     @Column(name = COLUMN_METADATA_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
@@ -118,9 +128,4 @@ public class NotebookQuizz implements Serializable {
         return notebookQuizOptions;
     }
 
-/*
- TODO [Reverse Engineering] create field to map the 'embedding' column
- Available actions: Define target Java type | Uncomment as is | Remove column mapping
-    private Object embedding;
-*/
 }

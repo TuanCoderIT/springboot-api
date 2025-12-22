@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -22,7 +23,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = NotebookMessage.ENTITY_NAME)
 @Table(name = NotebookMessage.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_notebook_messages_notebook_created", columnList = "notebook_id, created_at"),
@@ -36,7 +38,7 @@ public class NotebookMessage implements Serializable {
     public static final String COLUMN_CONTENT_NAME = "content";
     public static final String COLUMN_AICONTEXT_NAME = "ai_context";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -3959942391465426624L;
+    private static final long serialVersionUID = -1491724199729826782L;
 
 
     private UUID id;

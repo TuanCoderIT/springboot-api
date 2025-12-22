@@ -10,5 +10,5 @@ import lombok.Data;
 @Builder
 public class SuggestionResponse {
     private UUID aiSetId;
-    private List<String> suggestions;
+    private List<SuggestionItem> suggestions;
 }

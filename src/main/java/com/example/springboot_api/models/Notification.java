@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -21,7 +22,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = Notification.ENTITY_NAME)
 @Table(name = Notification.TABLE_NAME, schema = "public")
 public class Notification implements Serializable {
@@ -39,7 +41,7 @@ public class Notification implements Serializable {
     public static final String COLUMN_ROLETARGET_NAME = "role_target";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = -7045505334767134308L;
+    private static final long serialVersionUID = -5400241161264362615L;
 
 
     private UUID id;

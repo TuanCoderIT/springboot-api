@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.springboot_api.common.exceptions.NotFoundException;
+import com.example.springboot_api.dto.user.suggestion.SuggestionItem;
 import com.example.springboot_api.dto.user.suggestion.SuggestionResponse;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookAiSet;
@@ -143,12 +144,25 @@ public class SuggestionService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy suggestions cho AI Set ID: " + aiSetId));
 
         Map<String, Object> data = suggestion.getSuggestions();
+
         @SuppressWarnings("unchecked")
-        List<String> list = (List<String>) data.get("suggestions");
+        List<Map<String, Object>> rawList = (List<Map<String, Object>>) data.get("suggestions");
+
+        List<SuggestionItem> items = new ArrayList<>();
+        if (rawList != null) {
+            for (Map<String, Object> raw : rawList) {
+                SuggestionItem item = SuggestionItem.builder()
+                        .question((String) raw.get("question"))
+                        .hint((String) raw.get("hint"))
+                        .category((String) raw.get("category"))
+                        .build();
+                items.add(item);
+            }
+        }
 
         return SuggestionResponse.builder()
                 .aiSetId(aiSetId)
-                .suggestions(list)
+                .suggestions(items)
                 .build();
     }
 }

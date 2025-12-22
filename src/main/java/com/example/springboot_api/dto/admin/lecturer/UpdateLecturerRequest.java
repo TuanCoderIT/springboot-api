@@ -1,5 +1,7 @@
 package com.example.springboot_api.dto.admin.lecturer;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -17,6 +19,13 @@ public class UpdateLecturerRequest {
     private String password;
 
     private String avatarUrl;
-
     private Boolean active;
+
+    // === TeacherProfile fields ===
+    private String lecturerCode; // Mã giảng viên (unique)
+    private UUID orgUnitId; // ID đơn vị tổ chức chính
+    private String academicDegree; // Học vị
+    private String academicRank; // Học hàm
+    private String specialization; // Chuyên ngành
+    private String phone; // Số điện thoại
 }

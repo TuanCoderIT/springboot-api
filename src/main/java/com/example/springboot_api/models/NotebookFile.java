@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -22,7 +23,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = NotebookFile.ENTITY_NAME)
 @Table(name = NotebookFile.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_notebook_files_notebook", columnList = "notebook_id"),
@@ -46,7 +48,7 @@ public class NotebookFile implements Serializable {
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_CHUNKSIZE_NAME = "chunk_size";
     public static final String COLUMN_CHUNKOVERLAP_NAME = "chunk_overlap";
-    private static final long serialVersionUID = -3887799728292278130L;
+    private static final long serialVersionUID = -7159067769836826731L;
 
 
     private UUID id;

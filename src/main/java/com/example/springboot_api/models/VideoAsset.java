@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -17,7 +18,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = VideoAsset.ENTITY_NAME)
 @Table(name = VideoAsset.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_video_assets_notebook", columnList = "notebook_id, created_at")
@@ -32,7 +34,7 @@ public class VideoAsset implements Serializable {
     public static final String COLUMN_VIDEOURL_NAME = "video_url";
     public static final String COLUMN_DURATIONSECONDS_NAME = "duration_seconds";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 2753931280094321301L;
+    private static final long serialVersionUID = -3153607434701406488L;
 
 
     private UUID id;

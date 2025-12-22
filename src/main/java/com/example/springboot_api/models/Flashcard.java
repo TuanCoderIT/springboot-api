@@ -3,6 +3,7 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -19,7 +20,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = Flashcard.ENTITY_NAME)
 @Table(name = Flashcard.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_flashcards_notebook", columnList = "notebook_id")
@@ -36,7 +38,7 @@ public class Flashcard implements Serializable {
     public static final String COLUMN_EXAMPLE_NAME = "example";
     public static final String COLUMN_IMAGEURL_NAME = "image_url";
     public static final String COLUMN_AUDIOURL_NAME = "audio_url";
-    private static final long serialVersionUID = 188030891111568613L;
+    private static final long serialVersionUID = -7422801499826683711L;
 
 
     private UUID id;
