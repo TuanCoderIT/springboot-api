@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict D1XobVuE6y8Je4v5RFqtZdg6Rly3Xe468q9iiVZU81qcyfT4TBU3updkzFVnQiF
+\restrict ggeji4KkxrWXiglYBevpZvnb07UNl1Uq9U3vDyVSzcVNSs1vei0PBhDb1SGoFWR
 
 -- Dumped from database version 18.1 (Postgres.app)
 -- Dumped by pg_dump version 18.1 (Postgres.app)
@@ -84,6 +84,48 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: class_members; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.class_members (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    class_id uuid NOT NULL,
+    student_code text NOT NULL,
+    first_name text,
+    last_name text,
+    full_name text NOT NULL,
+    dob date,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.class_members OWNER TO admin;
+
+--
+-- Name: classes; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.classes (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    teaching_assignment_id uuid NOT NULL,
+    class_code text NOT NULL,
+    subject_code text NOT NULL,
+    subject_name text NOT NULL,
+    room text,
+    day_of_week integer,
+    periods text,
+    start_date date,
+    end_date date,
+    note text,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.classes OWNER TO admin;
+
+--
 -- Name: file_chunks; Type: TABLE; Schema: public; Owner: admin
 --
 
@@ -140,6 +182,41 @@ CREATE TABLE public.llm_models (
 
 
 ALTER TABLE public.llm_models OWNER TO admin;
+
+--
+-- Name: major_subjects; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.major_subjects (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    major_id uuid NOT NULL,
+    subject_id uuid NOT NULL,
+    knowledge_block text,
+    term_no integer,
+    is_required boolean DEFAULT true NOT NULL,
+    period_split text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.major_subjects OWNER TO admin;
+
+--
+-- Name: majors; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.majors (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    org_unit_id uuid,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.majors OWNER TO admin;
 
 --
 -- Name: message_reactions; Type: TABLE; Schema: public; Owner: admin
@@ -232,6 +309,32 @@ CREATE TABLE public.notebook_ai_sets (
 
 
 ALTER TABLE public.notebook_ai_sets OWNER TO admin;
+
+--
+-- Name: notebook_ai_summaries; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.notebook_ai_summaries (
+    id uuid NOT NULL,
+    content_md text NOT NULL,
+    script_tts text,
+    language text DEFAULT 'vi'::text NOT NULL,
+    audio_url text,
+    audio_format text,
+    audio_duration_ms integer,
+    tts_provider text,
+    tts_model text,
+    voice_id text,
+    voice_label text,
+    voice_speed real,
+    voice_pitch real,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone,
+    create_by uuid
+);
+
+
+ALTER TABLE public.notebook_ai_summaries OWNER TO admin;
 
 --
 -- Name: notebook_bot_conversation_states; Type: TABLE; Schema: public; Owner: admin
@@ -469,7 +572,7 @@ CREATE TABLE public.notebooks (
     metadata jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT chk_notebook_type CHECK (((type)::text = ANY ((ARRAY['community'::character varying, 'private_group'::character varying, 'personal'::character varying])::text[]))),
+    CONSTRAINT chk_notebook_type CHECK (((type)::text = ANY ((ARRAY['community'::character varying, 'private_group'::character varying, 'personal'::character varying, 'assignment'::character varying])::text[]))),
     CONSTRAINT chk_notebook_visibility CHECK (((visibility)::text = ANY ((ARRAY['public'::character varying, 'private'::character varying])::text[])))
 );
 
@@ -500,6 +603,80 @@ CREATE TABLE public.notifications (
 ALTER TABLE public.notifications OWNER TO admin;
 
 --
+-- Name: org_units; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.org_units (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    type text,
+    parent_id uuid,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.org_units OWNER TO admin;
+
+--
+-- Name: subjects; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.subjects (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    credit integer,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.subjects OWNER TO admin;
+
+--
+-- Name: teaching_assignments; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.teaching_assignments (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    term_id uuid NOT NULL,
+    subject_id uuid NOT NULL,
+    status text DEFAULT 'ACTIVE'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by text DEFAULT 'ADMIN'::text NOT NULL,
+    approval_status text DEFAULT 'APPROVED'::text NOT NULL,
+    approved_by uuid,
+    approved_at timestamp with time zone,
+    note text,
+    lecturer_id uuid,
+    notebook_id uuid
+);
+
+
+ALTER TABLE public.teaching_assignments OWNER TO admin;
+
+--
+-- Name: terms; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.terms (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    start_date date,
+    end_date date,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.terms OWNER TO admin;
+
+--
 -- Name: tts_assets; Type: TABLE; Schema: public; Owner: admin
 --
 
@@ -520,6 +697,44 @@ CREATE TABLE public.tts_assets (
 ALTER TABLE public.tts_assets OWNER TO admin;
 
 --
+-- Name: tts_voices; Type: TABLE; Schema: public; Owner: admin
+--
+
+CREATE TABLE public.tts_voices (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    voice_id character varying(100) NOT NULL,
+    voice_name character varying(100) NOT NULL,
+    description text,
+    provider character varying(50) DEFAULT 'gemini'::character varying NOT NULL,
+    gender character varying(20),
+    language character varying(10) DEFAULT 'en'::character varying,
+    accent character varying(50),
+    style character varying(50),
+    age_group character varying(20),
+    use_case character varying(100),
+    sample_audio_url character varying(500),
+    sample_text text,
+    sample_duration_ms integer,
+    default_speed double precision DEFAULT 1.0,
+    default_pitch double precision DEFAULT 0.0,
+    is_active boolean DEFAULT true,
+    is_premium boolean DEFAULT false,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.tts_voices OWNER TO admin;
+
+--
+-- Name: TABLE tts_voices; Type: COMMENT; Schema: public; Owner: admin
+--
+
+COMMENT ON TABLE public.tts_voices IS 'Danh sách voice TTS từ các provider (Gemini, ElevenLabs, OpenAI, etc.)';
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: admin
 --
 
@@ -533,6 +748,16 @@ CREATE TABLE public.users (
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
     avatar character varying,
+    student_code character varying(50),
+    cohort_year integer,
+    program character varying(255),
+    class_code character varying(50),
+    major_id uuid,
+    lecturer_code character varying(50),
+    primary_org_unit_id uuid,
+    academic_degree character varying(255),
+    academic_rank character varying(255),
+    specialization character varying(255),
     CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['STUDENT'::character varying, 'TEACHER'::character varying, 'ADMIN'::character varying])::text[])))
 );
 
@@ -558,6 +783,22 @@ CREATE TABLE public.video_assets (
 
 
 ALTER TABLE public.video_assets OWNER TO admin;
+
+--
+-- Data for Name: class_members; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.class_members (id, class_id, student_code, first_name, last_name, full_name, dob, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: classes; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.classes (id, teaching_assignment_id, class_code, subject_code, subject_name, room, day_of_week, periods, start_date, end_date, note, is_active, created_at, updated_at) FROM stdin;
+\.
+
 
 --
 -- Data for Name: file_chunks; Type: TABLE DATA; Schema: public; Owner: admin
@@ -732,6 +973,57 @@ d520dbf7-0a71-4684-abab-31edbbb272c0	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40
 ec5e320a-bbed-4d36-abb1-42c93c1eaa78	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	Ma trận ảnh màu RGB có kích thước?	M x N x 3 (Chiều cao x Chiều rộng x Số kênh)	{"tags": ["ma trận", "ảnh màu"]}	2025-12-12 09:29:58.288968+07	cc33f9a5-f4a5-44ec-83d7-8f5ec7dd66f5	3 chiều, mỗi chiều có ý nghĩa riêng.	Ảnh 640x480 RGB có ma trận 480x640x3.	\N	\N
 2036fe0f-928e-45c3-8402-1dffba8ae6f1	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	Cách đọc ảnh bằng OpenCV?	`cv2.imread(filename, flags)`\nflags: -1 (giữ nguyên), 0 (ảnh xám), 1 (ảnh màu)	{"tags": ["đọc ảnh", "OpenCV"]}	2025-12-12 09:29:58.288968+07	cc33f9a5-f4a5-44ec-83d7-8f5ec7dd66f5	imread = image read	`img = cv2.imread("image.jpg", 0)`	\N	\N
 c73e70ab-414a-47ea-a8ea-c45de7037f65	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	Cách hiển thị ảnh bằng OpenCV?	`cv2.imshow(window_name, image)`\n`cv2.waitKey(0)`\n`cv2.destroyAllWindows()`	{"tags": ["hiển thị ảnh", "OpenCV"]}	2025-12-12 09:29:58.288968+07	cc33f9a5-f4a5-44ec-83d7-8f5ec7dd66f5	imshow = image show, waitKey chờ phím, destroy đóng cửa sổ.	cv2.imshow('Image', img); cv2.waitKey(0); cv2.destroyAllWindows()	\N	\N
+83adc4c2-34a4-4cdc-b266-64705655029e	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Biên trong ảnh là gì?	Tập hợp điểm có sự thay đổi nhanh về mức xám/màu, tạo ranh giới giữa các đối tượng.	{"tags": ["edge_detection", "image_processing"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Đường ranh giới giữa các vật thể trong ảnh.	\N	\N	\N
+6a88f151-c27b-4e26-ae82-b14b1da098eb	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	2 Phương pháp phát hiện biên chính?	1. Trực tiếp (Gradient, Laplace).\n2. Gián tiếp (Phân vùng ảnh).	{"tags": ["edge_detection", "image_processing"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Dựa vào sự thay đổi độ sáng hoặc phân vùng.	\N	\N	\N
+f0af853d-01c7-467b-a0de-f27797393e34	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Gradient là gì trong phát hiện biên?	Vectơ biểu thị tốc độ thay đổi mức xám.	{"tags": ["edge_detection", "gradient"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Độ lớn và hướng thay đổi độ sáng.	\N	\N	\N
+daf54f52-4661-41cf-91de-9594d113f560	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Công thức tính độ lớn vector Gradient?	|G(x,y)|=√(Gₓ²+Gᵧ²)  hoặc  |G(x,y)|=|Gₓ|+|Gᵧ|	{"tags": ["edge_detection", "gradient", "formula"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Tính độ lớn thay đổi theo x và y.	\N	\N	\N
+df71289c-dd36-4fba-99b2-6ffe0f56983e	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Ảnh X(m,n) là biên khi nào?	Khi X'²(m,n) > 0 (vượt ngưỡng).	{"tags": ["edge_detection", "threshold"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Liên quan đến đạo hàm và ngưỡng.	\N	\N	\N
+edd0a999-8e45-46ae-918c-f61274dd5475	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Quy trình phát hiện biên theo Gradient?	1. Làm nổi biên (nhân chập ảnh với mặt nạ).\n2. So sánh ngưỡng.	{"tags": ["edge_detection", "gradient", "process"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Nhân chập và so sánh.	\N	\N	\N
+5caf3296-5303-4c7f-a425-2b4e3748456d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Mục đích của Gaussian Blur trước khi tách biên?	Giảm nhiễu ảnh.	{"tags": ["edge_detection", "noise_reduction"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Làm mờ để loại bỏ chi tiết nhỏ không mong muốn.	\N	\N	\N
+a20751b7-1ae6-4c5b-a0e8-56b4737dde2d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Các bước thuật toán Sobel?	1. Làm mịn ảnh (GaussianBlur).\n2. Chuyển ảnh xám.\n3. Tính đạo hàm (Sobel).\n4. Lấy giá trị tuyệt đối.\n5. Tính tổng trọng số đạo hàm.\n6. Hiển thị kết quả.	{"tags": ["edge_detection", "sobel", "algorithm"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Làm mịn, xám, đạo hàm, trị tuyệt đối, tổng, hiển thị.	\N	\N	\N
+56096131-4cfb-43f8-b2d3-d257a881dfb1	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	ddepth trong hàm Sobel là gì?	Độ sâu của ảnh đầu ra. Thường là `cv2.CV_16S` hoặc `cv2.CV_64F`.	{"tags": ["edge_detection", "sobel", "ddepth"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Loại dữ liệu của ảnh sau khi tính đạo hàm.	\N	\N	\N
+5d94f0ee-3be5-49d8-846b-43ad39897aae	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Ưu điểm của đạo hàm bậc nhất (Kirsh, la bàn) so với bậc hai (Laplace)?	Tốt khi độ sáng thay đổi rõ nét.	{"tags": ["edge_detection", "derivatives"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Độ tương phản cao.	\N	\N	\N
+bf9fa1c8-1e8b-41da-bded-5eb531306620	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Ưu điểm của đạo hàm bậc hai (Laplace)?	Tốt hơn khi mức xám thay đổi chậm.	{"tags": ["edge_detection", "derivatives"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Độ tương phản thấp.	\N	\N	\N
+adacaa0f-8350-4d51-abc9-8ca67af58829	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Nhược điểm của đạo hàm bậc hai (Laplace)?	Nhạy cảm với nhiễu.	{"tags": ["edge_detection", "derivatives"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Dễ bị ảnh hưởng bởi các biến đổi nhỏ.	\N	\N	\N
+53519a26-7af9-4ede-a4c0-8d9b93576d9f	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Ưu điểm của thuật toán Canny?	Đường biên mảnh và phát hiện chính xác.	{"tags": ["edge_detection", "canny"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Kết quả tốt, ít lỗi.	\N	\N	\N
+339b3592-e476-4df3-88e5-680313d5b3a7	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Các bước thực hiện thuật toán Canny?	1. Loại bỏ nhiễu (Gaussian).\n2. Tách biên (hàm Canny).	{"tags": ["edge_detection", "canny", "algorithm"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Làm mịn rồi tách biên.	\N	\N	\N
+b3e5b88b-1cff-4b2d-8764-48aec0e50d6d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Vai trò của 2 ngưỡng (trên và dưới) trong Canny?	Gradient > ngưỡng trên: cạnh biên.\nGradient < ngưỡng dưới: loại.\nGiữa 2 ngưỡng: chỉ chấp nhận nếu nối với pixel > ngưỡng trên.	{"tags": ["edge_detection", "canny", "threshold"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Loại bỏ nhiễu và chọn lọc cạnh.	\N	\N	\N
+432cf7aa-21bd-4f5a-95c3-3e61c0baf737	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Tỉ lệ ngưỡng trên:dưới nên là bao nhiêu trong Canny?	2:1 hoặc 3:1	{"tags": ["edge_detection", "canny", "threshold"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Giữ cân bằng giữa phát hiện và loại bỏ.	\N	\N	\N
+5a24ddb7-c23d-4597-80ab-b31d5837357c	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Contour là gì?	Tập các điểm liên tục tạo thành đường cong kín, có giá trị màu/mật độ gần giống nhau.	{"tags": ["contour", "image_processing"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Đường bao quanh một đối tượng.	\N	\N	\N
+754f1824-cb44-46f5-baa4-8318cb8a6e44	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Ứng dụng của contours?	Phân tích, phát hiện và nhận dạng đối tượng.	{"tags": ["contour", "image_analysis"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Xác định và hiểu đối tượng trong ảnh.	\N	\N	\N
+16c1654c-d921-4584-be57-e57a0502dd64	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Cú pháp hàm tìm contour?	`contours, hierarchy = cv2.findContours(image, mode, method)`	{"tags": ["contour", "opencv", "function"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Hàm quan trọng để tìm đường bao.	\N	\N	\N
+6f3e1bca-6baf-4a66-ae17-aae7a45f469d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Ý nghĩa của `contours` và `hierarchy` trong `cv2.findContours`?	`contours`: Danh sách contour.\n`hierarchy`: Quan hệ giữa các contour.	{"tags": ["contour", "opencv", "function"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Thông tin trả về của hàm.	\N	\N	\N
+d3130ec6-976b-4339-964f-bbf00e427aa7	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	`image` parameter trong `cv2.findContours` là gì?	Ảnh nhị phân.	{"tags": ["contour", "opencv", "parameter"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Ảnh chỉ có 2 giá trị (đen/trắng).	\N	\N	\N
+904a44f0-f9c6-4102-9905-84953e27684e	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Một vài giá trị thường dùng cho `mode` parameter trong `cv2.findContours`?	`RETR_TREE`, `RETR_EXTERNAL`	{"tags": ["contour", "opencv", "parameter"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Cách trích xuất contour.	\N	\N	\N
+df65c53f-6756-48dc-b490-a46d72e4f236	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Một vài giá trị thường dùng cho `method` parameter trong `cv2.findContours`?	`CHAIN_APPROX_SIMPLE`, `CHAIN_APPROX_NONE`	{"tags": ["contour", "opencv", "parameter"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Phương pháp xấp xỉ contour.	\N	\N	\N
+0b2b5530-2cdf-44aa-970c-c7ba24416b0d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Cú pháp hàm vẽ contour?	`cv2.drawContours(image, contours, contourIdx, color, thickness)`	{"tags": ["contour", "opencv", "function"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Vẽ đường bao lên ảnh.	\N	\N	\N
+15de8710-458c-4cc3-81b2-70dffeac13a2	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Để vẽ tất cả contours, `contourIdx` trong `cv2.drawContours` nên là?	-1	{"tags": ["contour", "opencv", "parameter"]}	2025-12-18 08:49:37.094096+07	ca7889b9-242c-4697-8e97-a26f15220320	Giá trị đặc biệt.	\N	\N	\N
+0ba7f6b2-71f7-4ded-85b3-e69978826cdd	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Tích chập (Convolution) là gì?	Kỹ thuật quan trọng trong xử lý ảnh (làm mờ, nổi biên, nhận dạng).\nY(m,n) = tổng (H(k,l) * X(m-k, n-l))\nThường dùng kernel kích thước lẻ (3x3, 5x5)	{"tags": ["tích chập", "lọc ảnh"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Nhân chập với kernel	\N	\N	\N
+54232bbf-1cfc-4785-bc0f-9aa439cb2c77	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Bộ lọc trung bình (Box Filter) hoạt động như thế nào?	Bộ lọc thông thấp.\nCộng các điểm ảnh trong mặt nạ lọc, chia cho tổng số điểm ảnh.\nTổng các phần tử kernel = 1.	{"tags": ["bộ lọc", "lọc trung bình", "lọc thông thấp"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Tính trung bình các pixel lân cận	\N	\N	\N
+22da5908-0862-46d4-8aba-709fb323dd4a	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Bộ lọc Gaussian là gì?	Bộ lọc thông thấp, làm mờ ảnh.\nSử dụng hàm Gaussian để tính trọng số cho các pixel lân cận.	{"tags": ["bộ lọc", "Gaussian", "lọc thông thấp"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Làm mờ ảnh, khử nhiễu	\N	\N	\N
+9db51362-fa0c-4fe0-a9e3-b3a0d62c9151	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Mục đích của bộ lọc song phương (Bilateral Filter)?	Loại bỏ nhiễu và giữ lại đường viền.\nTham số: ảnh gốc, đường kính vùng lân cận (d), độ lệch chuẩn màu (sigmaColor) và không gian (sigmaSpace).	{"tags": ["bộ lọc", "song phương", "khử nhiễu"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Khử nhiễu bảo toàn biên	\N	\N	\N
+c5f9146c-e3c6-4c9c-84bb-c806c4c9d441	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Bộ lọc trung vị (Median Filter) hoạt động như thế nào?	Bộ lọc làm trơn, mờ ảnh, loại bỏ nhiễu muối tiêu.\nSắp xếp các phần tử trong cửa sổ (kích thước lẻ) theo thứ tự, lấy phần tử trung vị làm giá trị mới.	{"tags": ["bộ lọc", "trung vị", "khử nhiễu"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Sắp xếp và lấy giá trị giữa	\N	\N	\N
+63752ab4-4b20-4a7d-abee-45b2f84b917d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Tách biên ảnh là gì?	Tìm điểm có sự thay đổi nhanh về mức xám (đường ranh giới giữa các chi tiết).	{"tags": ["tách biên", "xử lý ảnh"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Tìm cạnh của vật thể	\N	\N	\N
+5c51e6b5-a317-4ec9-8bce-b44984f99290	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Các phương pháp tách biên trực tiếp?	Dựa vào đạo hàm (Gradient và Laplace).	{"tags": ["tách biên", "Gradient", "Laplace"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Đạo hàm	\N	\N	\N
+5af82e9c-4258-4ce8-9a31-99f28fa57513	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Toán tử Sobel, Prewitt, Robert dùng để làm gì?	Phát hiện biên Gradient.	{"tags": ["tách biên", "Sobel", "Prewitt", "Robert"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Tính đạo hàm	\N	\N	\N
+0f5c58ae-2bce-4900-a3c8-cebd76fa36d9	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Thuật toán Canny dùng để làm gì?	Tách biên mảnh, chính xác, loại bỏ nhiễu.\n1. Lọc Gauss.\n2. Tách biên Canny (dùng 2 ngưỡng: trên và dưới).	{"tags": ["tách biên", "Canny"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Tách biên chất lượng cao	\N	\N	\N
+115651ce-69c7-48b7-b875-49090a7c23fb	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Các bước cơ bản của thị giác máy tính?	1. Thu nhận ảnh/video.\n2. Tiền xử lý.\n3. Trích xuất đặc trưng.\n4. Nhận dạng và ra quyết định.	{"tags": ["thị giác máy tính", "quy trình"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Từ ảnh thô đến quyết định	\N	\N	\N
+dd31a958-76ac-4602-b862-9efcf012b174	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Ảnh RGB được biểu diễn trong máy tính như thế nào?	M x N x 3 (M: chiều cao, N: chiều rộng, 3: số kênh R, G, B).\nMỗi kênh có giá trị từ 0-255.	{"tags": ["ảnh", "RGB", "biểu diễn ảnh"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Ma trận 3 kênh	\N	\N	\N
+b28fc1a7-898a-4dfc-baaf-f069f58bee3b	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Lệnh `cv2.imread()` dùng để làm gì?	Đọc ảnh từ file.\n`cv2.imread(filename, flags)` (flags: `cv2.IMREAD_GRAYSCALE`, `cv2.IMREAD_COLOR`,...)	{"tags": ["OpenCV", "đọc ảnh"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Đọc ảnh vào OpenCV	img = cv2.imread("path/to/image.jpg", 0) # Đọc ảnh xám	\N	\N
+61c14783-e62a-4832-802f-8674b3d66973	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Mục đích của hàm `cv2.resize()`?	Thay đổi kích thước ảnh.\n`cv2.resize(src, dsize[, fx[, fy[, interpolation]]])`\n`interpolation`: `cv2.INTER_AREA` (thu nhỏ), `cv2.INTER_CUBIC` (phóng to, chậm), `cv2.INTER_LINEAR` (mặc định).	{"tags": ["OpenCV", "resize", "biến đổi hình học"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Thay đổi chiều rộng, chiều cao ảnh	\N	\N	\N
+4636a4ba-dc3c-43d0-8e35-b84c5034b789	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Cách crop ảnh trong OpenCV?	`new_image = img[y1:y2, x1:x2]`\nChọn vùng ảnh từ (x1, y1) đến (x2, y2).	{"tags": ["OpenCV", "crop", "xử lý ảnh"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Cắt một phần ảnh	\N	\N	\N
+38815859-ad1c-4000-a988-1608f0f75a75	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Hàm `cv2.warpAffine()` dùng để làm gì?	Dịch chuyển và xoay ảnh bằng ma trận biến đổi affine.	{"tags": ["OpenCV", "warpAffine", "biến đổi hình học"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Biến đổi hình học (dịch, xoay)	\N	\N	\N
+c2de8a65-3974-4c6f-abc0-ce8a45249675	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Contour là gì?	Tập các điểm liên tục tạo thành đường cong kín, cùng màu hoặc mật độ. Dùng để phân tích, phát hiện, nhận dạng đối tượng.	{"tags": ["contour", "phân vùng ảnh"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Đường viền	\N	\N	\N
+31864e52-53e9-426c-a272-b2048ff3a5f0	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Hàm tìm Contour trong OpenCV?	`cv2.findContours(image, mode, method)`\nTrả về danh sách các contour và hierarchy.	{"tags": ["OpenCV", "findContours", "contour"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Tìm đường viền	\N	\N	\N
+eb68aa3c-e6e3-4dc2-99e5-eeae2de4e42b	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Hàm vẽ Contour trong OpenCV?	`cv2.drawContours(image, contours, contourIdx, color, thickness)`\n`contourIdx`: Chỉ định contour vẽ (-1 để vẽ tất cả).	{"tags": ["OpenCV", "drawContours", "contour"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Vẽ đường viền	\N	\N	\N
+2dd4d9eb-ca4c-4c66-8f33-bc4e0e4d778a	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Các phương pháp phân ngưỡng ảnh?	- Phân ngưỡng cố định (Simple Thresholding).\n- Phân ngưỡng thích nghi (Adaptive Thresholding).\n- Otsu Thresholding.	{"tags": ["phân ngưỡng", "thresholding", "phân vùng ảnh"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Chia ảnh thành 2 vùng	\N	\N	\N
+46175408-2dcb-435f-81e3-4e489d627d71	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Adaptive Thresholding là gì?	Phân ngưỡng thích nghi, chia ảnh thành vùng nhỏ, tính ngưỡng cho từng vùng.\n`cv2.adaptiveThreshold`\n`adaptiveMethod`: `ADAPTIVE_THRESH_MEAN_C`, `ADAPTIVE_THRESH_GAUSSIAN_C`	{"tags": ["phân ngưỡng", "adaptive thresholding"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Ngưỡng động theo vùng	\N	\N	\N
+cd50b865-d0e9-49cb-a830-32bd8daac48f	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Otsu Thresholding là gì?	Tự động tính ngưỡng từ histogram ảnh (ảnh histogram có 2 đỉnh).\n`cv2.threshold` với `cv2.THRESH_OTSU`.	{"tags": ["phân ngưỡng", "otsu thresholding"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Tự động tìm ngưỡng tối ưu	\N	\N	\N
+0bb77894-5dd8-443b-99c2-2fe67a85cc02	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Ảnh sau khi được xử lý bởi Otsu cần phải làm gì?	Cần lọc Gauss trước.	{"tags": ["phân ngưỡng", "otsu thresholding"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Xử lý ảnh cần lọc Gauss trước	\N	\N	\N
+b5d39bbe-49ca-423b-9647-47940a1c17df	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Mục đích của phép co (erode), giãn (dilate)?	Xử lý hình thái học ảnh xám/nhị phân: làm mỏng/dày đối tượng, loại bỏ nhiễu, làm đầy chỗ trống.	{"tags": ["xử lý hình thái", "erode", "dilate"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Biến đổi hình thái học	\N	\N	\N
+d4d2dadd-be8f-4b41-856a-f729d41230d3	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Các phép toán hình thái học cơ bản?	Co (erode), giãn (dilate), mở (opening), đóng (closing).	{"tags": ["xử lý hình thái", "erode", "dilate", "opening", "closing"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	Hình thái học	\N	\N	\N
+f565f226-2ae4-46aa-a89f-0be158f2b047	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Cài đặt thư viện qrcode để làm gì?	Tạo mã QR code và barcode	{"tags": ["QR code", "barcode"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	QR code	\N	\N	\N
+575624e5-e3c7-48e5-ae79-f44acc579629	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	Cài đặt thư viện pyzbar để làm gì?	Đọc mã QR code và barcode	{"tags": ["QR code", "barcode"]}	2025-12-18 23:07:25.808403+07	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	QR code	\N	\N	\N
 \.
 
 
@@ -742,6 +1034,163 @@ c73e70ab-414a-47ea-a8ea-c45de7037f65	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40
 COPY public.llm_models (id, code, provider, display_name, is_active, is_default, metadata, created_at) FROM stdin;
 97cce644-19b0-470f-a2e3-9726b677fb0f	groq	groq	Groq - llama-3.3-70b	t	f	{"max_tokens": 8000}	2025-12-06 18:00:34.659189+07
 0762b5e2-3310-46ef-83fe-dbb18dc76421	gemini	google	Google - gemini-2.5-flash	t	t	{"max_tokens": 8000}	2025-12-06 18:00:34.659189+07
+\.
+
+
+--
+-- Data for Name: major_subjects; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.major_subjects (id, major_id, subject_id, knowledge_block, term_no, is_required, period_split, created_at) FROM stdin;
+e17acd39-ada6-492a-a9b8-d03d687d6f15	8a4e307e-2254-4012-ba32-2e5a92263776	67fbeae6-8170-4e25-bc36-2e0976f1f6fe	Kiến thức ngành bắt buộc	1	t	0/0/0/45/0/0	2025-12-20 10:24:17.747716+07
+9dd782ce-7830-4829-a8f5-f147f2e52e5d	8a4e307e-2254-4012-ba32-2e5a92263776	8e573ca8-a157-4216-8885-1ecec7562806	Kiến thức ngành bắt buộc	1	t	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+9edbf3ab-086b-4508-810c-f37eb9cd362d	8a4e307e-2254-4012-ba32-2e5a92263776	4045fd5d-9f43-4e76-a80e-64eb97effb0b	Kiến thức ngành bắt buộc	1	t	30/30/0/0/0/0	2025-12-20 10:24:17.747716+07
+54a46032-939f-4859-9724-3c08372aab23	8a4e307e-2254-4012-ba32-2e5a92263776	5b2e44d0-20cc-450b-8738-8b19aeb6dc9b	Kiến thức ngành bắt buộc	1	t	45/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+35e636f0-93d9-41c3-8b2e-249229dbdbd2	8a4e307e-2254-4012-ba32-2e5a92263776	7c212119-8110-4c53-8606-9565d4431033	Kiến thức ngành bắt buộc	2	t	60/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+389c2cf9-ca30-4c58-8b0a-10c1f368b80c	8a4e307e-2254-4012-ba32-2e5a92263776	61406cae-fd55-425b-848c-924b993d98c3	Kiến thức ngành bắt buộc	2	t	0/0/0/60/0/0	2025-12-20 10:24:17.747716+07
+d30712bb-2a9e-4e10-bf79-71863550df87	8a4e307e-2254-4012-ba32-2e5a92263776	b1d7f19b-9ddc-4c34-86f7-922d7d00765e	Kiến thức ngành bắt buộc	2	t	45/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+ea0a78ca-e726-4928-9922-2fdb77705887	8a4e307e-2254-4012-ba32-2e5a92263776	21089283-258b-4388-a8d9-c9dfe5ac1072	Kiến thức ngành bắt buộc	2	t	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+dd8a61f3-3551-4975-a784-106af9bbc7a3	8a4e307e-2254-4012-ba32-2e5a92263776	11fa5656-770a-4771-b7f9-aa40d80d9ea6	Kiến thức ngành bắt buộc	2	t	30/0/0/0/0/0	2025-12-20 10:24:17.747716+07
+621fc56b-2bdf-4e4c-8ae7-4e8f7930f2d4	8a4e307e-2254-4012-ba32-2e5a92263776	bac6fc70-df3e-48a5-b95a-836c893387dd	Kiến thức ngành bắt buộc	2	t	30/0/0/0/0/0	2025-12-20 10:24:17.747716+07
+f11b8290-7756-4b10-8376-27679b8c4a8f	8a4e307e-2254-4012-ba32-2e5a92263776	ddfabea9-d83d-488f-bfd2-9c98f2a900ba	Kiến thức ngành bắt buộc	2	t	15/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+164c4735-440b-4dd5-8058-5c59daed6934	8a4e307e-2254-4012-ba32-2e5a92263776	3d8ba8ad-cf3d-4385-b37b-76d4bd377082	Kiến thức ngành bắt buộc	2	t	4/26/0/0/0/0	2025-12-20 10:24:17.747716+07
+2316980f-f9ba-49d4-9bb0-a73d12c067fd	8a4e307e-2254-4012-ba32-2e5a92263776	a5354e8b-b021-431c-b00d-5a61464b85f3	Kiến thức ngành bắt buộc	2	t	15/60/0/0/0/0	2025-12-20 10:24:17.747716+07
+aba8683c-9bb7-4fa7-a38f-7badaf448dba	8a4e307e-2254-4012-ba32-2e5a92263776	59d99539-82e5-461a-b273-0ebfde468d57	Kiến thức ngành bắt buộc	2	t	45/0/0/0/0/0	2025-12-20 10:24:17.747716+07
+aa41fed3-5550-480a-b94c-9b7557d0276a	8a4e307e-2254-4012-ba32-2e5a92263776	5328fee1-2676-465b-92c9-3082393234e6	Kiến thức ngành bắt buộc	3	t	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+fae35b48-10b7-46ef-85c1-40283bcfa48f	8a4e307e-2254-4012-ba32-2e5a92263776	b3d77ddc-4b28-4752-b57b-73fd26d801a0	Kiến thức ngành bắt buộc	3	t	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+54a936b7-5d87-4697-9b7a-e65407b50c8a	8a4e307e-2254-4012-ba32-2e5a92263776	8b5b8145-445d-4857-83dc-431716c03c6a	Kiến thức ngành bắt buộc	3	t	20/0/10/0/0/0	2025-12-20 10:24:17.747716+07
+b647afc5-7b8c-4979-a26d-4c5e75d87baa	8a4e307e-2254-4012-ba32-2e5a92263776	cd058133-7ffc-4045-855e-7cf481a7b86f	Kiến thức ngành bắt buộc	3	t	0/0/0/60/0/0	2025-12-20 10:24:17.747716+07
+daaf7885-a407-492b-9ee4-be9471bb637a	8a4e307e-2254-4012-ba32-2e5a92263776	943710f5-6092-404b-ac10-17be7160a172	Kiến thức ngành bắt buộc	3	t	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+852b9ea0-4397-4839-95ef-42e881a925e2	8a4e307e-2254-4012-ba32-2e5a92263776	32be0324-5561-41f1-8256-ed271d7cfac1	Kiến thức ngành bắt buộc	3	t	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+c5d120a0-c241-4b19-bd12-0394d8bb5585	8a4e307e-2254-4012-ba32-2e5a92263776	390f2f63-5dea-466b-baff-0661b5af5cc1	Kiến thức ngành bắt buộc	4	t	20/0/10/0/0/0	2025-12-20 10:24:17.747716+07
+51de5b4b-f52a-4798-9bed-7b2e311827a8	8a4e307e-2254-4012-ba32-2e5a92263776	5f855d12-41cb-4b8a-aab3-4fd3c19efcbc	Kiến thức ngành bắt buộc	4	t	0/0/0/60/0/0	2025-12-20 10:24:17.747716+07
+8bd1fdb3-62ab-4a0f-b047-79f885f1ca9c	8a4e307e-2254-4012-ba32-2e5a92263776	c3470e51-8f9d-4074-80bd-d6e05f561444	Kiến thức ngành bắt buộc	4	t	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+282e01d2-49da-497a-ab8b-1ef33b4b41e9	8a4e307e-2254-4012-ba32-2e5a92263776	ac00ff6f-79c1-4a2c-ac14-de340027c622	Kiến thức ngành bắt buộc	4	t	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+9ae8e69f-495b-46d8-9356-3b734f2c1225	8a4e307e-2254-4012-ba32-2e5a92263776	741d507a-8094-4b4d-9d96-719752b99a87	Kiến thức ngành bắt buộc	4	t	20/0/10/0/0/0	2025-12-20 10:24:17.747716+07
+3284ba5a-7115-447a-a30d-8148890c71cc	8a4e307e-2254-4012-ba32-2e5a92263776	eb4d6e7a-14bc-4507-a3d6-94f3aaf58ff3	Kiến thức ngành bắt buộc	5	t	20/0/10/0/0/0	2025-12-20 10:24:17.747716+07
+9d20807b-7d6f-412f-b96e-67de190f5e55	8a4e307e-2254-4012-ba32-2e5a92263776	f494038b-3145-464a-8c4b-1134c4d617dc	Kiến thức ngành bắt buộc	5	t	0/0/0/60/0/0	2025-12-20 10:24:17.747716+07
+73d0d3ed-e7a8-4f33-b0e3-478d36230c6e	8a4e307e-2254-4012-ba32-2e5a92263776	06133a03-7547-4c62-a653-c4464f5aef5c	Kiến thức ngành bắt buộc	5	t	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+8a49aa23-3f09-4063-91ff-92af9defa171	8a4e307e-2254-4012-ba32-2e5a92263776	b5c46c51-f203-4381-89b1-5225b86e483f	Kiến thức ngành bắt buộc	5	t	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+83564e2a-1c32-4dae-8feb-631b81bfc98a	8a4e307e-2254-4012-ba32-2e5a92263776	abd78c15-8a2e-405b-80db-061917a14015	Kiến thức ngành bắt buộc	5	t	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+27829ba4-c636-475d-a09e-5d3060bdf65b	8a4e307e-2254-4012-ba32-2e5a92263776	68c2658c-d48f-40b5-9472-bf121f27b0b4	Kiến thức ngành bắt buộc	6	t	0/0/0/60/0/0	2025-12-20 10:24:17.747716+07
+eeccaa19-9827-4768-a32c-1bff94516629	8a4e307e-2254-4012-ba32-2e5a92263776	e6a9f207-fd84-4ff2-a59a-9b30404936af	Kiến thức ngành bắt buộc	6	t	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+20da3c11-2dac-47ac-a1da-5d51958cb3fd	8a4e307e-2254-4012-ba32-2e5a92263776	61836e1f-2ccc-4d01-8c58-6caa95487170	Kiến thức ngành bắt buộc	6	t	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+90bc1e64-bbdb-4d34-b8a2-764ff5c2758a	8a4e307e-2254-4012-ba32-2e5a92263776	920f37d6-e750-4c36-8f5f-3960fc5d83bd	Kiến thức ngành bắt buộc	6	t	20/0/10/0/0/0	2025-12-20 10:24:17.747716+07
+0e04584d-d549-48ee-ae71-edd59089c94b	8a4e307e-2254-4012-ba32-2e5a92263776	c091b4e9-dc34-4361-8120-3c25d0a83241	Kiến thức ngành bắt buộc	6	t	45/0/0/0/0/0	2025-12-20 10:24:17.747716+07
+8c57743b-50fd-493d-855b-6812bc861725	8a4e307e-2254-4012-ba32-2e5a92263776	754c3279-3933-4803-84e2-dca0c838e822	Kiến thức ngành bắt buộc	7	t	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+439b59d8-89d5-45be-9525-b7167602bcdd	8a4e307e-2254-4012-ba32-2e5a92263776	2b85e142-a172-4db5-befc-a2576dbdf1ba	Kiến thức ngành bắt buộc	7	t	0/0/0/60/0/0	2025-12-20 10:24:17.747716+07
+69a537c9-4a4f-4ada-9eb1-7eb5ba3c468e	8a4e307e-2254-4012-ba32-2e5a92263776	53545c43-eb99-4eb6-965d-2bd4478ab67a	Kiến thức ngành bắt buộc	7	t	0/0/0/60/0/0	2025-12-20 10:24:17.747716+07
+c9bf268e-1c3a-4192-bf9a-06fe8d2cdc70	8a4e307e-2254-4012-ba32-2e5a92263776	3faeaf67-17ec-46aa-a719-76ffc797a906	Kiến thức ngành bắt buộc	7	t	45/0/0/0/0/0	2025-12-20 10:24:17.747716+07
+0ab995df-c655-49dc-b6b0-2d925771f885	8a4e307e-2254-4012-ba32-2e5a92263776	a952caf4-0828-4794-b7ef-4f0a8d337e50	Kiến thức ngành bắt buộc	7	t	0/60/0/0/0/0	2025-12-20 10:24:17.747716+07
+31f5b0ec-238f-440b-8852-8624e2a5848e	8a4e307e-2254-4012-ba32-2e5a92263776	ba35d302-0e37-4154-9f09-56875d89aa17	Kiến thức ngành bắt buộc	8	t	0/0/0/60/0/0	2025-12-20 10:24:17.747716+07
+d2918c26-0c8a-4bec-beae-0363ab7e7f97	8a4e307e-2254-4012-ba32-2e5a92263776	d8b240fa-c61d-47e1-895a-09ab868d1412	Kiến thức ngành bắt buộc	9	t	0/0/0/0/60/120	2025-12-20 10:24:17.747716+07
+d953dab7-f4e2-40dc-9e17-8527f466afbc	8a4e307e-2254-4012-ba32-2e5a92263776	1e7a577c-85db-422f-9647-fdde3198d5fd	Tự chọn	5	f	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+e4f6c8dd-51b0-46e8-b3fd-2703b82449b0	8a4e307e-2254-4012-ba32-2e5a92263776	7f233807-6fe1-425c-a262-21379d8c28f3	Tự chọn Ngoại ngữ	1	f	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+d0dbe2f7-f813-45ea-a8dd-76b7b1cb7364	8a4e307e-2254-4012-ba32-2e5a92263776	1fe9b959-2018-4e23-8545-3150f183728a	Tự chọn Ngoại ngữ	2	f	45/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+04f6e6ec-7139-4c4c-be8d-913b02d81621	8a4e307e-2254-4012-ba32-2e5a92263776	f481164f-71c6-4671-942c-2a75c78ec4b4	Tự chọn 2	6	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+aed892e5-7839-465d-aebd-ae0d6b415248	8a4e307e-2254-4012-ba32-2e5a92263776	3fc97dca-c466-4791-8124-e7e1e612da9d	Tự chọn 2	6	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+57b4679b-4b6a-4c85-8015-ec1209cf4a7e	8a4e307e-2254-4012-ba32-2e5a92263776	48edf75b-0e6a-4247-8e8a-8b13173eee7a	Tự chọn 2	6	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+dd1ce08c-7e90-4bc5-a227-9be09723a032	8a4e307e-2254-4012-ba32-2e5a92263776	c746bae1-f1ac-4050-8927-455a66f9db52	Tự chọn 2	6	f	30/0/15/0/0/0	2025-12-20 10:24:17.747716+07
+9b845575-8c38-48e7-a471-3ab2547473f6	8a4e307e-2254-4012-ba32-2e5a92263776	f8109ac5-6c13-4a9c-837e-8b0595ef44c9	Tự chọn 2	6	f	45/0/0/0/0/0	2025-12-20 10:24:17.747716+07
+98d2b880-f88e-4aaa-b18d-3eac34127352	8a4e307e-2254-4012-ba32-2e5a92263776	a61ef8e4-a6b9-4c1d-bccb-35ee6c8ba7f6	Tự chọn 2	6	f	45/0/0/0/0/0	2025-12-20 10:24:17.747716+07
+4297f89d-281b-4cc9-ad35-b8f0fa3fe123	8a4e307e-2254-4012-ba32-2e5a92263776	e6ddfe1e-d48f-4f70-a713-472fa333fb56	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+6046f1dd-2c05-46be-ae01-9c22167e3ed0	8a4e307e-2254-4012-ba32-2e5a92263776	5b011948-3801-4aa4-a69b-c8fdea888ed5	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+9df9e5a2-b4a3-49d5-a27b-f37fcbadd303	8a4e307e-2254-4012-ba32-2e5a92263776	40b8ea0f-2aa4-457b-8243-751dc5fb416d	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+63e98433-9fde-43e6-b3b1-f387b4ce2608	8a4e307e-2254-4012-ba32-2e5a92263776	5f51886a-55ab-4021-8f8c-fade02176170	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+a2df8c81-92d4-4893-9049-e16334418bf4	8a4e307e-2254-4012-ba32-2e5a92263776	49296235-3b4a-4f7b-b64c-71ec57884b31	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+7132818e-45fd-4c22-9b7d-84bec4c3ce76	8a4e307e-2254-4012-ba32-2e5a92263776	8dd85212-c544-463f-baa4-2513785e0a2e	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+dca685e6-76d2-4e3c-94fd-9383ab958c04	8a4e307e-2254-4012-ba32-2e5a92263776	d0397ef5-464f-424c-87a3-96064893625f	Tự chọn 3	8	f	45/0/0/0/0/0	2025-12-20 10:24:17.747716+07
+7e7159bf-d07f-4483-b973-23fa8a77e7e5	8a4e307e-2254-4012-ba32-2e5a92263776	495f0366-ab14-41e3-bc5b-d7b9cedf926c	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+bf4858fb-7b3e-451c-bd9c-e95c139c81e1	8a4e307e-2254-4012-ba32-2e5a92263776	6989647e-84fc-4a8b-ab1d-93c2faa0881c	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+6e88695d-8a76-44be-a005-ca53c88016b7	8a4e307e-2254-4012-ba32-2e5a92263776	67bebf6a-5979-4d00-9bd0-4b4c3830a5fb	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+2031925d-5771-4457-84f8-42ad8159cf44	8a4e307e-2254-4012-ba32-2e5a92263776	38a3deb7-a61f-4930-9e9b-5c5f3a640f77	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+407ea0f1-823c-41c3-a179-40ac252fb9c8	8a4e307e-2254-4012-ba32-2e5a92263776	e19e8c1f-61df-453f-bb43-fd7697d24bdc	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+46d66083-d95e-4036-9a12-5c5b3895be70	8a4e307e-2254-4012-ba32-2e5a92263776	b4df10a1-2051-484f-8a3e-8a44d53a0928	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+235ca677-5cab-496c-9b96-5c2a0951ef3f	8a4e307e-2254-4012-ba32-2e5a92263776	7bffcb51-7819-4f5b-92a4-0ffba5a6bec7	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+78d93211-0cd6-4ba5-98af-0aae08484cc8	8a4e307e-2254-4012-ba32-2e5a92263776	4930a166-797c-4175-9c4d-47d07d94d4e6	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+31dd4c27-1bbe-47af-b0c1-95d6cc8d17fd	8a4e307e-2254-4012-ba32-2e5a92263776	5bd016bc-7c59-4ba8-8090-dee897c77d84	Tự chọn 3	8	f	30/15/0/0/0/0	2025-12-20 10:24:17.747716+07
+9d2193e6-73ec-47c9-874c-bc3e33447175	8a4e307e-2254-4012-ba32-2e5a92263776	dfe8bd34-dca5-417b-a119-b487786a5693	Cơ sở ngành	4	t	\N	2025-12-20 15:46:54.505218+07
+6a7b8cec-c3d0-4bad-9500-1b0a241f31be	8a4e307e-2254-4012-ba32-2e5a92263776	d1a7c839-3658-4c67-96d7-bb7ac55e190f	Đại cương	1	t	\N	2025-12-20 15:47:10.71993+07
+c27c0bdf-fdfd-4215-8d9b-fb732b0679dd	8a4e307e-2254-4012-ba32-2e5a92263776	d123e7d5-f13c-4dc4-aab6-47225863659e	Tự chọn	5	t	\N	2025-12-20 15:47:25.679991+07
+\.
+
+
+--
+-- Data for Name: majors; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.majors (id, code, name, org_unit_id, is_active, created_at, updated_at) FROM stdin;
+4cf7159e-da64-4974-8444-945edba206f3	7140201	Giáo dục Mầm non	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+3eeafbd3-8a09-4ed8-ab16-a5d67c015680	7140202	Giáo dục Tiểu học	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+35a88034-1997-4c12-902d-cd130be9d7f6	7140205	Giáo dục chính trị	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+11491716-ae65-4b9f-badb-c6815fad4861	7140206	Giáo dục Thể chất	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+835ea546-5f6f-4afc-8894-332a78e323c1	7140208	Giáo dục Quốc phòng - An ninh	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+2518e1a6-11c8-4286-9734-05cb1194e6b3	7140209	Sư phạm Toán học	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+348a53e8-af51-4ab2-b6ea-c566be2a6302	7140209C	Sư phạm Toán học CLC	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+c6cc3068-1285-4e9b-92e5-05d377a2d31e	7140210	Sư phạm Tin học	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+2f57ae31-fa0f-4594-93cd-af6902c6c876	7140211	Sư phạm Vật lý	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+7961a045-ae8f-4794-8298-dc44286e757d	7140212	Sư phạm Hóa học	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+ca815ee4-824c-4d77-be4e-9dd9fb27479f	7140213	Sư phạm Sinh học	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+5d4eeab2-3a8f-48e5-b7a3-82dd77a3be8f	7140217	Sư phạm Ngữ văn	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+5fb9cbf4-5690-46a7-8065-8b5144c77e8d	7140218	Sư phạm Lịch sử	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+a958f7f6-4537-47f6-9d50-a8181837bced	7140219	Sư phạm Địa lý	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+9d77ed6c-dd8e-40da-a038-8a1a04b1a5e4	7140231	Sư phạm Tiếng Anh	bb21bbf0-93d0-43f5-8b01-1b585a1fd74e	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+0380fdfa-2691-4ca4-a2b4-e5eca68465d6	7140231C	Sư phạm Tiếng Anh tài năng	bb21bbf0-93d0-43f5-8b01-1b585a1fd74e	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+bb2aff26-cf32-4688-9bc0-fd60287c3f84	7220201	Ngôn ngữ Anh	bb21bbf0-93d0-43f5-8b01-1b585a1fd74e	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+c57cd517-87c8-4224-ad42-69906412f113	7140101	Giáo dục học	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+c7d2113e-88cc-4b7f-b256-bea7cf3d2f5c	7140114	Quản lý giáo dục	4dfb043d-e38b-4336-8cf2-0996a8deb9a8	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+36fef8e2-c80c-4004-a57a-ded9f250944c	7229042	Quản lý văn hóa	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+d4a1bc87-b698-486d-8a2e-d5bac91c1787	7310101	Kinh tế	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+9d32d42d-da35-415b-991d-12b215f27525	7310104	Kinh tế đầu tư	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+d36b7755-7953-49ad-9ddd-4d2c80d643a6	7340101	Quản trị kinh doanh	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+7947cefc-09af-4b28-a2e8-63452f9f7b54	7340101_1	Quản trị kinh doanh - TMĐT	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+8d30a4d3-2047-485e-82cf-bc465ad3e350	7340101C	Quản trị kinh doanh CLC	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+2df19e36-9cd0-4530-9eea-eba9cb992678	7340122	Thương mại điện tử	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+6d3af29c-c61a-40ed-8708-201d6b282f08	7310201	Chính trị học	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+069980e7-e886-4168-b7fd-ccdb630672a2	7310205	Quản lý nhà nước	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+66cff394-3ca5-4c0e-bb8b-39e48553ef82	7320101	Báo chí	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+367c101c-97cb-4e75-90fa-42dec0610796	7340201	Tài chính - Ngân hàng	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+a85f945f-fa48-4231-b38e-551c2661c68d	7340201_1	Tài chính - Ngân hàng (chuyên ngành Tài chính doanh nghiệp)	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+22cddab3-e3c3-4361-8134-90c91f3c54b5	7340201_2	Tài chính - Ngân hàng (chuyên ngành Ngân hàng thương mại)	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+ddb2c3fe-a5d4-4dba-a2dc-4a72c616dcba	7340301	Kế toán	322c4df6-2573-4a93-bbb1-bbf90b4f9d66	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+11fd7be3-923e-444b-9069-a10f38ab21e5	7380101	Luật	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+ac4b93d7-080d-49e7-8825-ce46ec058d9f	7380107	Luật kinh tế	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+93764b3f-d1aa-495c-98a1-c7d247fcc61e	7440301	Khoa học môi trường	9e75865a-37eb-48e0-93d1-31319d41f8dc	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+8a4e307e-2254-4012-ba32-2e5a92263776	7480201	Công nghệ thông tin	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+8ae189ab-8466-4258-878e-9eee5f28771e	7480201C	Công nghệ thông tin CLC	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+cced33f8-cc3a-41e5-9561-04b56cd8704a	7480101	Khoa học máy tính	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+2f430fd9-4911-43ec-9e2c-405cafa59fa1	7480103	Kỹ thuật phần mềm	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+577e8463-513f-4d75-9826-5a5d46f8047f	7460202	Khoa học dữ liệu và thống kê	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+be4821ff-8551-42c6-86db-24a9e8857d14	7510301	Công nghệ kỹ thuật điện, điện tử	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+c23cd213-0662-4907-ba58-d49390538470	7510302	Công nghệ kỹ thuật điện tử - viễn thông	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+2f5dc018-797a-43ba-9d79-7402147ca472	7510303	Công nghệ kỹ thuật điều khiển và tự động hóa	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+eace81cd-2367-41b3-831c-a8991a32f47d	7520207	Kỹ thuật điện tử - viễn thông	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+52d95e4d-c316-4380-8385-d9b19409bb5f	7520216	Kỹ thuật điều khiển và tự động hoá	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+0b22bfe0-f5a7-46d4-bfa5-8db343640301	7510205	Công nghệ kỹ thuật ô tô	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+64f5626e-d296-4bba-873c-96d59ba2fe83	7510206	Công nghệ kỹ thuật nhiệt	a7bde13b-fe08-4f94-ad77-6b56e3025b21	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+9e1ccb36-7ee5-4978-98a3-e795c67ce348	7510401	Công nghệ kỹ thuật hóa học	9e75865a-37eb-48e0-93d1-31319d41f8dc	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+6b08ef3f-c363-4dce-8c47-d4165c32b5e7	7420201	Công nghệ sinh học	9e75865a-37eb-48e0-93d1-31319d41f8dc	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+4ddea83b-7e4b-482c-a8df-acb11955c345	7420101	Sinh học	9e75865a-37eb-48e0-93d1-31319d41f8dc	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+86608256-06f5-4c67-98f4-7ffcb0a475b8	7580201	Kỹ thuật xây dựng	9242a927-38d6-4d4b-9eac-6d4a52b74c9c	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+d0a08080-7cf5-487d-bad5-fec1c7746604	7580202	Kỹ thuật xây dựng công trình thuỷ	9242a927-38d6-4d4b-9eac-6d4a52b74c9c	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+f6048f51-fd9c-4206-b694-fd3e95c6cc3e	7580205	Kỹ thuật xây dựng công trình giao thông	9242a927-38d6-4d4b-9eac-6d4a52b74c9c	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+704e141f-036a-469e-888a-2b1941de8803	7580301	Kinh tế xây dựng	9242a927-38d6-4d4b-9eac-6d4a52b74c9c	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+0265b1bd-e7f0-4923-a0da-b19644ef7bce	7620102	Khuyến nông	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+5d64f3ea-5d2b-43f6-9aa1-2d29f2bae8f6	7620105	Chăn nuôi	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+ed571c87-3522-4e97-8f78-17792ba7919e	7620105A	Chăn nuôi (chuyên ngành thú y)	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+9b00169e-36a0-408e-977d-e00082d32620	7620109	Nông học	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+781fcefc-9fa2-466e-85ec-394d26002db6	7620109CLC	Nông nghiệp CLC	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+1ccf34cc-bbcc-47ed-987e-372306835342	7620115	Kinh tế nông nghiệp	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+b6058f67-2bef-4201-a3b7-705ce5fca3c8	7620301	Nuôi trồng thủy sản	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+3f1a8d12-97b5-4e11-853d-34e3f1107f93	7720401	Dinh dưỡng	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+c79c70f2-f533-46a0-bf9d-d8bafd144aac	7720301	Điều dưỡng	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+56050f66-2a3c-4305-abe1-83882717e85a	7760101	Công tác xã hội	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+5352299a-282d-444e-b751-ee1bb18f8277	7810101	Du lịch	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+1cb9df77-dfb0-437e-9401-bc4f731a6da6	7310630	Việt Nam học	916a1c94-f6d6-4140-a19a-99922bcac9a7	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+d764e926-c12e-44fd-abf1-ebba1795b5d9	7850101	Quản lý tài nguyên và môi trường	9e75865a-37eb-48e0-93d1-31319d41f8dc	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+90dc2d2c-f17f-455e-a280-d0190b906b29	7850103	Quản lý đất đai	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+486c08df-f657-46d2-81f4-e1cd615251e7	7850103CLC	Quản lý đất đai CLC	9e4ff701-e87a-4687-8db0-034e0960a3b3	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
+181c0c67-3e0c-47a6-a3fa-7934541f0151	7540101	Công nghệ thực phẩm	9e75865a-37eb-48e0-93d1-31319d41f8dc	t	2025-12-20 01:06:52.893491+07	2025-12-20 01:06:52.893491+07
 \.
 
 
@@ -820,6 +1269,32 @@ c1028281-2a8b-4093-aef4-de7614ceec23	455c9e28-85dd-4d76-a9f5-0b8b07961445	5ba6ef
 c8fd5a83-d75f-42a0-b601-971465b5a6e8	bb86a262-fc97-44a6-a972-1122b8563f90	05260708-9209-4b0f-861c-357caaabcd36	2025-12-13 22:46:14.812269+07
 3e5c0ea4-5d18-4bce-b780-c778b3c24f7c	2b099673-2f32-40ab-bbfd-515e9e8bedd1	4838e5a3-9517-4875-9918-0d26be69c24f	2025-12-13 22:52:07.780821+07
 cfaeefdc-86fb-4d6e-bc6d-b84673b125d3	6e177a05-3d8d-4310-82b0-ece9b9f90610	3a37d3e1-9f2f-42b9-9a7c-bea038e85d9e	2025-12-14 10:25:07.598661+07
+8620b7d7-2fe5-42f6-b3bc-fa15e3bf5604	33bb60c7-4c54-4987-bf6a-93449fc15ee0	304ffcc5-e281-481c-90e4-f9f7120d2c26	2025-12-17 17:17:03.003532+07
+66da3043-673c-4b47-a860-5365b72e5bb2	1221f4c1-6ad8-444c-bdf4-7dff77d6fc20	9e0b4e2c-7050-4a66-85f7-ba41623da8bb	2025-12-17 19:09:31.899928+07
+3440998f-a46c-4150-9cd1-413625ac3551	66afa84e-ea6b-4681-8d14-18b620e8b7d1	5ba6ef7a-149b-41be-b901-f98aac4c4f64	2025-12-17 23:56:52.902589+07
+93a46d3d-80c0-400c-abb7-5cb9a81d2e38	6d4af3e7-abf8-4733-afcd-b9a8479e8977	5ba6ef7a-149b-41be-b901-f98aac4c4f64	2025-12-17 23:57:38.795678+07
+652524a6-93ce-4472-96f9-dce36a184931	480001ce-0be3-461a-b807-3c395b5e09f8	5ba6ef7a-149b-41be-b901-f98aac4c4f64	2025-12-18 00:12:42.907088+07
+78dbfa14-32c5-4c40-a967-4e30398a609d	a148b6d2-1263-424a-a78d-f329a8d5f75d	05260708-9209-4b0f-861c-357caaabcd36	2025-12-18 00:13:59.988988+07
+47952b67-72db-419f-bae1-510a598ff196	ec10ca86-3dc2-4081-ab96-978286e3204c	05260708-9209-4b0f-861c-357caaabcd36	2025-12-18 00:14:05.783788+07
+9b7cfbe8-e1dd-47b3-8e5a-d259311aafb9	394cdc78-a866-4315-b9ef-12bc5bdae2a4	05260708-9209-4b0f-861c-357caaabcd36	2025-12-18 00:15:48.226443+07
+63e443a2-3798-4da5-a70f-72d1c879825c	ca7889b9-242c-4697-8e97-a26f15220320	f9fb59a4-52af-4db8-be49-af35434c36f5	2025-12-18 08:48:32.044914+07
+f8ef00a1-9a11-4d50-b5e6-10e7fa8f8eed	74d149a1-7ddd-4272-bd3a-6ae4c696f672	f9fb59a4-52af-4db8-be49-af35434c36f5	2025-12-18 09:18:58.470506+07
+14cacf5a-02e6-4384-a11e-c0ec7924d7b9	7489f50e-0a83-48d0-8ca3-b19fea1c1241	f9fb59a4-52af-4db8-be49-af35434c36f5	2025-12-18 09:19:22.008576+07
+c88aae81-8538-453c-9165-7f72e539b4c6	1664e046-976a-4e9a-90ba-4846c168c786	f9fb59a4-52af-4db8-be49-af35434c36f5	2025-12-18 09:19:37.60657+07
+9e3c7326-2bb1-4d55-a76b-b81056acbce4	0887df4a-f607-4085-b4da-ef6b2825e689	05260708-9209-4b0f-861c-357caaabcd36	2025-12-18 09:26:10.323448+07
+1982396f-7185-4db5-af6d-0525e0f85d62	fb3411b9-afc9-457c-a975-c3536aaa022f	f9fb59a4-52af-4db8-be49-af35434c36f5	2025-12-18 10:14:54.497254+07
+202957f7-9da2-4e63-b9e5-3199a103a208	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	9e0b4e2c-7050-4a66-85f7-ba41623da8bb	2025-12-18 23:00:41.475496+07
+60dca1a4-b06b-4415-9643-53da9aa012a6	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	f9fb59a4-52af-4db8-be49-af35434c36f5	2025-12-18 23:00:41.475496+07
+60fa05b7-fae2-4454-a9eb-cd7e2f7ae558	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	4838e5a3-9517-4875-9918-0d26be69c24f	2025-12-18 23:00:41.475496+07
+fe2033f3-f458-4066-bd36-5bc247a0e6ef	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	304ffcc5-e281-481c-90e4-f9f7120d2c26	2025-12-18 23:00:41.475496+07
+a1f61712-7a8b-4873-b6c4-a96258630429	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	05260708-9209-4b0f-861c-357caaabcd36	2025-12-18 23:00:41.475496+07
+457a630d-944a-4c81-8b14-4e6d90716378	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	5ba6ef7a-149b-41be-b901-f98aac4c4f64	2025-12-18 23:00:41.475496+07
+20e52aa9-8d8b-45c3-a41f-f063df2782bc	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	d491bb78-729a-4c75-9da8-e0d94aef734e	2025-12-18 23:00:41.475496+07
+9fdd37a9-fbc8-4e90-a577-12bc30010610	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	9980a908-9a02-40bc-a7b6-6bb10e67e09f	2025-12-18 23:00:41.475496+07
+57b5e40a-46cc-46a2-9be9-e3794366794b	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	e5c2a592-1b47-4831-b623-1e49cfc0e300	2025-12-18 23:00:41.475496+07
+6c267717-7ad1-44ad-ad43-7929e3ec918a	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	0abbfbc4-493e-42ae-bdc3-1e6f919ae388	2025-12-18 23:00:41.475496+07
+c7617a24-c327-403a-8054-a36fa0fa660c	a9d84c17-eff7-4d4c-ad4a-32d5184ead33	12598628-9255-4e4d-94c5-e24c4b86662d	2025-12-18 23:00:41.475496+07
+8e6e9144-6beb-475c-8183-0dc23eb32049	4257dd48-bc78-42a4-8234-1dbb7811e97e	12598628-9255-4e4d-94c5-e24c4b86662d	2025-12-19 21:36:31.0817+07
 \.
 
 
@@ -829,6 +1304,8 @@ cfaeefdc-86fb-4d6e-bc6d-b84673b125d3	6e177a05-3d8d-4310-82b0-ece9b9f90610	3a37d3
 
 COPY public.notebook_ai_set_suggestions (id, notebook_ai_set_id, suggestions, created_by, created_at) FROM stdin;
 7e8fe149-44c1-401b-86c2-abfa64c11c0d	8eb9de4b-2d9a-4299-a8d1-af41339fb405	{"title": "Đào sâu về tách biên và phát hiện biên ảnh", "suggestions": ["Trong thực tế, khi nào thì phương pháp phát hiện biên trực tiếp hiệu quả hơn so với phương pháp gián tiếp và ngược lại?", "Nếu phải lựa chọn giữa các toán tử Gradient (Sobel, Prewitt, Robert), tiêu chí nào sẽ quyết định sự lựa chọn của bạn?", "Ảnh hưởng của các kiểu dữ liệu ảnh (CV_8U, CV_8S...) đến kết quả phát hiện biên là gì? Có trường hợp nào một kiểu dữ liệu đặc biệt phù hợp hơn không?", "Ngoài tỉ lệ 2:1 hoặc 3:1 giữa ngưỡng trên và dưới trong thuật toán Canny, còn có những cách tiếp cận nào để tối ưu hóa ngưỡng?", "Trong quá trình tìm contours, việc lựa chọn `mode` và `method` khác nhau sẽ ảnh hưởng đến kết quả phân tích ảnh như thế nào?", "Ứng dụng thực tế nào mà việc sử dụng contour lại quan trọng hơn là việc chỉ phát hiện biên đơn thuần?", "Nếu kết hợp các phương pháp phát hiện biên khác nhau (ví dụ: Gradient và Laplace), liệu có thể đạt được kết quả tốt hơn trong một số trường hợp cụ thể không?"]}	991c40a1-c2b1-4e62-972a-33deafd708ff	2025-12-13 13:07:18.950838+07
+d85ff5b0-b987-4817-9b26-9081ce76b6b0	ec10ca86-3dc2-4081-ab96-978286e3204c	{"suggestions": ["Hãy giải thích tại sao thị giác máy tính lại được coi là một lĩnh vực liên ngành (interdisciplinary field)?", "Làm thế nào sự phát triển của Deep Learning, đặc biệt là CNN và YOLO, đã tạo ra sự thay đổi mang tính cách mạng trong lĩnh vực thị giác máy tính?", "Tại sao OpenCV lại trở thành một thư viện mã nguồn mở phổ biến trong thị giác máy tính, và những lợi ích chính mà nó mang lại là gì?", "So sánh cách máy tính 'nhìn' và 'hiểu' một bức ảnh với cách con người thực hiện điều đó. Những điểm tương đồng và khác biệt chính là gì?", "Phân tích tiềm năng ứng dụng của thị giác máy tính trong một lĩnh vực cụ thể mà bạn quan tâm (ví dụ: nông nghiệp, y tế, giao thông vận tải), và những thách thức kỹ thuật có thể phát sinh là gì?", "Tại sao việc hiểu cách ảnh được biểu diễn dưới dạng ma trận số lại quan trọng trong thị giác máy tính, và những thao tác xử lý ảnh cơ bản nào có thể được thực hiện dựa trên biểu diễn này?", "Hãy giải thích sự khác biệt giữa ảnh xám và ảnh màu về mặt biểu diễn số, và ảnh hưởng của sự khác biệt này đến các thuật toán xử lý ảnh.", "Làm thế nào bạn có thể kết hợp các công cụ như Anaconda, OpenCV và Python để xây dựng một ứng dụng thị giác máy tính đơn giản, ví dụ như nhận diện khuôn mặt?", "Tại sao việc chọn lựa flags phù hợp trong hàm `cv2.imread()` lại quan trọng, và ảnh hưởng của việc này đến quá trình xử lý ảnh tiếp theo là gì?", "Phân tích những hạn chế của các thuật toán thị giác máy tính hiện tại, và những hướng nghiên cứu nào có thể giúp vượt qua những hạn chế này để đạt được khả năng 'nhìn' và 'hiểu' hình ảnh/video gần giống với con người hơn?"]}	7710814e-22b0-40c0-8d32-5bf9f74a14de	2025-12-18 00:14:58.642187+07
+2121d1c3-4072-4814-9c0f-c4fa4eec962a	4257dd48-bc78-42a4-8234-1dbb7811e97e	{"suggestions": [{"hint": "Hãy nghĩ về tính minh bạch, xác thực và khả năng nhận diện tác giả của bài làm.", "category": "evaluation", "question": "Tại sao việc ghi tên lên ảnh test lại quan trọng trong bài thực hành này? Nếu không ghi tên, điều gì có thể xảy ra và ảnh hưởng đến việc đánh giá bài tập như thế nào?"}, {"hint": "Tìm hiểu về các hệ màu phổ biến trong xử lý ảnh và ứng dụng của chúng.", "category": "analysis", "question": "Trong bài tập 2, chương trình in ra giá trị màu tại một điểm ảnh. Giá trị màu đó được biểu diễn như thế nào (ví dụ: hệ màu RGB, HSV,...)? Có những hệ màu nào khác mà bạn biết, và tại sao người ta lại sử dụng nhiều hệ màu khác nhau?"}, {"hint": "Nghiên cứu các công thức chuyển đổi ảnh màu sang xám phổ biến và các yếu tố ảnh hưởng đến hiệu suất.", "category": "analysis", "question": "Bài tập 3 yêu cầu chuyển ảnh màu sang ảnh xám. Thuật toán nào thường được sử dụng để thực hiện việc chuyển đổi này? Có những cách chuyển đổi nào khác, và cách nào là tối ưu nhất trong các trường hợp khác nhau (ví dụ: tốc độ, độ chính xác)?"}, {"hint": "Tìm hiểu cách sử dụng thư viện để bắt sự kiện bàn phím và điều khiển video.", "category": "application", "question": "Bài tập 4 yêu cầu đọc video và ghi lại hình khi ấn phím 's'. Bạn có thể mở rộng chương trình này để thực hiện các chức năng khác khi ấn các phím khác không? Ví dụ, 'r' để đảo ngược video, 'f' để tăng tốc độ phát, 'l' để làm chậm,... Làm thế nào để thêm các chức năng này?"}, {"hint": "Liên hệ FPS với độ mượt của video và ứng dụng của các loại video (ví dụ: game, phim, thể thao).", "category": "comprehension", "question": "Bài tập 5 yêu cầu in ra số khung hình trên giây (FPS) và tổng số khung hình của video. FPS ảnh hưởng như thế nào đến trải nghiệm xem video? Trong thực tế, tại sao một số video có FPS cao hơn những video khác?"}, {"hint": "So sánh tính linh hoạt, khả năng tùy chỉnh và các tính năng khác của `matplotlib` so với các thư viện hiển thị ảnh khác.", "category": "evaluation", "question": "Trong bài tập 6, tại sao lại sử dụng thư viện `matplotlib` để hiển thị các ảnh thay vì sử dụng các hàm hiển thị ảnh thông thường khác? `matplotlib` có những ưu điểm và hạn chế gì trong việc hiển thị ảnh so với các thư viện khác (ví dụ: OpenCV)?"}, {"hint": "Nghĩ về việc sử dụng đa luồng, xử lý song song, giảm độ phân giải tạm thời, hoặc sử dụng các thư viện được tối ưu hóa cho hiệu suất.", "category": "application", "question": "Nếu bạn phải xử lý một video có độ phân giải rất lớn, hoặc một luồng video trực tiếp (ví dụ: từ camera an ninh), bạn sẽ cần tối ưu hóa code như thế nào để đảm bảo hiệu suất thời gian thực? Những yếu tố nào cần được xem xét?"}, {"hint": "Suy nghĩ về cách các thao tác như đọc, hiển thị, chuyển đổi ảnh/video được sử dụng trong các ứng dụng khác nhau.", "category": "application", "question": "Bài thực hành này giới thiệu các thao tác cơ bản với ảnh và video. Bạn có thể liên hệ những kiến thức này với các ứng dụng thực tế nào trong cuộc sống (ví dụ: nhận dạng khuôn mặt, xử lý ảnh y tế, tạo hiệu ứng video,...)?"}]}	7710814e-22b0-40c0-8d32-5bf9f74a14de	2025-12-19 21:36:40.177914+07
 \.
 
 
@@ -846,9 +1323,36 @@ cc33f9a5-f4a5-44ec-83d7-8f5ec7dd66f5	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40
 8eb9de4b-2d9a-4299-a8d1-af41339fb405	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	suggestion	done	\N	\N	\N	\N	Đào sâu về tách biên và phát hiện biên ảnh	\N	{"fileIds": ["f9fb59a4-52af-4db8-be49-af35434c36f5"]}	{"suggestionId": "7e8fe149-44c1-401b-86c2-abfa64c11c0d"}	\N	2025-12-13 13:06:26.365025+07	2025-12-13 13:06:26.405411+07	2025-12-13 13:07:18.953165+07	2025-12-13 13:07:18.953152+07
 4224e054-e9b6-473b-bb1e-09cdcefc2953	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	mindmap	done	\N	\N	\N	\N	Phân vùng ảnh: Ngưỡng, thích nghi, Otsu, Contours và phép toán hình thái học	\N	{"fileIds": ["9e0b4e2c-7050-4a66-85f7-ba41623da8bb"]}	{"mindmapId": "e42140dc-8506-4421-ab12-e61d6827913c"}	\N	2025-12-13 11:24:09.049064+07	2025-12-13 11:24:09.065456+07	2025-12-13 11:25:07.475466+07	2025-12-13 11:25:07.475461+07
 455c9e28-85dd-4d76-a9f5-0b8b07961445	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	video	done	\N	\N	\N	\N	\N	\N	{"fileIds": ["9e0b4e2c-7050-4a66-85f7-ba41623da8bb", "1c78d219-e273-4834-a5ba-182b0d5da2bf", "f9fb59a4-52af-4db8-be49-af35434c36f5", "4838e5a3-9517-4875-9918-0d26be69c24f", "304ffcc5-e281-481c-90e4-f9f7120d2c26", "05260708-9209-4b0f-861c-357caaabcd36", "5ba6ef7a-149b-41be-b901-f98aac4c4f64", "d491bb78-729a-4c75-9da8-e0d94aef734e", "9980a908-9a02-40bc-a7b6-6bb10e67e09f", "e5c2a592-1b47-4831-b623-1e49cfc0e300", "0abbfbc4-493e-42ae-bdc3-1e6f919ae388", "12598628-9255-4e4d-94c5-e24c4b86662d"], "generateImages": false, "numberOfSlides": 5, "additionalRequirements": "tổng quan toàn bộ các chương trong thị giac máy tính để ôn tập ạ"}	{"title": "Video Overview", "videoUrl": "/uploads/videos/video_455c9e28.mp4", "clipCount": 6, "sessionId": "455c9e28", "slideCount": 6, "videoAssetId": "cbaf036d-b085-4ffc-a07e-3a0230fbd224", "totalDuration": 175.46575}	\N	2025-12-13 22:25:53.249224+07	2025-12-13 22:25:53.363593+07	2025-12-13 22:35:17.738586+07	2025-12-13 22:35:17.738582+07
+33bb60c7-4c54-4987-bf6a-93449fc15ee0	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	video	done	\N	\N	\N	\N	Video	\N	{"fileIds": ["304ffcc5-e281-481c-90e4-f9f7120d2c26"], "generateImages": true, "numberOfSlides": 5, "additionalRequirements": null}	{"title": "Video", "videoUrl": "/uploads/videos/video_33bb60c7.mp4", "clipCount": 5, "slideCount": 5, "videoAssetId": "5fb4de34-410b-4617-8a77-d749f9ed5c63", "totalDuration": 142.01479166666667}	\N	2025-12-17 17:17:03.003532+07	2025-12-17 17:17:03.074827+07	2025-12-17 17:21:18.904596+07	2025-12-17 17:21:18.904593+07
 bb86a262-fc97-44a6-a972-1122b8563f90	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	video	done	\N	\N	\N	\N	\N	\N	{"fileIds": ["05260708-9209-4b0f-861c-357caaabcd36"], "generateImages": false, "numberOfSlides": 5, "additionalRequirements": "tổng quan về thị giác máy tính"}	{"title": "Video Overview", "videoUrl": "/uploads/videos/video_bb86a262.mp4", "clipCount": 6, "sessionId": "bb86a262", "slideCount": 6, "videoAssetId": "9fce90d4-d508-4a1c-a84e-ac1d62fa8347", "totalDuration": 188.22575}	\N	2025-12-13 22:46:14.812269+07	2025-12-13 22:46:14.842378+07	2025-12-13 22:50:07.576911+07	2025-12-13 22:50:07.576909+07
 2b099673-2f32-40ab-bbfd-515e9e8bedd1	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	video	done	\N	\N	\N	\N	\N	\N	{"fileIds": ["4838e5a3-9517-4875-9918-0d26be69c24f"], "generateImages": true, "numberOfSlides": 15, "additionalRequirements": null}	{"title": "Video Overview", "videoUrl": "/uploads/videos/video_2b099673.mp4", "clipCount": 15, "sessionId": "2b099673", "slideCount": 15, "videoAssetId": "569dc0ae-8bf1-4c7d-bfe5-710444e3920a", "totalDuration": 372.244375}	\N	2025-12-13 22:52:07.780821+07	2025-12-13 22:52:07.856791+07	2025-12-13 23:05:04.486268+07	2025-12-13 23:05:04.486262+07
 6e177a05-3d8d-4310-82b0-ece9b9f90610	667fd949-9fad-4367-92fb-bdfb409fc00a	7710814e-22b0-40c0-8d32-5bf9f74a14de	video	done	\N	\N	\N	\N	Video	\N	{"fileIds": ["3a37d3e1-9f2f-42b9-9a7c-bea038e85d9e"], "generateImages": true, "numberOfSlides": 15, "additionalRequirements": "tập trung và nội dung cốt lỗi"}	{"title": "Video", "videoUrl": "/uploads/videos/video_6e177a05.mp4", "clipCount": 15, "slideCount": 15, "videoAssetId": "a1e73500-e388-45a7-ac6e-afd560f5c19e", "totalDuration": 404.844375}	\N	2025-12-14 10:25:07.598661+07	2025-12-14 10:25:07.659407+07	2025-12-14 10:36:03.490474+07	2025-12-14 10:36:03.49047+07
+66afa84e-ea6b-4681-8d14-18b620e8b7d1	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	tts	done	\N	\N	\N	\N	Audio Overview từ 1 tài liệu	\N	{"fileIds": ["5ba6ef7a-149b-41be-b901-f98aac4c4f64"], "voiceId": "Pulcherrima"}	{"audioUrl": "/uploads/tts/audio_podcast_6a2f5c57-4e04-4a00-98db-069f48c6f0e3.wav", "voiceName": "Puck & Pulcherrima"}	\N	2025-12-17 23:56:52.902589+07	2025-12-17 23:56:52.984726+07	2025-12-17 23:58:10.75375+07	2025-12-17 23:58:10.753748+07
+6d4af3e7-abf8-4733-afcd-b9a8479e8977	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	summary	done	\N	\N	\N	\N	Hướng dẫn cài đặt phần mềm và môi trường lập trình	\N	{"fileIds": ["5ba6ef7a-149b-41be-b901-f98aac4c4f64"], "language": "vi"}	{"title": "Hướng dẫn cài đặt phần mềm và môi trường lập trình", "hasAudio": false, "summaryId": "6d4af3e7-abf8-4733-afcd-b9a8479e8977"}	\N	2025-12-17 23:57:38.795678+07	2025-12-17 23:57:38.809411+07	2025-12-17 23:58:34.604558+07	2025-12-17 23:58:34.604555+07
+1221f4c1-6ad8-444c-bdf4-7dff77d6fc20	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	summary	done	\N	\N	\N	\N	Phân Vùng Ảnh	\N	{"fileIds": ["9e0b4e2c-7050-4a66-85f7-ba41623da8bb"], "voiceId": "Orus", "language": "vi"}	{"title": "Phân Vùng Ảnh", "audioUrl": "/uploads/tts/summary_6bbf980a-105d-498b-b295-1f4f503cfb3d.wav", "hasAudio": true, "summaryId": "1221f4c1-6ad8-444c-bdf4-7dff77d6fc20", "audioDurationMs": 85770}	\N	2025-12-17 19:09:31.899928+07	2025-12-17 19:09:31.972877+07	2025-12-17 19:11:14.030498+07	2025-12-17 19:11:14.030493+07
+480001ce-0be3-461a-b807-3c395b5e09f8	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	quiz	done	\N	\N	\N	\N	Quiz từ 1 tài liệu	\N	{"fileIds": ["5ba6ef7a-149b-41be-b901-f98aac4c4f64"], "difficultyLevel": "hard", "numberOfQuestions": "standard"}	{"quizIds": ["f70d6a08-434b-46a3-8af1-5c34f7dd225a", "34a0a832-dda1-4950-9314-0f953bd890ec", "07dc7327-7138-4070-9435-b2aa93d55298", "895882bb-05cf-4707-bea7-9f1870a85b00", "48560e85-c76a-4370-9db6-b46bda46b269", "5f09778a-cb16-4e4a-b239-e3d2b1aa3c8a"], "quizCount": 6}	\N	2025-12-18 00:12:42.907088+07	2025-12-18 00:12:42.924052+07	2025-12-18 00:13:41.655526+07	2025-12-18 00:13:41.65552+07
+394cdc78-a866-4315-b9ef-12bc5bdae2a4	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	video	done	\N	\N	\N	\N	Chào mừng đến với thế giới Thị Giác Máy Tính!	\N	{"fileIds": ["05260708-9209-4b0f-861c-357caaabcd36"], "generateImages": true, "numberOfSlides": 15, "additionalRequirements": null}	{"title": "Chào mừng đến với thế giới Thị Giác Máy Tính!", "videoUrl": "/uploads/videos/video_394cdc78.mp4", "clipCount": 15, "slideCount": 15, "videoAssetId": "381c53f3-9d6e-461a-943a-06ab7333cf6e", "totalDuration": 446.604375}	\N	2025-12-18 00:15:48.226443+07	2025-12-18 00:15:48.237282+07	2025-12-18 00:29:10.954867+07	2025-12-18 00:29:10.954864+07
+ec10ca86-3dc2-4081-ab96-978286e3204c	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	suggestion	done	\N	\N	\N	\N	Câu hỏi gợi mở từ 1 tài liệu	\N	{"fileIds": ["05260708-9209-4b0f-861c-357caaabcd36"]}	{"count": 10, "suggestionId": "d85ff5b0-b987-4817-9b26-9081ce76b6b0"}	\N	2025-12-18 00:14:05.783788+07	2025-12-18 00:14:05.796434+07	2025-12-18 00:14:58.643019+07	2025-12-18 00:14:58.643008+07
+a148b6d2-1263-424a-a78d-f329a8d5f75d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	quiz	done	\N	\N	\N	\N	Quiz từ 1 tài liệu	\N	{"fileIds": ["05260708-9209-4b0f-861c-357caaabcd36"], "difficultyLevel": "medium", "numberOfQuestions": "standard"}	{"quizIds": ["3096166b-94ae-4617-9bce-5ed53d623c32", "acbb0d7b-49f0-471f-8de6-da5b2ce37141", "546f5612-65bd-446a-bc40-8b26d4505739", "be9a306a-e4c4-489c-b325-7cdf4e52166e", "ff9e830e-1967-4ec5-8c12-02b7f00cb1ea", "9ae6d5ba-06f6-4ea1-969d-b5f7e9fed926"], "quizCount": 6}	\N	2025-12-18 00:13:59.988988+07	2025-12-18 00:14:00.031144+07	2025-12-18 00:15:02.230278+07	2025-12-18 00:15:02.230274+07
+ca7889b9-242c-4697-8e97-a26f15220320	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	flashcard	done	\N	\N	\N	\N	Flashcards từ 1 tài liệu	\N	{"fileIds": ["f9fb59a4-52af-4db8-be49-af35434c36f5"], "numberOfCards": "many", "additionalRequirements": "chú ý vào trọng tâm bài ý nào cần nhớ lưu lại kỹ"}	{"flashcardIds": ["83adc4c2-34a4-4cdc-b266-64705655029e", "6a88f151-c27b-4e26-ae82-b14b1da098eb", "f0af853d-01c7-467b-a0de-f27797393e34", "daf54f52-4661-41cf-91de-9594d113f560", "df71289c-dd36-4fba-99b2-6ffe0f56983e", "edd0a999-8e45-46ae-918c-f61274dd5475", "5caf3296-5303-4c7f-a425-2b4e3748456d", "a20751b7-1ae6-4c5b-a0e8-56b4737dde2d", "56096131-4cfb-43f8-b2d3-d257a881dfb1", "5d94f0ee-3be5-49d8-846b-43ad39897aae", "bf9fa1c8-1e8b-41da-bded-5eb531306620", "adacaa0f-8350-4d51-abc9-8ca67af58829", "53519a26-7af9-4ede-a4c0-8d9b93576d9f", "339b3592-e476-4df3-88e5-680313d5b3a7", "b3e5b88b-1cff-4b2d-8764-48aec0e50d6d", "432cf7aa-21bd-4f5a-95c3-3e61c0baf737", "5a24ddb7-c23d-4597-80ab-b31d5837357c", "754f1824-cb44-46f5-baa4-8318cb8a6e44", "16c1654c-d921-4584-be57-e57a0502dd64", "6f3e1bca-6baf-4a66-ae17-aae7a45f469d", "d3130ec6-976b-4339-964f-bbf00e427aa7", "904a44f0-f9c6-4102-9905-84953e27684e", "df65c53f-6756-48dc-b490-a46d72e4f236", "0b2b5530-2cdf-44aa-970c-c7ba24416b0d", "15de8710-458c-4cc3-81b2-70dffeac13a2"], "flashcardCount": 25}	\N	2025-12-18 08:48:32.044914+07	2025-12-18 08:48:32.058068+07	2025-12-18 08:49:37.096871+07	2025-12-18 08:49:37.096866+07
+0887df4a-f607-4085-b4da-ef6b2825e689	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	mindmap	done	\N	\N	\N	\N	Thị Giác Máy Tính: Tổng Quan & Ứng Dụng	\N	{"fileIds": ["05260708-9209-4b0f-861c-357caaabcd36"]}	{"title": "Thị Giác Máy Tính: Tổng Quan & Ứng Dụng", "mindmapId": "5ec36554-51e0-4ace-846b-08e6ecf72d1a"}	\N	2025-12-18 09:26:10.323448+07	2025-12-18 09:26:10.375582+07	2025-12-18 09:27:10.541556+07	2025-12-18 09:27:10.541553+07
+74d149a1-7ddd-4272-bd3a-6ae4c696f672	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	summary	done	\N	\N	\N	\N	Phát hiện biên	\N	{"fileIds": ["f9fb59a4-52af-4db8-be49-af35434c36f5"], "language": "vi"}	{"title": "Phát hiện biên", "hasAudio": false, "summaryId": "74d149a1-7ddd-4272-bd3a-6ae4c696f672"}	\N	2025-12-18 09:18:58.470506+07	2025-12-18 09:18:58.481546+07	2025-12-18 09:20:07.066596+07	2025-12-18 09:20:07.066592+07
+7489f50e-0a83-48d0-8ca3-b19fea1c1241	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	tts	done	\N	\N	\N	\N	Audio Overview từ 1 tài liệu	\N	{"fileIds": ["f9fb59a4-52af-4db8-be49-af35434c36f5"], "voiceId": "Kore"}	{"audioUrl": "/uploads/tts/audio_podcast_b12044b3-3489-479c-b233-f98b7d262d3b.wav", "voiceName": "Puck & Kore"}	\N	2025-12-18 09:19:22.008576+07	2025-12-18 09:19:22.025658+07	2025-12-18 09:20:50.20787+07	2025-12-18 09:20:50.207868+07
+fb3411b9-afc9-457c-a975-c3536aaa022f	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	mindmap	done	\N	\N	\N	\N	Tách Biên và Phát Hiện Biên trong Ảnh	\N	{"fileIds": ["f9fb59a4-52af-4db8-be49-af35434c36f5"]}	{"title": "Tách Biên và Phát Hiện Biên trong Ảnh", "mindmapId": "0de35bb5-cbdc-493e-9a66-e852d9b9db83"}	\N	2025-12-18 10:14:54.497254+07	2025-12-18 10:14:54.527736+07	2025-12-18 10:15:55.277115+07	2025-12-18 10:15:55.277111+07
+1664e046-976a-4e9a-90ba-4846c168c786	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	video	done	\N	\N	\N	\N	Video	\N	{"fileIds": ["f9fb59a4-52af-4db8-be49-af35434c36f5"], "generateImages": true, "numberOfSlides": 5, "additionalRequirements": null}	{"title": "Video", "videoUrl": "/uploads/videos/video_1664e046.mp4", "clipCount": 6, "slideCount": 6, "videoAssetId": "d28ae4ab-53f5-46d8-9dee-8f126dea3458", "totalDuration": 189.78575}	\N	2025-12-18 09:19:37.60657+07	2025-12-18 09:19:37.618799+07	2025-12-18 09:25:24.398034+07	2025-12-18 09:25:24.398031+07
+a9d84c17-eff7-4d4c-ad4a-32d5184ead33	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	flashcard	done	\N	\N	\N	\N	Flashcards từ 11 tài liệu	\N	{"fileIds": ["9e0b4e2c-7050-4a66-85f7-ba41623da8bb", "f9fb59a4-52af-4db8-be49-af35434c36f5", "4838e5a3-9517-4875-9918-0d26be69c24f", "304ffcc5-e281-481c-90e4-f9f7120d2c26", "05260708-9209-4b0f-861c-357caaabcd36", "5ba6ef7a-149b-41be-b901-f98aac4c4f64", "d491bb78-729a-4c75-9da8-e0d94aef734e", "9980a908-9a02-40bc-a7b6-6bb10e67e09f", "e5c2a592-1b47-4831-b623-1e49cfc0e300", "0abbfbc4-493e-42ae-bdc3-1e6f919ae388", "12598628-9255-4e4d-94c5-e24c4b86662d"], "numberOfCards": "standard"}	{"flashcardIds": ["0ba7f6b2-71f7-4ded-85b3-e69978826cdd", "54232bbf-1cfc-4785-bc0f-9aa439cb2c77", "22da5908-0862-46d4-8aba-709fb323dd4a", "9db51362-fa0c-4fe0-a9e3-b3a0d62c9151", "c5f9146c-e3c6-4c9c-84bb-c806c4c9d441", "63752ab4-4b20-4a7d-abee-45b2f84b917d", "5c51e6b5-a317-4ec9-8bce-b44984f99290", "5af82e9c-4258-4ce8-9a31-99f28fa57513", "0f5c58ae-2bce-4900-a3c8-cebd76fa36d9", "115651ce-69c7-48b7-b875-49090a7c23fb", "dd31a958-76ac-4602-b862-9efcf012b174", "b28fc1a7-898a-4dfc-baaf-f069f58bee3b", "61c14783-e62a-4832-802f-8674b3d66973", "4636a4ba-dc3c-43d0-8e35-b84c5034b789", "38815859-ad1c-4000-a988-1608f0f75a75", "c2de8a65-3974-4c6f-abc0-ce8a45249675", "31864e52-53e9-426c-a272-b2048ff3a5f0", "eb68aa3c-e6e3-4dc2-99e5-eeae2de4e42b", "2dd4d9eb-ca4c-4c66-8f33-bc4e0e4d778a", "46175408-2dcb-435f-81e3-4e489d627d71", "cd50b865-d0e9-49cb-a830-32bd8daac48f", "0bb77894-5dd8-443b-99c2-2fe67a85cc02", "b5d39bbe-49ca-423b-9647-47940a1c17df", "d4d2dadd-be8f-4b41-856a-f729d41230d3", "f565f226-2ae4-46aa-a89f-0be158f2b047", "575624e5-e3c7-48e5-ae79-f44acc579629"], "flashcardCount": 26}	\N	2025-12-18 23:00:41.475496+07	2025-12-18 23:00:41.587291+07	2025-12-18 23:07:25.811685+07	2025-12-18 23:07:25.811681+07
+4257dd48-bc78-42a4-8234-1dbb7811e97e	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	suggestion	done	\N	\N	\N	\N	Câu hỏi gợi mở	\N	{"fileIds": ["12598628-9255-4e4d-94c5-e24c4b86662d"]}	{"title": "Câu hỏi gợi mở", "suggestionCount": 8, "suggestionEntityId": "2121d1c3-4072-4814-9c0f-c4fa4eec962a"}	\N	2025-12-19 21:36:31.0817+07	2025-12-19 21:36:31.134651+07	2025-12-19 21:36:40.179273+07	2025-12-19 21:36:40.179271+07
+\.
+
+
+--
+-- Data for Name: notebook_ai_summaries; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.notebook_ai_summaries (id, content_md, script_tts, language, audio_url, audio_format, audio_duration_ms, tts_provider, tts_model, voice_id, voice_label, voice_speed, voice_pitch, created_at, updated_at, create_by) FROM stdin;
+1221f4c1-6ad8-444c-bdf4-7dff77d6fc20	## Phân Vùng Ảnh\n\nPhân vùng ảnh là quá trình chia ảnh thành các **vùng có cùng tính chất** (mức xám, màu,...). Các điểm trong vùng có độ biến thiên mức xám đồng đều.\n\n### Các phương pháp phân vùng ảnh cơ bản:\n\n*   **Dựa vào ngưỡng độ xám**\n*   **Dựa vào phân chia miền kề**\n*   **Dựa vào xác định biên**\n\n## Phân Ngưỡng Ảnh\n\nNgưỡng là giá trị (0-255) chia tách độ xám ảnh thành hai miền: nhỏ hơn ngưỡng và lớn hơn hoặc bằng ngưỡng. Phân ngưỡng ảnh đơn giản thay thế giá trị lớn hơn/bằng ngưỡng và bé hơn ngưỡng bằng giá trị mới.\n\n### Các phương pháp phân ngưỡng ảnh:\n\n1.  **Phân ngưỡng đơn giản (Thresholding):** So sánh giá trị pixel với ngưỡng và gán giá trị mới dựa trên điều kiện (ví dụ: `THRESH_BINARY`, `THRESH_BINARY_INV`, `THRESH_TRUNC`, `THRESH_TOZERO`, `THRESH_TOZERO_INV`).\n\n2.  **Phân ngưỡng thích nghi (Adaptive Thresholding):** Chia ảnh thành vùng nhỏ và tính ngưỡng riêng cho từng vùng, phù hợp với ảnh có ánh sáng không đồng đều. Sử dụng `cv2.adaptiveThreshold()` với các tham số:\n    *   `adaptiveMethod`: `cv2.ADAPTIVE_THRESH_MEAN_C` (trung bình vùng lân cận trừ C) hoặc `cv2.ADAPTIVE_THRESH_GAUSSIAN_C` (tổng có trọng số Gaussian trừ C).\n    *   `thresholdType`: `THRESH_BINARY` hoặc `THRESH_BINARY_INV`.\n    *   `block_size`: Kích thước cửa sổ tính ngưỡng (3, 5, 7,...).\n    *   `C`: Tham số bù trừ.\n\n3.  **Otsu Thresholding:** Tự động tính ngưỡng từ histogram ảnh bằng `cv2.THRESH_OTSU`. Thường kết hợp với lọc Gauss.\n\n## Tìm Đường Bao (Contours)\n\nContour là tập các điểm liên tục tạo thành đường cong khép kín, cùng màu hoặc mật độ. Được dùng để phân tích, phát hiện và nhận dạng đối tượng.\n\n### Các hàm chính:\n\n*   **`cv2.findContours(image, mode, method)`**: Tìm contour trong ảnh nhị phân.\n    *   `image`: Ảnh nhị phân đầu vào.\n    *   `mode`: Kiểu trích xuất contour (ví dụ: `RETR_TREE`, `RETR_EXTERNAL`).\n    *   `method`: Phương pháp xấp xỉ contour (ví dụ: `CHAIN_APPROX_SIMPLE`, `CHAIN_APPROX_NONE`).\n    *   Trả về: Danh sách các contour và thông tin về cấu trúc cây contour.\n*   **`cv2.drawContours(image, contours, contourIdx, color, thickness)`**: Vẽ contour lên ảnh.\n    *   `image`: Ảnh đầu vào (grayscale hoặc màu).\n    *   `contours`: Danh sách các contour.\n    *   `contourIdx`: Chỉ số contour cần vẽ (-1 để vẽ tất cả).\n    *   `color`: Màu của contour (BGR).\n    *   `thickness`: Độ dày của đường contour (số âm để tô màu).\n\n### Quy trình cơ bản:\n\n1.  Đọc ảnh.\n2.  Chuyển đổi sang ảnh xám.\n3.  Phân ngưỡng (thresholding) để tạo ảnh nhị phân.\n4.  Tìm contour bằng `cv2.findContours()`.\n5.  Vẽ contour lên ảnh bằng `cv2.drawContours()`.\n\n## Phép Toán Hình Thái Học\n\nDùng cho ảnh xám và ảnh nhị phân để làm mỏng/dày đối tượng, loại bỏ nhiễu, nối liền các phần rời rạc, làm đầy chỗ trống.\n\n## Điểm chính cần nhớ\n\n*   Phân vùng ảnh chia ảnh thành các vùng có cùng tính chất.\n*   Có nhiều phương pháp phân vùng dựa trên ngưỡng, miền kề và biên.\n*   Phân ngưỡng ảnh bao gồm ngưỡng đơn giản, thích nghi và Otsu.\n*   Contour là đường bao quanh đối tượng, có thể tìm và vẽ bằng OpenCV.	Chào các bạn, hôm nay mình sẽ cùng tìm hiểu về phân vùng ảnh. Phân vùng ảnh là việc chia một bức ảnh thành các vùng nhỏ hơn, mà mỗi vùng có những đặc điểm tương đồng với nhau, ví dụ như cùng mức xám hoặc cùng màu sắc. Các điểm ảnh trong cùng một vùng thường có sự biến đổi độ xám một cách đồng đều. Có nhiều phương pháp để thực hiện việc này, trong đó có ba phương pháp cơ bản là dựa vào ngưỡng độ xám, dựa vào phân chia miền kề và dựa vào việc xác định biên. Một kỹ thuật quan trọng là phân ngưỡng ảnh, trong đó chúng ta sẽ chọn một giá trị ngưỡng và chia ảnh thành hai phần: một phần có độ xám nhỏ hơn ngưỡng và một phần có độ xám lớn hơn hoặc bằng ngưỡng. Có nhiều cách để phân ngưỡng, đơn giản nhất là so sánh từng pixel với ngưỡng và gán giá trị mới dựa trên điều kiện. Ngoài ra, còn có phân ngưỡng thích nghi, chia ảnh thành các vùng nhỏ và tính toán ngưỡng riêng cho từng vùng, rất hữu ích khi ảnh có ánh sáng không đồng đều. Cuối cùng là Otsu. Thresholding tự động tính ngưỡng tối ưu từ histogram ảnh. Một khái niệm quan trọng khác là contour, hay còn gọi là đường bao. Contour là tập hợp các điểm liên tục tạo thành một đường cong khép kín, thường được dùng để phân tích, phát hiện và nhận dạng đối tượng trong ảnh. Chúng ta có thể tìm contour bằng hàm `cv2.findContours` và vẽ chúng lên ảnh bằng hàm `cv2.drawContours` trong. OpenCV. Cuối cùng, phép toán hình thái học là một công cụ mạnh mẽ để xử lý ảnh, giúp làm mỏng hoặc dày đối tượng, loại bỏ nhiễu và nối liền các phần rời rạc. Hy vọng những kiến thức này sẽ giúp các bạn hiểu rõ hơn về phân vùng ảnh. Chúc các bạn học tốt!	vi	/uploads/tts/summary_6bbf980a-105d-498b-b295-1f4f503cfb3d.wav	wav	85770	gemini	gemini-2.5-flash-preview-tts	Orus	Orus	\N	\N	2025-12-17 19:11:14.029152+07	\N	7710814e-22b0-40c0-8d32-5bf9f74a14de
+6d4af3e7-abf8-4733-afcd-b9a8479e8977	## Hướng dẫn cài đặt phần mềm và môi trường lập trình\n\n- Cài đặt **JDK**.\n- Cài đặt **Eclipse EE** ([link download]).\n- Cài đặt **MySQL** (phiên bản mới nhất từ [link download]).\n- Cài đặt **MySQL Workbench** ([link download]).\n- Download **Tomcat** ([link download] phiên bản 10.1, 9.0 hoặc 8.5). Giải nén vào ổ C.\n\n## Cấu hình Tomcat trong Eclipse\n\n1.  `Eclipse > Window > Preferences > Server > Runtime Environment`.\n2.  `Add > Apache > Apache Tomcat` (ví dụ: 10.0).\n3.  Chọn đường dẫn đến thư mục cài đặt Tomcat.\n\n## Tạo Project Dynamic Web và xuất ra màn hình câu "Lập trình Java Web Servlet"\n\n1.  Tạo Project Dynamic Web.\n2.  Tạo file `index.html` trong thư mục `webapp`.\n\n## Cài đặt plugin Emmet cho Eclipse\n\n1.  `Help > Install new software`.\n2.  Nhập đường dẫn: `http://download.emmet.io/eclipse/updates/`.\n\n## Bài tập thực hành\n\n### 1. Tạo Project Dynamic Web\n\n- Tạo file `index.html` trong thư mục `webapp` để hiển thị dòng chữ **"Lập trình Java Web Servlet"**.\n\n### 2. Tạo Button sử dụng doGet()\n\n- Tạo project `Vidu2`.\n- Trong `index.html`, tạo form với `method="get"` và button **"Hiển thị thông tin"**, action trỏ đến servlet `"vidu2"`.\n- Tạo file `Vidu2.java` để xử lý:\n    - Sử dụng `doGet()` để lấy thông tin và hiển thị **"Kết quả hiển thị"**, chuỗi **"Lập trình Java Web Servlet"** (màu xanh dương) và thời gian hiện tại (màu đỏ).\n\n### 3. Tạo Button sử dụng doPost()\n\n- Tương tự bước 2, nhưng thay `method="get"` bằng `method="post"` trong form `index.html`.\n\n### 4. Tạo button hiển thị thông tin bằng phương thức doPost()\n\n- Thay đổi `method="get"` thành `method="post"` trong `index.html`.\n- Copy code từ `doGet()` sang `doPost()` trong `Vidu2.java`.\n\n### 5. Sử dụng doGet() hoặc doPost() để đưa ra form đăng nhập và hiển thị thông tin\n\n### 6. Xây dựng form và giải phương trình bậc 2\n\n- Tạo Dynamic Web Project với form nhập chiều dài và chiều rộng để tính diện tích (trong `Vidu3`).\n- Đoạn code tạo một form HTML để nhập chiều dài và chiều rộng, sau đó gửi dữ liệu đến servlet `Vidu3.Java`.\n- Servlet này nhận dữ liệu, chuyển đổi thành số double, tính diện tích và hiển thị kết quả. Nếu có lỗi xảy ra trong quá trình chuyển đổi, nó sẽ in ra lỗi.\n\n## Điểm chính cần nhớ\n\n- Cài đặt và cấu hình đầy đủ môi trường lập trình (JDK, Eclipse, MySQL, Tomcat).\n- Nắm vững cách tạo Dynamic Web Project.\n- Phân biệt và sử dụng thành thạo phương thức `doGet()` và `doPost()` trong Servlet.\n- Xử lý dữ liệu và hiển thị thông tin từ form HTML trong Servlet.	\N	vi	\N	\N	\N	gemini	gemini-2.5-flash-preview-tts	\N	\N	\N	\N	2025-12-17 23:58:34.60219+07	\N	7710814e-22b0-40c0-8d32-5bf9f74a14de
+74d149a1-7ddd-4272-bd3a-6ae4c696f672	## Phát hiện biên\n\n**Biên** là đặc tính quan trọng của ảnh, là điểm có sự thay đổi nhanh về mức xám, tạo thành đường ranh giới giữa các chi tiết.\n\nCó hai phương pháp phát hiện biên:\n\n*   **Trực tiếp:** Dựa vào đạo hàm (**Gradient**, **Laplace**)\n*   **Gián tiếp:** Phân vùng ảnh\n\n### Phát hiện biên Gradient\n\nDựa trên vectơ biểu thị tốc độ thay đổi mức xám. Các toán tử phổ biến là **Sobel**, **Prewitt**, **Robert**.\n\nĐộ lớn Gradient tính bằng căn bậc hai hoặc tổng giá trị tuyệt đối của các thành phần đạo hàm.\n\nTrong xử lý ảnh, đạo hàm thành phần được tính bằng tích chập với mặt nạ (H_x, H_y).\n\n**Thuật toán:**\n\n1.  Tính Gx, Gy\n2.  Tính G = |Gx| + |Gy|\n3.  Nếu G lớn hơn ngưỡng thì điểm ảnh là biên.\n\n**Các công đoạn:**\n\n1.  Làm nổi biên (nhân chập với mặt nạ)\n2.  So sánh ngưỡng\n\n**Toán tử Prewitt và Sobel** là các ví dụ về mặt nạ.\n\n### Các bước thực hiện thuật toán Sobel trong OpenCV\n\n1.  Làm mịn ảnh bằng `cv2.GaussianBlur()` để giảm nhiễu.\n2.  Chuyển ảnh sang ảnh xám bằng `cv2.cvtColor()`.\n3.  Áp dụng toán tử Sobel bằng `cv.Sobel()` để tính đạo hàm theo hướng x và y, sử dụng kernel 3x3. `ddepth` thường đặt `cv2.CV_16S` hoặc `cv2.CV_64F`.\n4.  Lấy giá trị tuyệt đối và chuyển đổi kết quả thành 8-bit bằng `cv2.convertScaleAbs()`.\n5.  Tính tổng trọng số của hai ảnh đạo hàm (x và y) bằng `cv.addWeighted()`.\n6.  Hiển thị kết quả bằng `cv2.imshow()`.\n\n### Kiểu dữ liệu ảnh trong OpenCV\n\n`CV_8U`, `CV_8S`, `CV_16U`, `CV_16S`, `CV_32S`, `CV_32F`, `CV_64F`\n\n## Các phương pháp phát hiện biên ảnh khác\n\n### Toán tử Kirsh (toán tử la bàn)\n\n*   Đo gradient theo 8 hướng, mỗi hướng cách nhau 45 độ.\n*   Đạo hàm của ảnh là giá trị lớn nhất trong 8 đạo hàm hướng.\n*   Toán tử la bàn gồm 8 mặt nạ, mặt nạ hướng 0 độ trùng với Hx của toán tử Gradient, các mặt nạ còn lại được tạo bằng cách quay Hx.\n\n### Toán tử Laplace\n\n*   Sử dụng đạo hàm bậc hai để phát hiện biên khi độ sáng thay đổi chậm.\n*   Đạo hàm bậc hai thực chất là phép nhân chập với toán tử Laplace.\n*   Biên được xác định khi đạo hàm bậc hai nhỏ hơn 0.\n*   Kỹ thuật này cho đường biên mảnh nhưng nhạy cảm với nhiễu.\n\n**Các bước áp dụng toán tử Laplace:**\n\n1.  Tải ảnh.\n2.  Lọc Gaussian giảm nhiễu.\n3.  Chuyển ảnh sang xám.\n4.  Áp dụng toán tử Laplacian.\n5.  Lấy giá trị tuyệt đối và chuyển về 8-bit.\n\n### Thuật toán Canny\n\n*   Tương đối tốt, cho đường biên mảnh, phát hiện chính xác điểm biên và loại bỏ nhiễu.\n*   Gồm các bước: lọc Gauss và tách biên bằng hàm Canny.\n*   Hàm Canny dùng để tách biên ảnh, loại bỏ nhiễu bằng bộ lọc Gauss.\n*   Canny sử dụng hai ngưỡng trên và dưới để xác định pixel thuộc cạnh biên hoặc loại bỏ.\n*   Tỉ lệ ngưỡng trên:dưới được đề xuất là 2:1 hoặc 3:1.\n\n## Contour\n\n**Contour** là tập các điểm liên tục tạo thành đường cong kín, có giá trị màu hoặc mật độ gần giống nhau, dùng để phân tích hình dạng, phát hiện và nhận dạng đối tượng.\n\n### Hàm `cv2.findContours()`\n\n`cv2.findContours(image, mode, method)` tìm contour trong ảnh nhị phân, trả về danh sách contour và thông tin về thứ bậc giữa chúng.\n\n*   `image`: ảnh nhị phân.\n*   `mode`: xác định kiểu trích xuất contour (`RETR_TREE`, `RETR_EXTERNAL`,...).\n*   `method`: xác định phương pháp xấp xỉ contour (`CHAIN_APPROX_SIMPLE`, `CHAIN_APPROX_NONE`,...).\n\n### Hàm `cv2.drawContours()`\n\n`cv2.drawContours(image, contours, contourTndex, color, thickness)` vẽ contour lên ảnh.\n\n*   `image`: ảnh đầu vào.\n*   `contours`: danh sách contour.\n*   `contourTndex`: chỉ định contour cần vẽ (để -1 để vẽ tất cả).\n*   `color`: màu contour (BGR).\n*   `thickness`: độ dày (để số âm để tô màu).\n\n### Ví dụ code\n\nSử dụng Canny và findContours để tìm và vẽ contour trên ảnh.\n\n**Các bước:**\n\n1.  Chuyển ảnh thành ảnh nhị phân bằng thuật toán Canny.\n2.  Tìm đường viền (contours) trên ảnh nhị phân.\n3.  Vẽ các đường viền tìm được lên một ảnh đen.\n4.  Hiển thị ảnh gốc và ảnh chứa các đường viền.	\N	vi	\N	\N	\N	gemini	gemini-2.5-flash-preview-tts	\N	\N	\N	\N	2025-12-18 09:20:07.065295+07	\N	7710814e-22b0-40c0-8d32-5bf9f74a14de
 \.
 
 
@@ -858,8 +1362,8 @@ bb86a262-fc97-44a6-a972-1122b8563f90	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40
 
 COPY public.notebook_bot_conversation_states (id, user_id, notebook_id, conversation_id, last_opened_at, metadata) FROM stdin;
 adf5135d-98a9-4c86-bb1c-0944b62e8926	7710814e-22b0-40c0-8d32-5bf9f74a14de	667fd949-9fad-4367-92fb-bdfb409fc00a	7fdeb88a-91dd-40c1-aaac-ca387765f804	2025-12-11 19:25:17.553922+07	\N
-91ec4e0e-c30b-46c9-a59e-f13d8ec5292b	7710814e-22b0-40c0-8d32-5bf9f74a14de	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	2025-12-11 22:48:58.809177+07	\N
 4ebc3f19-3e8b-4199-b1e6-a52d0192f95e	991c40a1-c2b1-4e62-972a-33deafd708ff	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	2025-12-13 11:17:08.589272+07	\N
+91ec4e0e-c30b-46c9-a59e-f13d8ec5292b	7710814e-22b0-40c0-8d32-5bf9f74a14de	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	2025-12-18 10:13:28.539136+07	\N
 \.
 
 
@@ -868,15 +1372,20 @@ adf5135d-98a9-4c86-bb1c-0944b62e8926	7710814e-22b0-40c0-8d32-5bf9f74a14de	667fd9
 --
 
 COPY public.notebook_bot_conversations (id, notebook_id, created_by, title, metadata, created_at, updated_at) FROM stdin;
-5d1b6360-8dfe-4f51-93e8-84de1409b135	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	bài thực hành 1 yêu cầu gì vậy	\N	2025-12-11 01:04:46.122836+07	2025-12-13 18:20:06.368101+07
 b472ebf9-65c5-40bf-aed3-a174dafb6021	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	chào nhé	\N	2025-12-11 13:23:22.981197+07	2025-12-11 13:23:56.302689+07
 43d86371-df8e-4bac-8f11-dd5207a35108	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	New chat	\N	2025-12-11 13:37:43.782187+07	\N
 3af8ce2b-24da-4ac2-b3f6-952a2ed11d9f	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	New chat	\N	2025-12-08 09:42:51.872666+07	\N
-3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	tài liệu này có gì	\N	2025-12-11 17:26:13.939838+07	2025-12-14 21:20:12.367665+07
 7fdeb88a-91dd-40c1-aaac-ca387765f804	667fd949-9fad-4367-92fb-bdfb409fc00a	7710814e-22b0-40c0-8d32-5bf9f74a14de	an toàn thông tin chương 6 bạn nghĩ khó không	\N	2025-12-11 17:23:10.449702+07	2025-12-11 19:26:06.610729+07
+3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	tài liệu này có gì	\N	2025-12-11 17:26:13.939838+07	2025-12-18 08:49:37.677532+07
+d44d7acc-bc5e-4933-958d-ad8c16473e24	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	chào bạn nha	\N	2025-12-18 09:46:23.391227+07	2025-12-18 09:47:05.467678+07
+7bf15b84-b4e1-4e3e-b4d8-3679eca57aef	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	chào bạn	\N	2025-12-14 22:18:30.242773+07	2025-12-18 09:50:09.73895+07
 8011d369-f90e-4cdc-8fef-5b87decd5b3b	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	New chat	\N	2025-12-11 00:44:39.230174+07	\N
+8f882547-e8e5-4482-92a2-e72a5e19acec	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	trong bài thực thành 1 thì bao gồm những nội dung nào	\N	2025-12-18 10:11:41.45671+07	2025-12-18 10:12:47.529486+07
+5a4e1a41-661f-4bfe-869b-667a81156be5	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	New chat	\N	2025-12-18 18:58:23.185561+07	\N
 6e91a1d5-f22f-445c-b23d-3839452e3822	d56ea488-8983-4b83-9844-8d36239f05df	7710814e-22b0-40c0-8d32-5bf9f74a14de	chào bạn, tổng quan file no sql	\N	2025-12-11 23:11:02.1349+07	2025-12-11 23:28:17.459614+07
 28612d05-30e3-41a0-ad23-9d7779610652	055dc832-3d50-46f3-bb71-6c535d7a668a	7710814e-22b0-40c0-8d32-5bf9f74a14de	New chat	\N	2025-12-11 23:52:13.603651+07	\N
+5d1b6360-8dfe-4f51-93e8-84de1409b135	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	bài thực hành 1 yêu cầu gì vậy	\N	2025-12-11 01:04:46.122836+07	2025-12-20 21:03:16.819757+07
+d3d5b424-a892-4f19-b6d2-a754baf1370c	667fd949-9fad-4367-92fb-bdfb409fc00a	22bfd357-e85d-40a7-8670-5bb5d545af83	New chat	\N	2025-12-20 21:28:59.955682+07	\N
 eefb5e8b-00e1-4445-8847-e08b4fd2dc8f	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	chào bạn nha	\N	2025-12-08 09:42:51.872666+07	2025-12-13 08:59:06.95042+07
 9188d839-1165-4e8a-8ff2-5f4a7a208375	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	chào bạn nha	\N	2025-12-13 08:59:49.764635+07	2025-12-13 09:00:04.707929+07
 \.
@@ -968,6 +1477,17 @@ e574d2f9-1371-4098-9212-0e743fa868e3	c6808717-7b1b-482f-a5d9-8d09d41ce45f	WEB	\N
 8b60966c-b680-4b28-86c8-86f460830737	3b068c7a-6278-44f8-9501-082281ed9006	WEB	\N	\N	Giá vàng hôm nay 14/12, giá vàng online trực tuyến cập nhật từng giờ	https://vnexpress.net/chu-de/gia-vang-1403	Sản phẩm. Triệu đồng/lượng, Hôm nay (12/12/2025). Giá mua, Giá bán. Giá vàng thế giới. 4.335,7$ +76.3$, 4.337,7$ +76.3$. SJC 1L, 10L. 153,6 +1100K, 155,6	google	2	0.95	2025-12-14 21:20:20.367806+07
 38c943bf-cdd4-4deb-8cde-163a6e9bf6ab	3b068c7a-6278-44f8-9501-082281ed9006	WEB	\N	\N	Giá vàng hôm nay - Bảng giá vàng nhẫn, vàng miếng, vàng 9999 ...	https://baomoi.com/tien-ich-gia-vang.epi	Giá vàng SJC được niêm yết ở mức 154,3 – 156,3 triệu đồng/lượng, giá vàng thế giới giao ngay trên sàn Kitco đang ở mức 4.300,2 USD/oz.	google	1	0.9	2025-12-14 21:20:20.367876+07
 68de7e8b-99fc-4d35-a467-6adb36f1dfcf	3b068c7a-6278-44f8-9501-082281ed9006	WEB	\N	\N	Giá vàng hôm nay	https://baotinmanhhai.vn/gia-vang-hom-nay	GIÁ VÀNG HÔM NAY. TẠI BẢO TÍN MẠNH HẢI. Đơn vị tính: Đồng/chỉ. LOẠI VÀNG, MUA VÀO, BÁN RA. Vàng Kim Gia Bảo 24K (999.9), 15.230.000, 15.530.000. Đồng vàng Kim ...	google	3	0.85	2025-12-14 21:20:20.367917+07
+0a1286ce-1618-49e1-8a69-48d2c51a19c9	8d698bcf-1208-432e-a3d4-64bd012f196c	RAG	05260708-9209-4b0f-861c-357caaabcd36	3	\N	\N	\N	rag	\N	0.73	2025-12-18 00:00:51.772492+07
+59cbc067-edef-472e-a7fb-a8f065a5a0bc	8d7bb887-35e7-44ef-aeaf-bfecf37ad984	RAG	05260708-9209-4b0f-861c-357caaabcd36	4	\N	\N	\N	rag	\N	0.78	2025-12-18 00:16:55.703342+07
+ae48288c-cbbd-4a1f-b603-609a38adb247	c993b1ff-7bf4-47d5-bcf7-7db985eb5ecc	RAG	12598628-9255-4e4d-94c5-e24c4b86662d	0	\N	\N	\N	rag	\N	0.74	2025-12-18 08:39:40.123895+07
+64c748ee-7d60-4b50-a1d2-afe5f95b15c2	9cc0ecdc-d1d8-4c4a-b4a7-0d0dfc1418b8	RAG	05260708-9209-4b0f-861c-357caaabcd36	1	\N	\N	\N	rag	\N	0.81	2025-12-18 08:47:09.580319+07
+71997379-d6fe-451b-a867-3371df0d7712	9cc0ecdc-d1d8-4c4a-b4a7-0d0dfc1418b8	RAG	05260708-9209-4b0f-861c-357caaabcd36	2	\N	\N	\N	rag	\N	0.8	2025-12-18 08:47:09.580491+07
+d2f9c114-9252-494d-a5c5-d5d518c45200	57471f92-a2dc-4424-a13a-2017b161db64	RAG	12598628-9255-4e4d-94c5-e24c4b86662d	0	\N	\N	\N	rag	\N	0.77	2025-12-18 09:49:52.490723+07
+e9953fe1-ec58-47fa-9343-7744d8f2801d	e894f7bc-26ac-4a06-8156-f19c618b0fdd	RAG	12598628-9255-4e4d-94c5-e24c4b86662d	0	\N	\N	\N	rag	\N	0.74	2025-12-18 10:12:50.547723+07
+c64f1a16-50f4-432c-9c8b-0ff4227402b9	f2d81525-e124-48d2-b0de-e95aac6b5ce4	RAG	12598628-9255-4e4d-94c5-e24c4b86662d	0	\N	\N	\N	rag	\N	0.78	2025-12-20 00:29:57.937693+07
+78bdb15f-e99c-46e0-a3cc-cf6ea34ae3f9	f2d81525-e124-48d2-b0de-e95aac6b5ce4	RAG	05260708-9209-4b0f-861c-357caaabcd36	3	\N	\N	\N	rag	\N	0.78	2025-12-20 00:29:57.93844+07
+4a561eaa-cd92-461d-91e3-6d4ea4d5259d	591f9a13-1635-4de6-936c-f289ad60b166	RAG	05260708-9209-4b0f-861c-357caaabcd36	3	\N	\N	\N	rag	\N	0.75	2025-12-20 00:30:40.011501+07
+9e98dca3-2956-45bc-b0b5-9a5216854109	d6ccb61a-1ea9-494f-993c-f0fc2f738bf2	RAG	12598628-9255-4e4d-94c5-e24c4b86662d	0	\N	\N	\N	rag	\N	0.79	2025-12-20 21:03:21.273697+07
 \.
 
 
@@ -1037,6 +1557,7 @@ d1e1c189-acd7-4502-b7a9-75d1c5093555	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	eefb5e
 bad9a8ee-a6c5-4cac-9e35-52b8abf4374f	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	eefb5e8b-00e1-4445-8847-e08b4fd2dc8f	\N	assistant	Các bước tách biên trong Sobel:\n\n1.  Dùng hàm `cv2.GaussianBlur()` để loại bớt nhiễu, làm mịn ảnh trước để thuật toán phát hiện biên làm việc tốt hơn:\n    `cv.GaussianBlur(src, (3, 3), 0)`\n2.  Chuyển ảnh sang ảnh xám: `cv2.cvtColor(img , cv2.COLOR_BGR2GRAY)`\n3.  Áp dụng hàm Sobel nhân tích chập ảnh gốc với kernel 3x3 theo hướng x và y:\n    `cv.Sobel(src, ddepth, dx, dy,ksize)`\n    *   `src_gray`: ảnh đầu vào (8 bit: CV 8U hay np.uint8)\n    *   `ddepth`: độ sâu của ảnh đầu ra, thường đặt `cv2.CV_16S`, `cv2.CV_64F`\n    *   `x order`: Bậc của đạo hàm theo hướng x (`xorder=1`, `yorder=0`)\n    *   `y order`: Bậc của đạo hàm theo hướng y (`xorder=0`, `yorder=1`)\n    `grad_x = cv2.Sobel(src_gray, cv2.CV_64F, 1, 0, ksize)`\n    `grad_y = cv2.Sobel(src_gray, cv2.CV_64F, 0, 1, ksize)`\n4.  Lấy giá trị tuyệt đối và chuyển đổi kết quả thành 8-bit:\n    `cv2.convertScaleAbs(src)`\n    `abs_grad_x = cv2.convertScaleAbs(grad_x)`\n    `abs_grad_y = cv2.convertScaleAbs(grad_y)`\n5.  Tính tổng trọng số của 2 mảng (2 ảnh):\n    `cv.addWeighted(src1, alpha, src2, beta, gamma)`\n    `grad = cv.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)`\n6.  Hiện kết quả: `cv2.imshow(grad)`	RAG	\N	2025-12-11 21:52:13.701342+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
 cf9e6b92-3ee0-437d-80f5-ce3de2f97e20	d56ea488-8983-4b83-9844-8d36239f05df	6e91a1d5-f22f-445c-b23d-3839452e3822	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	chào bạn, tổng quan file no sql	RAG	\N	2025-12-11 23:28:17.459067+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
 fcb8d4da-00dd-49b4-bfe4-38b613dcaa8c	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	eefb5e8b-00e1-4445-8847-e08b4fd2dc8f	991c40a1-c2b1-4e62-972a-33deafd708ff	user	ảnh gái xihnh 8k baby	WEB	\N	2025-12-12 16:07:16.501083+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+28e96565-a8c3-48f6-9dc3-f6849ecd105d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	8f882547-e8e5-4482-92a2-e72a5e19acec	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	trong bài thực thành 1 thì bao gồm những nội dung nào	RAG	\N	2025-12-18 10:12:47.52898+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
 97209e7e-65de-4f42-9e69-53fbd3b75686	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	eefb5e8b-00e1-4445-8847-e08b4fd2dc8f	\N	assistant	Dưới đây là một số hình ảnh liên quan đến "gái xinh 8k baby" mà tôi tìm được:\n\n![nàng Heny Vuetnamese](https://scontent.fhan9-1.fna.fbcdn.net/v/t39.30808-6/563997062_122145570314703517_8044822144190654902_n.jpg?stp=dst-jpg_tt6&amp;cstp=mx2000x1000&amp;ctp=p600x600&amp;_nc_cat=100&amp;ccb=1-7&amp;_nc_sid=b96d88&amp;_nc_ohc=m3xOBKXMdLkQ7kNvwHEt7Vx&amp;_nc_oc=AdnbSSzPrH_46MAYoOhQDpZ7ROW-sODbCw0r8BxV2IQudxm-AP0SdQ5ZZK34Gc7f_ZQ&amp;_nc_zt=23&amp;_nc_ht=scontent.fhan9-1.fna&amp;_nc_gid=12I4pPaNREeqx3Wl4UGSqg&amp;oh=00_AfnlijBGrxJlOxwqz6GKCJA5mXX2t8tGdtkdSvVje3ihhA&amp;oe=6941B06C)\n\n![Casio 28mm Nữ LTP-1183A-7ADF](https://cdn.watchstore.vn/wp-content/uploads/1970/11/dong-ho-casio.jpg)\n\n![Huỳnh Tiên](https://kenh14cdn.com/zoom/600_315/2017/744a7052-1492532507157-126-5-617-958-crop-1492534071546.jpg)\n\n![Tạo Ảnh Đẹp](https://taoanhdep.com/wp-content/uploads/2023/03/taoanhdep.jpeg)\n\n![Cách đánh má hồng bằng son](http://file.hstatic.net/1000006063/article/-_thegioiskinfood.com_-_cach_danh_ma_hong_bang_son_don_gian__sieu_xinh_b62d2277ae9f4cb1ae79c277a29fddb5.jpg)\n\n![Ảnh Noel bằng AI cho bé](https://cdn-media.sforum.vn/storage/app/media/nhuy/Nhu-Y-1/tao-anh-noel-bang-ai-cho-be.jpg)\n\n![ảnh Halloween cho bé](https://tintuc.dienthoaigiakho.vn/wp-content/uploads/2025/10/prompt-anh-halloween-cho-be-1.jpg)\n\n![Mặc áo dài](https://minhtuanmobile.com/uploads/blog/mac-ao-dai-di-khap-cac-tinh-thanh-viet-nam-voi-1-cau-lenh-251118023829.webp)\n\n![Hình nền chibi](https://24hstore.vn/images/news/2024/09/09/original/hinh-nen-chibi_1725866012.jpg)	WEB	\N	2025-12-12 16:07:47.003519+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
 9d8f9acc-61e7-41af-93c8-7b458e3ba262	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	eefb5e8b-00e1-4445-8847-e08b4fd2dc8f	991c40a1-c2b1-4e62-972a-33deafd708ff	user	ảnh gái xinh	WEB	\N	2025-12-12 16:11:06.883048+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
 27ccd9bc-0ecc-4657-a81c-b324233ee829	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	eefb5e8b-00e1-4445-8847-e08b4fd2dc8f	\N	assistant	Dưới đây là một số hình ảnh liên quan đến "gái xinh" mà tôi tìm được:\n\n![Ảnh gái xinh Việt Nam](https://xoilangnghe.vn/wp-content/uploads/2025/08/avt-anh-gai-xinh.png)\n\n![Ảnh gái xinh quyến rũ](https://cdn2.fptshop.com.vn/unsafe/Anh_gai_xinh_69b0f91a1d.jpg)	WEB	\N	2025-12-12 16:11:38.398342+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
@@ -1092,6 +1613,41 @@ cfff8bae-99a4-4854-ac6d-54b5d3607076	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb473
 c6808717-7b1b-482f-a5d9-8d09d41ce45f	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Dựa trên kết quả tìm kiếm trên web, một số ứng dụng thực tế của thị giác máy tính bao gồm:\n\n*   **Ứng dụng trong VR/AR:** Thị giác máy tính cho phép các thiết bị hiểu và tương tác với thế giới thực trong thời gian thực bằng cách xử lý dữ liệu hình ảnh ([vinbigdata.com](https://vinbigdata.com/kham-pha/su-ket-hop-cua-thi-giac-may-tinh-va-vr-ar.html)).\n*   **Nhận dạng mẫu:** Được sử dụng trong các ứng dụng khác nhau với độ chính xác cao để phát hiện lỗi và vật thể ([unitxlabs.com](https://vi.unitxlabs.com/pattern-recognition-machine-vision-system-simplified-guide/)).\n*   **Theo dõi đối tượng:** Sử dụng mô hình học sâu để xác định và theo dõi các mục thuộc danh mục, có nhiều ứng dụng thực tế trong nhiều ngành ([aws.amazon.com](https://aws.amazon.com/vi/what-is/computer-vision/)).\n\n![Hiệu chuẩn máy ảnh](https://www.unitxlabs.com/wp-content/uploads/2025/07/8fc0e3231d164d18b8c6261885719fe9.webp)\n![Nhận dạng mẫu](https://www.unitxlabs.com/wp-content/uploads/2025/06/9f49e20594bb4704b2542abb501f90d0.webp)\n![Theo dõi đối tượng](https://a0.awsstatic.com/libra-css/images/logos/aws_logo_smile_1200x630.png)	WEB	\N	2025-12-14 21:19:38.998658+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
 02333e0a-d7c1-49d2-aa74-cc4dad14cce8	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	giá vàng hôm nay	WEB	\N	2025-12-14 21:20:12.3675+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
 3b068c7a-6278-44f8-9501-082281ed9006	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Giá vàng hôm nay (13/12) có nhiều biến động. Theo [vnexpress.net](https://vnexpress.net/chu-de/gia-vang-1403), giá vàng thế giới là 4.335,7$ (mua) và 4.337,7$ (bán). Giá vàng miếng SJC được niêm yết ở mức 154,3 – 156,3 triệu đồng/lượng theo [baomoi.com](https://baomoi.com/tien-ich-gia-vang.epi). Tại Bảo Tín Mạnh Hải, giá vàng Kim Gia Bảo 24K (999.9) là 15.230.000 (mua) và 15.530.000 (bán) theo [baotinmanhhai.vn](https://baotinmanhhai.vn/gia-vang-hom-nay).\n\n![Giá vàng](https://baotinmanhhai.vn/upload/setting/thumb_800x0/website-seo-img-1761792994.jpg)	WEB	\N	2025-12-14 21:20:20.367582+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+066de58d-f50e-497f-b5d5-f14d6ba5a0b1	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	bài thực hành tuần 1 môn java yêu cầu những gì	RAG	\N	2025-12-18 00:00:32.672032+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+122043d7-ced7-4579-8c08-d26fbd3f444d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	```json\n{\n  "answer": "Bài thực hành tuần 1 môn Java bao gồm các yêu cầu sau:\\n\\n*   **Cài đặt phần mềm và môi trường lập trình:**\\n    *   Cài đặt JDK\\n    *   Cài đặt Eclipse bản EE ( [https://www.eclipse.org/downloads/](https://www.eclipse.org/downloads/) )\\n    *   Cài đặt MySQL ( [https://dev.mysql.com/downloads/installer/](https://dev.mysql.com/downloads/installer/) )\\n    *   Cài đặt MySQL Workbench ( [https://dev.mysql.com/downloads/workbench/](https://dev.mysql.com/downloads/workbench/) )\\n    *   Download Tomcat ( [https://tomcat.apache.org/download-10.cgi](https://tomcat.apache.org/download-10.cgi) )\\n\\nNgoài ra, còn có bài thực hành 1 khác với các yêu cầu sau:\\n\\n1.  Đọc và hiển thị ảnh.\\n2.  Viết chương trình in ra giá trị màu tại điểm ảnh có tọa độ nhập vào. Hướng dẫn: Cách nhập vào giá trị số nguyên cho biến x : x = int(input('Nhap toa do x'))\\n3.  Viết chương trình đọc ảnh màu, đổi ảnh màu sang ảnh xám. Hiện ảnh màu và ảnh xám.\\n4.  Viết chương trình đọc video từ tệp với tùy chọn ghi lại hình khi ấn phím s, thoát khi ấn phím q\\n5.  Viết chương trình đọc video với các yêu cầu sau:\\n    *   In ra các thông tin của video gồm số khung hình trên giây, tổng số khung hình.\\n    *   Xem video với màu xám\\n6.  Viết chương trình đọc 2 ảnh màu. Đổi 2 ảnh màu sang ảnh xám. Dùng thư viện matplotlib hiện 4 ảnh trên 1 cửa sổ.\\n\\n**Hướng dẫn nộp bài thực hành:**\\n\\n*   Ghi tên của mình lên ảnh test\\n*   Chạy chương trình, chụp màn hình kết quả đưa vào file word gồm: màn hình chụp kết quả chạy và code của mỗi bài.\\n*   Đặt tên file: TênSV\\_TH1\\n\\n**Lưu ý:**\\n\\n*   Không gửi file cho bạn, nếu bạn dùng file của mình để nộp, cô check ra 2 file giống nhau thì xem như cả 2 đều không làm.\\n*   Code của ChatAI thường rất phức tạp, vì vậy chỉ xem để tham khảo, phải viết lại theo cách đơn giản nhất. Tuyệt đối không đưa nguyên bài code của chat để nộp. Nếu dùng code chat thì xem như không làm.",\n  "sources": [\n    {\n      "source_type": "RAG",\n      "file_id": "5ba6ef7a-149b-41be-b901-f98aac4c4f64",\n      "chunk_index": 0,\n      "score": 0.77,\n      "provider": "rag"\n    },\n    {\n      "source_type": "RAG",\n      "file_id": "12598628-9255-4e4d-94c5-e24c4b86662d",\n      "chunk_index": 0,\n      "score": 0.75,\n      "provider": "rag"\n    }\n  ]\n}\n```	RAG	\N	2025-12-18 00:00:37.845042+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+932d6d08-65a3-466e-81ad-ef2bdf8ffdf9	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	giải thích thêm	RAG	\N	2025-12-18 00:00:47.739383+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+8d698bcf-1208-432e-a3d4-64bd012f196c	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Dựa trên bài thực hành tuần 1 môn Java đã cung cấp, tôi sẽ giải thích thêm:\n\n*   **Cài đặt phần mềm và môi trường lập trình:** Bạn cần cài đặt các công cụ cần thiết để lập trình Java, bao gồm:\n    *   JDK (Java Development Kit): Bộ công cụ phát triển Java.\n    *   Eclipse EE: Môi trường phát triển tích hợp (IDE) phổ biến cho Java.\n    *   MySQL: Hệ quản trị cơ sở dữ liệu.\n    *   MySQL Workbench: Công cụ thiết kế và quản lý cơ sở dữ liệu MySQL.\n    *   Tomcat: Web server để triển khai các ứng dụng web Java.\n\n*   **Bài thực hành 1 (khác):**\n    1.  **Đọc và hiển thị ảnh:** Yêu cầu bạn viết chương trình để đọc một file ảnh và hiển thị nó lên màn hình.\n    2.  **In giá trị màu tại tọa độ:** Nhập tọa độ (x, y) của một điểm ảnh và chương trình sẽ in ra giá trị màu tại điểm đó. \n    3.  **Đổi ảnh màu sang ảnh xám:** Đọc một ảnh màu, chuyển đổi nó thành ảnh xám và hiển thị cả hai ảnh.\n    4.  **Đọc video:** Đọc một video từ file.\n\nCác đoạn trích khác trong ngữ cảnh cung cấp thêm thông tin về cách hình ảnh được lưu trữ và xử lý trong máy tính, bao gồm các khái niệm như pixel, kênh màu (Red, Green, Blue), và ma trận ảnh. Tuy nhiên, chúng không trực tiếp liên quan đến các yêu cầu của bài thực hành tuần 1 đã nêu trước đó.	RAG	\N	2025-12-18 00:00:51.772094+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+db5a0b54-ffba-42c9-adc1-02f18998b3cb	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	Tại sao việc chọn lựa flags phù hợp trong hàm `cv2.imread()` lại quan trọng, và ảnh hưởng của việc này đến quá trình xử lý ảnh tiếp theo là gì?	RAG	\N	2025-12-18 00:16:51.851059+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+8d7bb887-35e7-44ef-aeaf-bfecf37ad984	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Việc chọn lựa flags phù hợp trong hàm `cv2.imread()` rất quan trọng vì nó quyết định cách ảnh được đọc và giải mã, ảnh hưởng trực tiếp đến dữ liệu ảnh mà bạn sẽ làm việc sau này. \n\nDựa trên ngữ cảnh từ bài thực hành tuần 1 môn Java và các thông tin liên quan đến OpenCV:\n\n*   **Đọc ảnh:** `img = cv2.imread('đường dẫn ảnh', flags)`\n*   **Đọc ảnh xám:** `img = cv2.imread('đường dẫn', 0)`\n\nFlags có thể ảnh hưởng đến:\n\n*   **Loại ảnh:** Ảnh màu hay ảnh xám.\n*   **Cấu trúc dữ liệu:** Cách các kênh màu được sắp xếp (ví dụ: BGR, RGB).\n*   **Hiệu suất:** Một số flags có thể tối ưu hóa việc đọc ảnh cho các mục đích sử dụng cụ thể.\n\nNếu bạn chọn flags không phù hợp, ảnh có thể bị đọc sai màu, thiếu thông tin (ví dụ: mất kênh màu), hoặc gây ra lỗi trong quá trình xử lý ảnh tiếp theo. Ví dụ, nếu bạn đọc một ảnh màu bằng flag đọc ảnh xám, bạn sẽ mất thông tin màu sắc, và các thao tác xử lý màu sau này sẽ không thể thực hiện được.	RAG	\N	2025-12-18 00:16:55.702962+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+24311ec7-9698-43e7-9628-ddb3331a3001	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	lấy 1 bài đầy đủ đi	RAG	\N	2025-12-18 08:39:36.147218+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+c993b1ff-7bf4-47d5-bcf7-7db985eb5ecc	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Dựa trên ngữ cảnh từ bài thực hành tuần 1 môn Java và các thông tin liên quan đến OpenCV, đây là một bài đầy đủ:\n\n**BÀI THỰC HÀNH 1**\n\n**Hướng dẫn nộp bài thực hành:**\n\n- Ghi tên của mình lên ảnh test\n- Chạy chương trình, chụp màn hình kết quả đưa vào file word gồm: màn hình chụp kết quả chạy và code của mỗi bài.\n- Đặt tên file: TênSV_TH1\n\n**Lưu ý:**\n\n- Không gửi file cho bạn, nếu bạn dùng file của mình để nộp, cô check ra 2 file giống nhau thì xem như cả 2 đều không làm.\n- Code của ChatAI thường rất phức tạp, vì vậy chỉ xem để tham khảo, phải viết lại theo cách đơn giản nhất. Tuyệt đối không đưa nguyên bài code của chat để nộp. Nếu dùng code chat thì xem như không làm.\n\n**1. Đọc và hiển thị ảnh.**\n\n**2. Viết chương trình in ra giá trị màu tại điểm ảnh có tọa độ nhập vào.**\n\nHướng dẫn: Cách nhập vào giá trị số nguyên cho biến x : `x = int(input('Nhap toa do x'))`\n\n**3. Viết chương trình đọc ảnh màu, đổi ảnh màu sang ảnh xám. Hiện ảnh màu và ảnh xám.**\n\n**4. Viết chương trình đọc video từ tệp với tùy chọn ghi lại hình khi ấn phím s, thoát khi ấn phím q**\n\n**5. Viết chương trình đọc video với các yêu cầu sau:**\n\n- In ra các thông tin của video gồm số khung hình trên giây, tổng số khung hình.\n- Xem video với màu xám\n\n**6. Viết chương trình đọc 2 ảnh màu. Đổi 2 ảnh màu sang ảnh xám. Dùng thư viện matplotlib hiện 4 ảnh trên 1 cửa sổ.**	RAG	\N	2025-12-18 08:39:40.123622+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+c94ce67e-1f27-4643-b0e9-2c059f0e5d81	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	Làm thế nào bạn có thể kết hợp các công cụ như Anaconda, OpenCV và Python để xây dựng một ứng dụng thị giác máy tính đơn giản, ví dụ như nhận diện khuôn mặt?	RAG	\N	2025-12-18 08:47:04.841165+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+9cc0ecdc-d1d8-4c4a-b4a7-0d0dfc1418b8	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Để kết hợp Anaconda, OpenCV và Python để xây dựng một ứng dụng thị giác máy tính đơn giản như nhận diện khuôn mặt, bạn có thể thực hiện theo các bước sau:\n\n1.  **Cài đặt Anaconda:** Anaconda là một nền tảng phân phối Python miễn phí, đi kèm với nhiều thư viện và gói cần thiết cho khoa học dữ liệu và AI, bao gồm cả OpenCV. Bạn có thể tải Anaconda từ [https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual).\n2.  **Tạo môi trường (Environment):** Tạo một môi trường ảo trong Anaconda để quản lý các gói và thư viện riêng biệt cho dự án của bạn. Điều này giúp tránh xung đột giữa các phiên bản thư viện.\n3.  **Cài đặt OpenCV:** Sử dụng lệnh `pip install opencv-python` trong Anaconda Prompt để cài đặt OpenCV.\n4.  **Viết code Python:** Sử dụng OpenCV để đọc, xử lý và hiển thị hình ảnh hoặc video. Dưới đây là một ví dụ đơn giản về cách đọc và hiển thị ảnh:\n\n```python\nimport cv2\n\n# Đọc ảnh\nimg = cv2.imread('image.jpg')\n\n# Hiển thị ảnh\ncv2.imshow('Image', img)\ncv2.waitKey(0)\ncv2.destroyAllWindows()\n```\n\nĐể nhận diện khuôn mặt, bạn có thể sử dụng các hàm có sẵn trong OpenCV, như CascadeClassifier để phát hiện khuôn mặt trong ảnh hoặc video. OpenCV là một thư viện mã nguồn mở hàng đầu cho thị giác máy tính (computer vision), xử lý ảnh và máy học, và các tính năng tăng tốc GPU trong hoạt động thời gian thực.\n\nBạn có thể tham khảo thêm thông tin về cách sử dụng OpenCV và Anaconda trong các tài liệu hướng dẫn và ví dụ trực tuyến.\n	RAG	\N	2025-12-18 08:47:09.580048+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+1ff9a587-3c60-47a8-ae3d-fda0fd5031cd	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	Làm thế nào bạn có thể kết hợp các công cụ như Anaconda, OpenCV và Python để xây dựng một ứng dụng thị giác máy tính đơn giản, ví dụ như nhận diện khuôn mặt?	LLM_ONLY	\N	2025-12-18 08:47:23.252859+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+bd8635de-5190-45af-bfbb-c7c3d8566cbf	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Để kết hợp Anaconda, OpenCV và Python để xây dựng một ứng dụng thị giác máy tính đơn giản như nhận diện khuôn mặt, bạn có thể thực hiện theo các bước sau:\n\n1.  **Cài đặt Anaconda:** Anaconda là một nền tảng phân phối Python miễn phí, đi kèm với nhiều thư viện và gói cần thiết cho khoa học dữ liệu và AI, bao gồm cả OpenCV. Bạn có thể tải Anaconda từ [https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual).\n2.  **Tạo môi trường (Environment):** Tạo một môi trường ảo trong Anaconda để quản lý các gói và thư viện riêng biệt cho dự án của bạn. Điều này giúp tránh xung đột giữa các phiên bản thư viện.\n3.  **Cài đặt OpenCV:** Sử dụng lệnh `pip install opencv-python` trong Anaconda Prompt để cài đặt OpenCV.\n4.  **Viết code Python:** Sử dụng OpenCV để đọc, xử lý và hiển thị hình ảnh hoặc video. Dưới đây là một ví dụ đơn giản về cách đọc và hiển thị ảnh:	LLM_ONLY	\N	2025-12-18 08:47:25.357994+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+c10522ac-1686-40b5-8005-30f5bbade13f	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	tóm tắt xem nào: Hẹn hò đầu tiên.\n—----------------\n\nNhắc đến sinh viên IT, người ta thường nghĩ tới những sinh vật sống dựa vào mì gói, cà phê gói và niềm tin mơ hồ rằng "mai code sẽ chạy". Hùng là một cá thể tiêu biểu như vậy. Ngoại hình không xấu, chỉ là… thiếu ánh sáng mặt trời. Nhìn xa thì giống sinh viên, nhìn gần thì giống đồ án chưa hoàn thiện.\n\nSau một tuần nói chuyện Facebook với một bạn nữ khóa dưới, Hùng quyết định làm một việc mang tính lịch sử: hẹn hò ngoài đời thật. Đây là bước tiến lớn của văn minh loài người, ngang tầm phát minh ra Git nhưng không ai dùng đúng cách.\n\nSuốt một tuần chat, hai bên nói chuyện khá ổn. Ổn ở đây là phía bạn nữ nói 90%, Hùng đóng góp 10% còn lại bằng các câu như:\n"Ừ",\n"À",\n"Thế à",\nvà tuyệt kỹ tối thượng: "Em ăn cơm chưa?"\n\nĐến ngày hẹn, Hùng tắm rửa sạch sẽ, mặc chiếc áo sơ mi phẳng phiu nhất mà nó có - phẳng theo nghĩa là chưa kịp nhăn thêm. Soi gương xong, Hùng tự gật đầu: "Cũng được." Cái "cũng được" này đã theo Hùng từ năm nhất đến giờ.\n\nHai đứa gặp nhau ở quán cà phê. Bạn nữ xuất hiện, đúng kiểu con gái khóa dưới: gọn gàng, xinh xắn, thơm mùi dầu gội chứ không phải mùi deadline. Hùng nhìn thấy mà não lag nhẹ, giống như máy yếu mở Chrome.\n\nNgồi xuống được 3 phút, im lặng bắt đầu lan ra giữa hai người như Wi-Fi yếu. Hùng căng não suy nghĩ xem nên nói gì cho tự nhiên. Cuối cùng, sau khi tổng hợp kinh nghiệm sống ít ỏi của mình, Hùng buột miệng:\n- Em… ăn cơm chưa?\n\nBạn nữ khựng lại nửa giây. Nửa giây đó đủ để Hùng hối hận toàn bộ quyết định ra khỏi nhà hôm nay. Bạn nữ cười lịch sự:\n- Dạ… em ăn rồi ạ.\n\nHùng gật đầu. Thế là hết chủ đề.\n\n5 phút sau, Hùng uống hết ly cà phê dù nó còn nóng. Não tiếp tục chạy vòng lặp vô hạn. Và như một phản xạ đã được lập trình sẵn:\n- Thế… hôm nay em ăn cơm với gì?\n\nBạn nữ bắt đầu hiểu ra vấn đề. Đây không phải là một buổi hẹn, đây là khảo sát khẩu phần ăn.\n\nCả buổi hôm đó, Hùng nói được tổng cộng khoảng 12 câu, trong đó có 7 câu liên quan đến cơm, 3 câu về việc "trời hôm nay nóng nhỉ", và 2 câu xin lỗi vì… không biết nói gì tiếp theo.\n\nKết thúc buổi hẹn, Hùng tiễn bạn nữ về, lòng nhẹ nhõm như vừa nộp xong đồ án, dù biết điểm không cao. Về đến phòng trọ, Hùng mở Facebook, thấy bạn nữ vẫn online. Hùng suy nghĩ rất lâu, rồi nhắn một câu đầy dũng khí:\n"Về tới nơi chưa em?"\n\nGửi xong, Hùng nằm ngửa nhìn trần nhà, thở dài.\nBuổi hẹn đầu tiên kết thúc. Không có cao trào, không có bi kịch. Chỉ có một sinh viên IT nhận ra rằng: viết code còn dễ hơn nói chuyện với con gái ngoài đời.\n\nVà ở đâu đó trong sâu thẳm, Hùng biết… lần sau nhất định sẽ hỏi câu khác.\nCó thể là:\n"Em… uống nước chưa?" Ẩn bớt	LLM_ONLY	\N	2025-12-18 08:49:03.471859+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+32bbbb55-236f-491a-a592-35e182e9b43d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Câu chuyện kể về buổi hẹn hò đầu tiên của Hùng, một sinh viên IT điển hình. Sau một tuần trò chuyện online với bạn nữ khóa dưới, Hùng quyết định gặp mặt. Buổi hẹn diễn ra tại một quán cà phê, nơi Hùng liên tục hỏi bạn nữ đã ăn cơm chưa, khiến cô ấy cảm thấy như đang tham gia một cuộc khảo sát khẩu phần ăn. Hùng cảm thấy việc nói chuyện trực tiếp khó khăn hơn nhiều so với việc viết code. Kết thúc buổi hẹn, Hùng nhắn tin hỏi bạn nữ đã về đến nhà chưa và nhận ra rằng mình cần cải thiện kỹ năng giao tiếp.	LLM_ONLY	\N	2025-12-18 08:49:05.251472+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+1d4bd5b8-5566-4c91-b2a6-e5e27cef2b1e	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	chịu thật	LLM_ONLY	\N	2025-12-18 08:49:37.677371+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+fa3346c2-d6cb-4b82-ac03-71f443a652a5	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	3bb4736e-d8f0-4a3d-ab5d-ea69f2d17fb9	\N	assistant	Dựa vào đoạn hội thoại trước, có vẻ như bạn đang cảm thấy câu chuyện về buổi hẹn hò của Hùng khá hài hước hoặc khó tin.	LLM_ONLY	\N	2025-12-18 08:49:38.712246+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+9da0cb0a-e4df-4408-80fa-0beb9f7112bc	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7bf15b84-b4e1-4e3e-b4d8-3679eca57aef	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	chào bạn	LLM_ONLY	\N	2025-12-18 08:54:47.639959+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+6ad42c68-2800-48dd-966e-db6d8b772899	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7bf15b84-b4e1-4e3e-b4d8-3679eca57aef	\N	assistant	Chào bạn!	LLM_ONLY	\N	2025-12-18 08:54:48.478872+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+6c7ee236-8d9b-4162-aeda-44aeef65acb5	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	d44d7acc-bc5e-4933-958d-ad8c16473e24	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	chào bạn nha	LLM_ONLY	\N	2025-12-18 09:46:30.979849+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+71c86833-5f72-4ec1-8e3b-e703c1351073	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	d44d7acc-bc5e-4933-958d-ad8c16473e24	\N	assistant	Chào bạn! Rất vui được trò chuyện với bạn.	LLM_ONLY	\N	2025-12-18 09:46:32.292881+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+bc46b910-9a8e-454d-aafa-23d454a2a96c	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	d44d7acc-bc5e-4933-958d-ad8c16473e24	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	trong bài thực hành 1 bao gồm những câu hỏi nào	RAG	\N	2025-12-18 09:47:05.467522+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+a73a84be-2ef0-4956-9e96-692d745291ec	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	d44d7acc-bc5e-4933-958d-ad8c16473e24	\N	assistant	```json\n{\n  "answer": "Bài thực hành 1 bao gồm các câu hỏi sau:\\n\\n1.  Đọc và hiển thị ảnh.\\n2.  Viết chương trình in ra giá trị màu tại điểm ảnh có tọa độ nhập vào.\\n3.  Viết chương trình đọc ảnh màu, đổi ảnh màu sang ảnh xám. Hiện ảnh màu và ảnh xám.\\n4.  Viết chương trình đọc video từ tệp với tùy chọn ghi lại hình khi ấn phím s, thoát khi ấn phím q\\n5.  Viết chương trình đọc video với các yêu cầu sau:\\n    *   In ra các thông tin của video gồm số khung hình trên giây, tổng số khung hình.\n    *   Xem video với màu xám\\n6.  Viết chương trình đọc 2 ảnh màu. Đổi 2 ảnh màu sang ảnh xám. Dùng thư viện matplotlib hiện 4 ảnh trên 1 cửa sổ.",\n  "sources": [\n    {\n      "source_type": "RAG",\n      "file_id": "12598628-9255-4e4d-94c5-e24c4b86662d",\n      "chunk_index": 0,\n      "score": 0.75,\n      "provider": "rag"\n    }\n  ]\n}\n```	RAG	\N	2025-12-18 09:47:08.601561+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+3ee23f1c-79d4-415c-bd4f-6589b2530377	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7bf15b84-b4e1-4e3e-b4d8-3679eca57aef	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	trong bài thực hành 1 có gì	RAG	\N	2025-12-18 09:49:49.354202+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+57471f92-a2dc-4424-a13a-2017b161db64	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7bf15b84-b4e1-4e3e-b4d8-3679eca57aef	\N	assistant	Bài thực hành 1 bao gồm các nội dung sau:\n\n1.  Đọc và hiển thị ảnh.\n2.  Viết chương trình in ra giá trị màu tại điểm ảnh có tọa độ nhập vào. Hướng dẫn: Cách nhập vào giá trị số nguyên cho biến x : x = int(input('Nhap toa do x'))\n3.  Viết chương trình đọc ảnh màu, đổi ảnh màu sang ảnh xám. Hiện ảnh màu và ảnh xám.\n4.  Viết chương trình đọc video từ tệp với tùy chọn ghi lại hình khi ấn phím s, thoát khi ấn phím q\n5.  Viết chương trình đọc video với các yêu cầu sau: - In ra các thông tin của video gồm số khung hình trên giây, tổng số khung hình. - Xem video với màu xám\n6.  Viết chương trình đọc 2 ảnh màu. Đổi 2 ảnh màu sang ảnh xám. Dùng thư viện matplotlib hiện 4 ảnh trên 1 cửa sổ.	RAG	\N	2025-12-18 09:49:52.490144+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+5da054f8-3775-40bf-a335-7a7ec781b1a1	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7bf15b84-b4e1-4e3e-b4d8-3679eca57aef	7710814e-22b0-40c0-8d32-5bf9f74a14de	user	ok bạn giải từng bài theo đề và cho tôi code từng bài	LLM_ONLY	\N	2025-12-18 09:50:09.738698+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+fe83fad8-aac0-48bf-9314-3303063b6ae3	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7bf15b84-b4e1-4e3e-b4d8-3679eca57aef	\N	assistant	Dựa trên bài thực hành 1 đã cung cấp, đây là code cho từng bài:\n\n**1. Đọc và hiển thị ảnh:**\n```python\nimport cv2\n\n# Đọc ảnh\nimg = cv2.imread('anh.jpg') # Thay 'anh.jpg' bằng đường dẫn ảnh của bạn\n\n# Hiển thị ảnh\ncv2.imshow('Anh', img)\ncv2.waitKey(0)\ncv2.destroyAllWindows()\n```\n\n**2. Viết chương trình in ra giá trị màu tại điểm ảnh có tọa độ nhập vào:**\n```python\nimport cv2\n\n# Đọc ảnh\nimg = cv2.imread('anh.jpg') # Thay 'anh.jpg' bằng đường dẫn ảnh của bạn\n\n# Nhập tọa độ x, y\nx = int(input('Nhap toa do x: '))\ny = int(input('Nhap toa do y: '))\n\n# Lấy giá trị màu tại tọa độ (x, y)\ncolor = img[y, x]\n\n# In giá trị màu\nprint('Gia tri mau tai toa do ({}, {}): {}'.format(x, y, color))\n```\n\n**3. Viết chương trình đọc ảnh màu, đổi ảnh màu sang ảnh xám. Hiện ảnh màu và ảnh xám:**\n```python\nimport cv2\n\n# Đọc ảnh màu\nimg_color = cv2.imread('anh.jpg') # Thay 'anh.jpg' bằng đường dẫn ảnh của bạn\n\n# Đổi ảnh màu sang ảnh xám\nimg_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)\n\n# Hiển thị ảnh màu\ncv2.imshow('Anh mau', img_color)\n\n# Hiển thị ảnh xám\ncv2.imshow('Anh xam', img_gray)\ncv2.waitKey(0)\ncv2.destroyAllWindows()\n```\n\n**4. Viết chương trình đọc video từ tệp với tùy chọn ghi lại hình khi ấn phím s, thoát khi ấn phím q:**\n```python\nimport cv2\n\n# Mở video\ncap = cv2.VideoCapture('video.mp4') # Thay 'video.mp4' bằng đường dẫn video của bạn\n\n# Xác định codec và tạo đối tượng VideoWriter\nfourcc = cv2.VideoWriter_fourcc(*'XVID')\nout = cv2.VideoWriter('output.avi', fourcc, 20.0, (int(cap.get(3)), int(cap.get(4))))\n\nwhile(cap.isOpened()):\n    ret, frame = cap.read()\n    if ret == True:\n\n        # Hiển thị video\n        cv2.imshow('Video', frame)\n\n        # Ghi lại hình nếu ấn phím 's'\n        if cv2.waitKey(1) & 0xFF == ord('s'):\n            out.write(frame)\n\n        # Thoát nếu ấn phím 'q'\n        if cv2.waitKey(1) & 0xFF == ord('q'):\n            break\n    else:\n        break\n\n# Giải phóng tài nguyên\ncap.release()\nout.release()\ncv2.destroyAllWindows()\n```\n\n**5. Viết chương trình đọc video với các yêu cầu sau: - In ra các thông tin của video gồm số khung hình trên giây, tổng số khung hình. - Xem video với màu xám**\n```python\nimport cv2\n\n# Mở video\ncap = cv2.VideoCapture('video.mp4') # Thay 'video.mp4' bằng đường dẫn video của bạn\n\n# In thông tin video\nfps = cap.get(cv2.CAP_PROP_FPS)\ntotal_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))\nprint('So khung hinh tren giay:', fps)\nprint('Tong so khung hinh:', total_frames)\n\nwhile(cap.isOpened()):\n    ret, frame = cap.read()\n    if ret == True:\n        # Chuyển đổi sang ảnh xám\n        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)\n\n        # Hiển thị video xám\n        cv2.imshow('Video xam', gray_frame)\n\n        # Thoát nếu ấn phím 'q'\n        if cv2.waitKey(1) & 0xFF == ord('q'):\n            break\n    else:\n        break\n\n# Giải phóng tài nguyên\ncap.release()\ncv2.destroyAllWindows()\n```\n\n**6. Viết chương trình đọc 2 ảnh màu. Đổi 2 ảnh màu sang ảnh xám. Dùng thư viện matplotlib hiện 4 ảnh trên 1 cửa sổ:**\n```python\nimport cv2\nimport matplotlib.pyplot as plt\n\n# Đọc 2 ảnh màu\nimg1_color = cv2.imread('anh1.jpg') # Thay 'anh1.jpg' bằng đường dẫn ảnh thứ nhất\nimg2_color = cv2.imread('anh2.jpg') # Thay 'anh2.jpg' bằng đường dẫn ảnh thứ hai\n\n# Đổi ảnh màu sang ảnh xám\nimg1_gray = cv2.cvtColor(img1_color, cv2.COLOR_BGR2GRAY)\nimg2_gray = cv2.cvtColor(img2_color, cv2.COLOR_BGR2GRAY)\n\n# Chuyển đổi định dạng ảnh cho matplotlib (BGR -> RGB)\nimg1_color = cv2.cvtColor(img1_color, cv2.COLOR_BGR2RGB)\nimg2_color = cv2.cvtColor(img2_color, cv2.COLOR_BGR2RGB)\n\n# Hiển thị 4 ảnh trên 1 cửa sổ\nplt.subplot(2, 2, 1)\nplt.imshow(img1_color)\nplt.title('Anh 1 mau')\n\nplt.subplot(2, 2, 2)\nplt.imshow(img2_color)\nplt.title('Anh 2 mau')\n\nplt.subplot(2, 2, 3)\nplt.imshow(img1_gray, cmap='gray')\nplt.title('Anh 1 xam')\n\nplt.subplot(2, 2, 4)\nplt.imshow(img2_gray, cmap='gray')\nplt.title('Anh 2 xam')\n\nplt.show()\n```\n\n**Lưu ý:**\n\n*   Bạn cần cài đặt các thư viện cần thiết: `cv2`, `matplotlib`.\n*   Thay các đường dẫn ảnh và video bằng đường dẫn thực tế trên máy của bạn.	LLM_ONLY	\N	2025-12-18 09:50:18.167816+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+e894f7bc-26ac-4a06-8156-f19c618b0fdd	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	8f882547-e8e5-4482-92a2-e72a5e19acec	\N	assistant	Bài thực hành 1 bao gồm các nội dung sau:\n\n1.  Đọc và hiển thị ảnh.\n2.  Viết chương trình in ra giá trị màu tại điểm ảnh có tọa độ nhập vào.\n3.  Viết chương trình đọc ảnh màu, đổi ảnh màu sang ảnh xám. Hiện ảnh màu và ảnh xám.\n4.  Viết chương trình đọc video từ tệp với tùy chọn ghi lại hình khi ấn phím s, thoát khi ấn phím q\n5.  Viết chương trình đọc video với các yêu cầu sau:\n    - In ra các thông tin của video gồm số khung hình trên giây, tổng số khung hình.\n    - Xem video với màu xám\n6.  Viết chương trình đọc 2 ảnh màu. Đổi 2 ảnh màu sang ảnh xám. Dùng thư viện matplotlib hiện 4 ảnh trên 1 cửa sổ.	RAG	\N	2025-12-18 10:12:50.54672+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+1ce1cc05-551b-411c-82e8-bd1735755cea	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	991c40a1-c2b1-4e62-972a-33deafd708ff	user	Trong bài tập 2, chương trình in ra giá trị màu tại một điểm ảnh. Giá trị màu đó được biểu diễn như thế nào (ví dụ: hệ màu RGB, HSV,...)? Có những hệ màu nào khác mà bạn biết, và tại sao người ta lại sử dụng nhiều hệ màu khác nhau?	RAG	\N	2025-12-20 00:29:53.618243+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+f2d81525-e124-48d2-b0de-e95aac6b5ce4	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	\N	assistant	Trong bài tập 2, chương trình in ra giá trị màu tại một điểm ảnh. Theo ngữ cảnh bài thực hành, giá trị màu được biểu diễn dưới dạng các giá trị số, có thể là cường độ màu sắc trong một kênh màu nào đó. Dựa trên các thông tin trong ngữ cảnh RAG, các giá trị pixel này biểu thị cường độ của từng pixel. Trong ảnh thang độ xám, giá trị pixel biểu thị màu đen và 255 biểu thị màu trắng. Trong ảnh màu, giá trị màu thường được biểu diễn dưới dạng RGB (Red, Green, Blue), mỗi kênh màu có giá trị từ 0 đến 255.\n\nNgoài RGB, có một số hệ màu khác như HSV (Hue, Saturation, Value), CMYK (Cyan, Magenta, Yellow, Key/Black), YCbCr,... Người ta sử dụng nhiều hệ màu khác nhau vì mỗi hệ màu có ưu điểm riêng và phù hợp với các ứng dụng khác nhau. Ví dụ:\n\n*   **RGB:** Phổ biến trong hiển thị trên màn hình.\n*   **HSV:** Thường được sử dụng trong các ứng dụng xử lý ảnh và video vì nó trực quan hơn trong việc điều chỉnh màu sắc.\n*   **CMYK:** Được sử dụng trong in ấn.\n*   **YCbCr:** Thường được sử dụng trong nén video.	RAG	\N	2025-12-20 00:29:57.936097+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+ad95cecc-7f06-4c37-beb2-609819b6ca37	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	991c40a1-c2b1-4e62-972a-33deafd708ff	user	giải thích chưa rõ ràng	RAG	\N	2025-12-20 00:30:34.765833+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+591f9a13-1635-4de6-936c-f289ad60b166	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	\N	assistant	Để làm rõ hơn về cách giá trị màu được biểu diễn trong bài tập 2 và các hệ màu khác, ta có thể xem xét các điểm sau:\n\n1.  **Giá trị màu trong bài tập 2:** Dựa vào ngữ cảnh trước đó, giá trị màu tại một điểm ảnh được biểu diễn dưới dạng số, có thể là cường độ sáng của pixel đó. Trong ảnh thang độ xám, giá trị này thể hiện độ đậm nhạt (0 là đen, 255 là trắng). Trong ảnh màu, nó có thể là giá trị của một kênh màu (ví dụ: Red, Green, hoặc Blue).\n\n2.  **Hệ màu RGB:** Đây là hệ màu phổ biến nhất, sử dụng ba kênh màu cơ bản là Đỏ (Red), Lục (Green) và Lam (Blue). Mỗi kênh có giá trị từ 0 đến 255, thể hiện cường độ của màu đó. Một điểm ảnh sẽ có một bộ ba giá trị (R, G, B) để biểu diễn màu sắc của nó. Ví dụ: (255, 0, 0) là màu đỏ tươi, (0, 255, 0) là màu xanh lá cây tươi, (0, 0, 255) là màu xanh lam tươi, và (255, 255, 255) là màu trắng.\n\n3.  **Hệ màu HSV (Hue, Saturation, Value):**\n    *   **Hue (H):** Góc màu, giá trị từ 0 đến 360 độ, biểu thị loại màu (ví dụ: đỏ, vàng, xanh lá cây).\n    *   **Saturation (S):** Độ bão hòa màu, giá trị từ 0 đến 1, biểu thị độ tinh khiết của màu (0 là màu xám, 1 là màu tươi).\n    *   **Value (V):** Giá trị độ sáng, giá trị từ 0 đến 1, biểu thị độ sáng của màu (0 là đen, 1 là sáng nhất).\n\n4.  **Các hệ màu khác:**\n    *   **CMYK (Cyan, Magenta, Yellow, Key/Black):** Sử dụng trong in ấn, là hệ màu trừ (subtractive color model).\n    *   **YCbCr:** Thường dùng trong nén ảnh và video.\n\n5.  **Tại sao sử dụng nhiều hệ màu:** Mỗi hệ màu có ưu điểm và phù hợp với các ứng dụng khác nhau. RGB phù hợp cho hiển thị trên màn hình, HSV trực quan hơn khi điều chỉnh màu sắc, CMYK cho in ấn, và YCbCr cho nén video. Việc lựa chọn hệ màu phụ thuộc vào mục đích sử dụng cụ thể.	RAG	\N	2025-12-20 00:30:40.009177+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+be7dada8-1a5b-46ed-b830-b95ba97bc617	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	991c40a1-c2b1-4e62-972a-33deafd708ff	user	Bài thực hành này giới thiệu các thao tác cơ bản với ảnh và video. Bạn có thể liên hệ những kiến thức này với các ứng dụng thực tế nào trong cuộc sống (ví dụ: nhận dạng khuôn mặt, xử lý ảnh y tế, tạo hiệu ứng video,...)?	RAG	\N	2025-12-20 00:31:03.15824+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+ae6f16d7-8f56-402c-9d14-ea6e9005cdc4	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	\N	assistant	Bài thực hành này cung cấp nền tảng kiến thức và kỹ năng quan trọng, có thể ứng dụng rộng rãi trong nhiều lĩnh vực thực tế:\n\n*   **Nhận dạng khuôn mặt:** Các thao tác xử lý ảnh cơ bản như lọc ảnh, tách biên được sử dụng để tiền xử lý ảnh, giúp cải thiện độ chính xác của các thuật toán nhận dạng khuôn mặt.\n*   **Xử lý ảnh y tế:** Các bộ lọc ảnh (trung bình, trung vị, Gauss, song phương) có thể được sử dụng để giảm nhiễu, làm nổi bật các chi tiết quan trọng trong ảnh y tế (ví dụ: ảnh X-quang, CT scan, MRI), hỗ trợ bác sĩ chẩn đoán bệnh.\n*   **Tạo hiệu ứng video:** Các thao tác xử lý ảnh và video có thể được kết hợp để tạo ra các hiệu ứng đặc biệt, chỉnh sửa màu sắc, làm mờ, làm sắc nét, hoặc thêm các hiệu ứng chuyển động vào video.\n*   **Ứng dụng trong công nghiệp:** Kiểm tra chất lượng sản phẩm (phát hiện lỗi, đo kích thước), robot tự hành (nhận diện vật thể, điều hướng).\n*   **Ứng dụng trong nông nghiệp:** Phân tích hình ảnh cây trồng (đánh giá sức khỏe, phát hiện sâu bệnh), giám sát mùa màng.	RAG	\N	2025-12-20 00:31:06.430539+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+2aca49f0-aa4e-4470-ac90-214294efb6fb	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	991c40a1-c2b1-4e62-972a-33deafd708ff	user	Trong bài tập 2, chương trình in ra giá trị màu tại một điểm ảnh. Giá trị màu đó được biểu diễn như thế nào (ví dụ: hệ màu RGB, HSV,...)? Có những hệ màu nào khác mà bạn biết, và tại sao người ta lại sử dụng nhiều hệ màu khác nhau?	RAG	\N	2025-12-20 21:03:16.815221+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
+d6ccb61a-1ea9-494f-993c-f0fc2f738bf2	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	5d1b6360-8dfe-4f51-93e8-84de1409b135	\N	assistant	Dựa trên bài thực hành 1, chương trình in ra giá trị màu tại một điểm ảnh. Tuy nhiên, tài liệu không nói rõ giá trị màu đó được biểu diễn như thế nào (ví dụ: hệ màu RGB, HSV,...). \n\nTừ kiến thức chung, giá trị màu tại một điểm ảnh có thể được biểu diễn theo nhiều hệ màu khác nhau, phổ biến nhất là RGB (Red, Green, Blue). Ngoài ra, còn có các hệ màu khác như HSV (Hue, Saturation, Value), HSL (Hue, Saturation, Lightness), CMYK (Cyan, Magenta, Yellow, Key/Black), YCbCr,...\n\nViệc sử dụng nhiều hệ màu khác nhau là do mỗi hệ màu có những ưu điểm và phù hợp với các mục đích sử dụng khác nhau. Ví dụ:\n\n*   **RGB:** Thường được sử dụng trong các thiết bị hiển thị như màn hình máy tính, TV vì nó tương ứng với cách các pixel trên màn hình phát ra ánh sáng.\n*   **HSV/HSL:** Thường được sử dụng trong các ứng dụng chỉnh sửa ảnh vì chúng trực quan hơn trong việc điều chỉnh màu sắc theo các thuộc tính như độ bão hòa, độ sáng.\n*   **CMYK:** Được sử dụng trong in ấn vì nó tương ứng với các màu mực được sử dụng.\n*   **YCbCr:** Được sử dụng trong nén video vì nó tách thành phần độ sáng (Y) và thành phần màu sắc (CbCr), cho phép nén riêng biệt và hiệu quả hơn.	RAG	\N	2025-12-20 21:03:21.272887+07	\N	0762b5e2-3310-46ef-83fe-dbb18dc76421
 \.
 
 
@@ -1153,6 +1709,9 @@ b6649e38-c758-4d5f-a6c8-45a932976259	a3333a6a-7773-4bff-8cc0-2a796c371068	991c40
 c686881d-26df-4e12-85ef-6de181d0d998	d56ea488-8983-4b83-9844-8d36239f05df	7710814e-22b0-40c0-8d32-5bf9f74a14de	owner	approved	2025-12-11 22:51:48.896872+07	2025-12-11 22:51:48.896879+07	2025-12-11 22:51:48.896882+07
 bddb6513-1f34-4f05-89ef-d1e5ae49c956	055dc832-3d50-46f3-bb71-6c535d7a668a	7710814e-22b0-40c0-8d32-5bf9f74a14de	owner	approved	2025-12-11 23:40:53.553053+07	2025-12-11 23:40:53.553057+07	2025-12-11 23:40:53.553059+07
 1bcbbd05-e25f-42e0-9ed5-fe6605a8d8b3	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	owner	approved	2025-12-01 10:44:07.224404+07	2025-12-01 10:43:42.684831+07	2025-12-01 10:44:07.224404+07
+063676ad-f416-4a04-af6d-61c5a5c93dc5	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	22bfd357-e85d-40a7-8670-5bb5d545af83	member	pending	\N	2025-12-20 21:28:53.110838+07	2025-12-20 21:28:53.110866+07
+b7f7de5a-8406-4688-a815-c94f7a36b298	667fd949-9fad-4367-92fb-bdfb409fc00a	22bfd357-e85d-40a7-8670-5bb5d545af83	member	approved	2025-12-20 21:28:57.618817+07	2025-12-20 21:28:57.618833+07	2025-12-20 21:28:57.618836+07
+f64b3c06-fdab-4a95-bf07-af5e339c05ac	a3333a6a-7773-4bff-8cc0-2a796c371068	22bfd357-e85d-40a7-8670-5bb5d545af83	member	pending	\N	2025-12-21 22:24:16.539291+07	2025-12-21 22:24:16.539312+07
 \.
 
 
@@ -1176,6 +1735,9 @@ ef72479e-fa6e-4f32-b231-d903e80e4381	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Phân 
 1c72bb66-2199-4622-857a-32d6fd6e2b7d	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Phân vùng ảnh và các phương pháp phân ngưỡng, contours trong OpenCV	{"root": {"id": "a3f2e1e0-4d5a-4a7f-a1b3-2e9d7c8b6d1f", "title": "Phân vùng ảnh", "summary": "Phân vùng ảnh chia ảnh thành các vùng có cùng tính chất, các điểm trong vùng có độ biến thiên mức xám đồng đều.", "children": [{"id": "b7c8d9a2-5e6b-4c1d-9a3e-6f8a7b5c9d3a", "title": "Các phương pháp phân vùng", "summary": "Các phương pháp phân vùng ảnh cơ bản bao gồm dựa vào ngưỡng, phân chia miền kề và xác định biên.", "children": [{"id": "c1e3f5a7-7b9a-4d2c-8e1d-3a2b1c0d9e8f", "title": "Phân ngưỡng", "summary": "Sử dụng ngưỡng để chia tách độ xám thành hai miền.", "children": [{"id": "d4a6b8c0-8e7d-4f5a-9c3b-5e7f8a9d1c2e", "title": "Phân ngưỡng đơn giản", "summary": "Thay thế giá trị pixel dựa trên so sánh với ngưỡng.", "children": [{"id": "e9b1c3d5-9a4f-4e7b-8d2a-3c1b0a9d2e4f", "title": "Các loại phân ngưỡng đơn giản", "summary": "BINARY, BINARY_INV, TRUNC, TOZERO, TOZERO_INV.", "children": []}]}, {"id": "f2c7d9a1-1e3f-4a8b-9c5d-6a4b7c9d1e2f", "title": "Phân ngưỡng thích nghi", "summary": "Chia ảnh thành vùng nhỏ và tính ngưỡng riêng.", "children": [{"id": "0a1b2c3d-4e5f-4a8b-9c5d-6e7f8a9b1c2d", "title": "ADAPTIVE_THRESH_MEAN_C", "summary": "Ngưỡng là trung bình các điểm lân cận trừ C.", "children": []}, {"id": "1d2e3f4a-5b6c-4d8e-9f1a-2b3c4d5e6f7a", "title": "ADAPTIVE_THRESH_GAUSSIAN_C", "summary": "Ngưỡng là tổng trọng số Gaussian trừ C.", "children": []}, {"id": "2f3a4b5c-6d7e-4f9a-8b1c-3d4e5f6a7b8c", "title": "Tham số", "summary": "max_value, adaptiveMethod, thresholdType, block_size, C.", "children": []}]}, {"id": "3b4c5d6e-7f8a-4b1c-9d3e-5f6a7b8c9d0e", "title": "Otsu Thresholding", "summary": "Tự động tìm ngưỡng tối ưu từ histogram.", "children": []}]}, {"id": "4c5d6e7f-8a9b-4c1d-9e3f-6a7b8c9d0e1f", "title": "Contours", "summary": "Tập các điểm liên tục tạo thành đường cong khép kín.", "children": [{"id": "5d6e7f8a-9b1c-4d3e-9f5a-7b8c9d0e1f2a", "title": "cv2.findContours", "summary": "Tìm contours trong ảnh nhị phân.", "children": [{"id": "6e7f8a9b-1c2d-4e3f-9a5b-8c9d0e1f2a3b", "title": "Tham số", "summary": "image, mode, method.", "children": []}, {"id": "7f8a9b1c-2d3e-4f5a-9b6c-9d0e1f2a3b4c", "title": "Trả về", "summary": "Danh sách contours và hierarchy.", "children": []}]}, {"id": "8a9b1c2d-3e4f-4a5b-9c6d-0e1f2a3b4c5d", "title": "cv2.drawContours", "summary": "Vẽ contour.", "children": [{"id": "9b1c2d3e-4f5a-4b6c-9d7e-1f2a3b4c5d6e", "title": "Tham số", "summary": "image, contours, contourIdx, color, thickness.", "children": []}]}]}]}]}}	\N	\N	991c40a1-c2b1-4e62-972a-33deafd708ff	2025-12-13 11:11:58.65634+07	2025-12-13 11:11:58.65634+07
 e42140dc-8506-4421-ab12-e61d6827913c	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Phân vùng ảnh: Ngưỡng, thích nghi, Otsu, Contours và phép toán hình thái học	{"root": {"id": "a1b2c3d4-e5f6-7890-1234-567890abcdef", "title": "Phân vùng ảnh", "summary": "Phân tích ảnh thành vùng dựa trên tính chất, dùng biên hoặc vùng liên thông. Các phương pháp cơ bản: ngưỡng, phân chia miền kề, xác định biên.", "children": [{"id": "11223344-5566-7788-9900-aabbccddeeff", "title": "Phân ngưỡng ảnh", "summary": "Sử dụng ngưỡng để chia tách độ xám thành các miền khác nhau. Bao gồm ngưỡng cố định, thích nghi và Otsu.", "children": [{"id": "fedcba98-7654-3210-0fed-cba987654321", "title": "Ngưỡng cố định", "summary": "So sánh pixel với ngưỡng, gán giá trị mới. Không phù hợp ánh sáng không đều.", "children": []}, {"id": "99887766-5544-3322-1100-ffeeccbbaa99", "title": "Ngưỡng thích nghi", "summary": "Chia ảnh thành vùng nhỏ, đặt ngưỡng riêng. Tính ngưỡng dựa trên trung bình hoặc Gaussian.", "children": [{"id": "44556677-8899-0011-2233-aabbccddeeff", "title": "ADAPTIVE_THRESH_MEAN_C", "summary": "Tính ngưỡng bằng trung bình các pixel lân cận trừ C.", "children": []}, {"id": "33221100-9988-7766-5544-ffeeddccbbaa", "title": "ADAPTIVE_THRESH_GAUSSIAN_C", "summary": "Tính ngưỡng bằng Gaussian các pixel lân cận trừ C.", "children": []}]}, {"id": "abcdef01-2345-6789-abcd-ef0123456789", "title": "Phân ngưỡng Otsu", "summary": "Tự động tính ngưỡng từ histogram ảnh. Dùng tốt nhất khi histogram có hai đỉnh.", "children": []}]}, {"id": "01234567-89ab-cdef-0123-456789abcdef", "title": "Contours", "summary": "Tập các điểm liên tục tạo đường cong kín, dùng để phân tích, phát hiện, nhận dạng.", "children": [{"id": "87654321-fedc-ba98-7654-3210fedcba98", "title": "Tìm contours", "summary": "Dùng cv2.findContours(image, mode, method) để tìm contours.", "children": []}, {"id": "22446688-00aa-cc22-44ee-66gg88ii00aa", "title": "Vẽ contours", "summary": "Dùng cv2.drawContours(image, contours, contourIdx, color, thickness).", "children": []}]}, {"id": "bcdeffaa-bbcc-ddee-ffaa-bbccddeeffaa", "title": "Phép toán hình thái học", "summary": "Dùng cho ảnh xám và nhị phân để làm mỏng, dày đối tượng, loại bỏ nhiễu.", "children": []}]}}	\N	4224e054-e9b6-473b-bb1e-09cdcefc2953	991c40a1-c2b1-4e62-972a-33deafd708ff	2025-12-13 11:25:07.474439+07	2025-12-13 11:25:07.474439+07
 035caeaf-0a88-4d47-a327-4d2e80667f32	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Tổng quan xử lý ảnh: Lọc ảnh, biến đổi hình học, phân vùng	{"id": "a1b2c3d4-e5f6-7890-1234-567890abcdef", "title": "Xử lý ảnh", "summary": "Tổng quan các kỹ thuật xử lý ảnh cơ bản.", "children": [{"id": "b2c3d4e5-f678-9012-3456-7890abcdef01", "title": "Giới thiệu", "summary": "Thị giác máy tính và quy trình xử lý ảnh.", "children": [{"id": "c3d4e5f6-7890-1234-5678-90abcdef0123", "title": "Thị giác máy tính", "summary": "Giúp máy tính 'nhìn' và 'hiểu' ảnh.", "children": []}, {"id": "d4e5f678-9012-3456-7890-abcdef012345", "title": "Quy trình xử lý ảnh", "summary": "Thu nhận, tiền xử lý, trích xuất, nhận dạng.", "children": []}, {"id": "e5f67890-1234-5678-90ab-cdef01234567", "title": "Công cụ và thư viện", "summary": "OpenCV, Anaconda cho Python.", "children": []}]}, {"id": "f6789012-3456-7890-abcd-ef0123456789", "title": "Biểu diễn ảnh", "summary": "Ảnh xám, ảnh màu và ma trận pixel.", "children": [{"id": "78901234-5678-90ab-cdef-0123456789ab", "title": "Ảnh xám và ảnh màu", "summary": "Giá trị pixel, kênh màu RGB.", "children": []}, {"id": "90123456-7890-abcd-ef01-23456789abcd", "title": "Ma trận ảnh", "summary": "Chiều rộng, chiều cao, độ sâu.", "children": []}, {"id": "12345678-90ab-cdef-0123-456789abcdef", "title": "Đọc và hiển thị ảnh", "summary": "cv2.imread, cv2.imshow.", "children": []}]}, {"id": "89012345-6789-0abc-def0-123456789abc", "title": "Xử lý điểm ảnh", "summary": "Ánh xạ giá trị màu.", "children": [{"id": "01234567-89ab-cdef-0123-456789abcdef", "title": "Biến đổi ảnh nhị phân", "summary": "Chuyển ảnh về ảnh nhị phân.", "children": []}, {"id": "23456789-abcdef-0123-4567-89abcdef0123", "title": "Độ sáng và tương phản", "summary": "Điều chỉnh bằng gain và bias.", "children": []}, {"id": "3456789a-bcde-f012-3456-789abcdef0123", "title": "Ảnh âm bản", "summary": "Đảo ngược giá trị pixel.", "children": []}]}, {"id": "9abcdef0-1234-5678-90ab-cdef01234567", "title": "Biến đổi hình học", "summary": "Thay đổi hình dạng ảnh.", "children": [{"id": "abcdef01-2345-6789-0abc-def012345678", "title": "Scale ảnh", "summary": "Thay đổi kích thước ảnh.", "children": []}, {"id": "bcdef012-3456-789a-bcde-f0123456789a", "title": "Cắt ảnh (crop)", "summary": "Lấy một phần của ảnh.", "children": []}, {"id": "cdef0123-4567-89ab-cdef-0123456789ab", "title": "Dịch chuyển ảnh", "summary": "Di chuyển ảnh.", "children": []}, {"id": "def01234-5678-9abc-def0-123456789abc", "title": "Xoay ảnh", "summary": "Xoay ảnh quanh một điểm.", "children": []}, {"id": "ef012345-6789-abcd-ef01-23456789abcd", "title": "Biến đổi phối cảnh", "summary": "Thay đổi góc nhìn ảnh.", "children": []}]}, {"id": "01234567-89ab-cdef-0123-456789abcdef", "title": "Histogram ảnh", "summary": "Biểu đồ tần suất mức xám.", "children": [{"id": "23456789-abcdef-0123-4567-89abcdef0123", "title": "Histogram không chuẩn hóa", "summary": "Tần suất mức xám.", "children": []}, {"id": "3456789a-bcde-f012-3456-789abcdef0123", "title": "Histogram chuẩn hóa", "summary": "Tần suất mức xám chia tổng số pixel.", "children": []}]}, {"id": "456789ab-cdef-0123-4567-89abcdef01234", "title": "Lọc ảnh", "summary": "Loại bỏ nhiễu, làm sắc nét.", "children": [{"id": "56789abc-def0-1234-5678-9abcdef012345", "title": "Tích chập", "summary": "Kỹ thuật quan trọng trong xử lý ảnh.", "children": []}, {"id": "6789abcd-ef01-2345-6789-abcdef0123456", "title": "Bộ lọc thông thấp", "summary": "Làm mịn ảnh, giảm nhiễu.", "children": []}, {"id": "789abcde-f012-3456-789a-bcdef01234567", "title": "Bộ lọc thông cao", "summary": "Làm sắc nét ảnh.", "children": []}, {"id": "89abcdef-0123-4567-89ab-cdef012345678", "title": "Bộ lọc trung vị", "summary": "Khử nhiễu xung.", "children": []}, {"id": "9abcdef0-1234-5678-90ab-cdef01234567", "title": "Bộ lọc song phương", "summary": "Giữ cạnh, khử nhiễu.", "children": []}]}, {"id": "abcdef01-2345-6789-0abc-def012345678", "title": "Tách biên và phát hiện biên", "summary": "Tìm đường ranh giới giữa các vùng.", "children": [{"id": "bcdef012-3456-789a-bcde-f0123456789a", "title": "Gradient", "summary": "Dựa vào đạo hàm bậc nhất.", "children": []}, {"id": "cdef0123-4567-89ab-cdef-0123456789ab", "title": "Toán tử Laplace", "summary": "Dựa vào đạo hàm bậc hai.", "children": []}, {"id": "def01234-5678-9abc-def0-123456789abc", "title": "Thuật toán Canny", "summary": "Cho đường biên mảnh và chính xác.", "children": []}, {"id": "ef012345-6789-abcd-ef01-23456789abcd", "title": "Contour", "summary": "Tập các điểm liên tục tạo đường cong kín.", "children": []}]}, {"id": "f0123456-789a-bcde-f012-3456789abcde", "title": "Phân vùng ảnh", "summary": "Chia ảnh thành các vùng đồng nhất.", "children": [{"id": "01234567-89ab-cdef-0123-456789abcdef", "title": "Phân ngưỡng", "summary": "Dựa vào ngưỡng độ xám.", "children": []}, {"id": "12345678-9abc-def0-1234-56789abcdef0", "title": "Phân ngưỡng thích nghi", "summary": "Ngưỡng riêng cho từng vùng.", "children": []}, {"id": "23456789-abcdef-0123-4567-89abcdef0123", "title": "Otsu Thresholding", "summary": "Tự động tính ngưỡng.", "children": []}, {"id": "3456789a-bcde-f012-3456-789abcdef0123", "title": "Biến đổi hình thái", "summary": "erode, dilate, open, close.", "children": []}]}, {"id": "1a2b3c4d-5e6f-7890-1abc-def234567890", "title": "Ứng dụng", "summary": "Các ứng dụng thực tế.", "children": [{"id": "2b3c4d5e-6f78-901a-bcde-f2345678901a", "title": "Y tế", "summary": "Xử lý ảnh siêu âm, X-quang.", "children": []}, {"id": "3c4d5e6f-7890-1abc-def2-345678901abc", "title": "Địa chất", "summary": "Khôi phục ảnh vệ tinh, tạo bản đồ 3D.", "children": []}, {"id": "4d5e6f78-901a-bcde-f234-5678901abcde", "title": "An ninh", "summary": "Nhận dạng khuôn mặt, vân tay.", "children": []}, {"id": "5e6f7890-1abc-def2-3456-78901abcdef2", "title": "Công nghiệp", "summary": "Điều khiển robot, kiểm tra quy trình.", "children": []}, {"id": "6f78901a-bcde-f234-5678-901abcdef23", "title": "Đọc QR code/Barcode", "summary": "Đọc và giải mã thông tin.", "children": []}, {"id": "78901abc-def2-3456-7890-1abcdef2345", "title": "Tách nền", "summary": "Tách đối tượng khỏi nền.", "children": []}]}, {"id": "8901abcd-ef23-4567-8901-abcdef234567", "title": "Bài thực hành", "summary": "Các bài thực hành liên quan.", "children": [{"id": "901abcdef-2345-6789-01ab-cdef23456789", "title": "Đọc và hiển thị ảnh", "summary": "Bài tập cơ bản.", "children": []}, {"id": "01abcdef2-3456-7890-1abc-def234567890", "title": "Lọc ảnh", "summary": "Áp dụng các bộ lọc khác nhau.", "children": []}, {"id": "1abcdef23-4567-8901-abcd-ef2345678901", "title": "Tách biên", "summary": "Sobel, Laplacian, Canny.", "children": []}, {"id": "2abcdef234-5678-901a-bcde-f2345678901a", "title": "Phân ngưỡng", "summary": "Các phương pháp phân ngưỡng khác nhau.", "children": []}, {"id": "3abcdef2345-6789-01ab-cdef-2345678901ab", "title": "Tạo và đọc mã QR/Barcode", "summary": "Sử dụng thư viện qrcode và pyzbar.", "children": []}, {"id": "4abcdef23456-7890-1abc-def2-345678901abc", "title": "Tách nền ảnh", "summary": "Sử dụng GrabCut và xử lý hình thái.", "children": []}]}]}	\N	2389d0b7-c025-45f7-a23c-0e6b86f8bb6a	991c40a1-c2b1-4e62-972a-33deafd708ff	2025-12-13 12:05:07.296839+07	2025-12-13 12:05:07.296839+07
+fd639de2-5604-424a-b8ff-13743acbab85	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Chương 3: Tách Biên và Phát Hiện Biên	{"id": "root", "label": "Tách Biên và Phát Hiện Biên", "children": [{"id": "branch1", "label": "Khái niệm về Biên", "children": [{"id": "branch1_1", "label": "Đặc tính quan trọng của ảnh", "children": []}, {"id": "branch1_2", "label": "Tập hợp các điểm biên (thay đổi mức xám nhanh)", "children": []}, {"id": "branch1_3", "label": "Ranh giới giữa các chi tiết ảnh", "children": []}]}, {"id": "branch2", "label": "Phương pháp Phát hiện Biên", "children": [{"id": "branch2_1", "label": "Trực tiếp", "children": [{"id": "branch2_1_1", "label": "Dựa vào đạo hàm", "children": [{"id": "branch2_1_1_1", "label": "Gradient (Sobel, Prewitt, Robert)", "children": []}, {"id": "branch2_1_1_2", "label": "Laplace", "children": []}, {"id": "branch2_1_1_3", "label": "Kirsch", "children": []}, {"id": "branch2_1_1_4", "label": "Canny", "children": []}]}]}, {"id": "branch2_2", "label": "Gián tiếp", "children": [{"id": "branch2_2_1", "label": "Phân vùng ảnh", "children": []}]}]}, {"id": "branch3", "label": "Phát hiện biên Gradient", "children": [{"id": "branch3_1", "label": "Tính toán vector gradient (dx, dy)", "children": []}, {"id": "branch3_2", "label": "Độ lớn vector so sánh với ngưỡng", "children": []}, {"id": "branch3_3", "label": "Sử dụng mặt nạ (Hx, Hy) để tính đạo hàm", "children": []}, {"id": "branch3_4", "label": "Các bước:", "children": [{"id": "branch3_4_1", "label": "Làm nổi biên (nhân chập)", "children": []}, {"id": "branch3_4_2", "label": "So sánh với ngưỡng", "children": []}]}, {"id": "branch3_5", "label": "Toán tử: Sobel, Prewitt, Robert", "children": []}]}, {"id": "branch4", "label": "Phát hiện biên Laplace", "children": [{"id": "branch4_1", "label": "Sử dụng đạo hàm bậc hai", "children": []}, {"id": "branch4_2", "label": "Độ sáng thay đổi chậm cho kết quả tốt", "children": []}, {"id": "branch4_3", "label": "Thực chất là phép nhân chập với toán tử Laplace", "children": []}, {"id": "branch4_4", "label": "Biên được xác định khi đạo hàm bậc hai < 0", "children": []}]}, {"id": "branch5", "label": "Thuật toán Canny", "children": [{"id": "branch5_1", "label": "Loại bỏ nhiễu (Gauss)", "children": []}, {"id": "branch5_2", "label": "Tách biên (Hàm Canny)", "children": []}, {"id": "branch5_3", "label": "Đường biên mảnh, chính xác", "children": []}, {"id": "branch5_4", "label": "Sử dụng 2 ngưỡng (trên, dưới)", "children": [{"id": "branch5_4_1", "label": "> ngưỡng trên: thuộc cạnh biên", "children": []}, {"id": "branch5_4_2", "label": "< ngưỡng dưới: loại bỏ", "children": []}, {"id": "branch5_4_3", "label": "Giữa 2 ngưỡng: chấp nhận nếu kết nối > ngưỡng trên", "children": []}, {"id": "branch5_4_4", "label": "Tỉ lệ ngưỡng trên:dưới 2:1 hoặc 3:1", "children": []}]}, {"id": "branch5_5", "label": "Câu lệnh: cv2.Canny(image, edges, lower_threshold, upper_threshold)", "children": []}]}, {"id": "branch6", "label": "Contour (Đường viền)", "children": [{"id": "branch6_1", "label": "Tập các điểm liên tục, đường cong khép kín", "children": []}, {"id": "branch6_2", "label": "Cùng/gần giá trị màu hoặc mật độ", "children": []}, {"id": "branch6_3", "label": "Phân tích hình dạng, phát hiện và nhận dạng đối tượng", "children": []}, {"id": "branch6_4", "label": "Hàm tìm Contour: cv2.findContours(image, mode, method)", "children": [{"id": "branch6_4_1", "label": "contours: Danh sách các contour", "children": []}, {"id": "branch6_4_2", "label": "hierarchy: Quan hệ giữa các contour", "children": []}, {"id": "branch6_4_3", "label": "image: Ảnh nhị phân 8 bit", "children": []}, {"id": "branch6_4_4", "label": "mode: Kiểu trích xuất (RETR_TREE, RETR_EXTERNAL)", "children": []}, {"id": "branch6_4_5", "label": "method: Phương pháp xấp xỉ (CHAIN_APPROX_SIMPLE)", "children": []}]}, {"id": "branch6_5", "label": "Hàm vẽ Contour: cv2.drawContours(image, contours, contourIdx, color, thickness)", "children": [{"id": "branch6_5_1", "label": "image: Ảnh đầu vào", "children": []}, {"id": "branch6_5_2", "label": "contours: Danh sách các contour", "children": []}, {"id": "branch6_5_3", "label": "contourIdx: Chỉ số contour (-1 vẽ tất cả)", "children": []}, {"id": "branch6_5_4", "label": "color: Màu của contour (BGR)", "children": []}, {"id": "branch6_5_5", "label": "thickness: Độ dày (âm để tô màu)", "children": []}]}]}, {"id": "branch7", "label": "Các bước phát hiện biên với OpenCV", "children": [{"id": "branch7_1", "label": "Lọc nhiễu: cv2.GaussianBlur()", "children": []}, {"id": "branch7_2", "label": "Chuyển ảnh xám: cv2.cvtColor()", "children": []}, {"id": "branch7_3", "label": "Áp dụng Sobel: cv.Sobel()", "children": []}, {"id": "branch7_4", "label": "Giá trị tuyệt đối: cv2.convertScaleAbs()", "children": []}, {"id": "branch7_5", "label": "Kết hợp đạo hàm: cv.addWeighted()", "children": []}]}, {"id": "branch8", "label": "Kiểu dữ liệu ảnh", "children": [{"id": "branch8_1", "label": "CV_8U", "children": []}, {"id": "branch8_2", "label": "CV_8S", "children": []}, {"id": "branch8_3", "label": "CV_16U", "children": []}, {"id": "branch8_4", "label": "CV_16S", "children": []}, {"id": "branch8_5", "label": "CV_32S", "children": []}, {"id": "branch8_6", "label": "CV_32F", "children": []}, {"id": "branch8_7", "label": "CV_64F", "children": []}]}]}	{"spacing": 100, "direction": "horizontal"}	\N	7710814e-22b0-40c0-8d32-5bf9f74a14de	2025-12-18 08:55:34.716629+07	2025-12-18 08:55:34.716635+07
+5ec36554-51e0-4ace-846b-08e6ecf72d1a	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Thị Giác Máy Tính: Tổng Quan & Ứng Dụng	{"root": {"id": "a1b2c3d4-e5f6-7890-1234-567890abcdef", "title": "Thị Giác Máy Tính: Tổng Quan & Ứng Dụng", "summary": "Thị giác máy tính giúp máy tính 'nhìn' và 'hiểu' ảnh/video. Nó bao gồm thu nhận, xử lý, phân tích, nhận dạng hình ảnh và dữ liệu đa chiều.", "children": [{"id": "01234567-89ab-cdef-0123-456789abcdef", "title": "Các Lĩnh Vực Chính của Thị Giác", "summary": "Thị giác máy tính bao gồm xử lý hình ảnh, nhận diện mẫu và quang trắc.", "children": []}, {"id": "fedcba98-7654-3210-fedc-ba9876543210", "title": "Ứng Dụng Rộng Rãi của Thị Giác", "summary": "Thị giác máy tính được ứng dụng trong nhiều lĩnh vực như xe tự hành, y tế, công nghiệp, nông nghiệp, và an ninh.", "children": [{"id": "9abcdef0-1234-5678-9abc-def012345678", "title": "Y Tế: Chẩn Đoán Hình Ảnh", "summary": "Hỗ trợ xử lý ảnh y tế, tạo ảnh 3D và hỗ trợ thị giác cho người mù.", "children": []}, {"id": "87654321-0fed-cba9-8765-43210fedcba9", "title": "Công Nghiệp: Kiểm Tra Lỗi Sản Phẩm", "summary": "Sử dụng để kiểm tra lỗi sản phẩm, điều khiển robot.", "children": []}, {"id": "abcdef90-1234-5678-9abc-def012345679", "title": "An Ninh: Nhận Dạng Khuôn Mặt", "summary": "Hỗ trợ nhận dạng vân tay, khuôn mặt, biển số xe để tăng cường bảo mật.", "children": []}]}, {"id": "1a2b3c4d-5e6f-7a8b-9c0d-e1f2a3b4c5d6", "title": "Lịch Sử Phát Triển Quan Trọng", "summary": "Từ xử lý ảnh cơ bản đến bùng nổ Deep Learning, CNN, YOLO.", "children": [{"id": "2b3c4d5e-6f7a-8b9c-0def-1a2b3c4d5e6f", "title": "Trước 2000: Xử Lý Ảnh Cơ Bản", "summary": "Nghiên cứu xử lý ảnh cơ bản như phát hiện biên và phân vùng ảnh.", "children": []}, {"id": "3c4d5e6f-7a8b-9c0d-e1f2-a3b4c5d6e7f8", "title": "2000s: Phát Hiện/Nhận Dạng Đối Tượng", "summary": "Phát triển các thuật toán phát hiện và nhận dạng đối tượng.", "children": []}, {"id": "4d5e6f7a-8b9c-0def-1a2b-3c4d5e6f7a8b", "title": "2012+: Bùng Nổ Deep Learning", "summary": "Sự trỗi dậy của Deep Learning, CNN, và YOLO trong thị giác máy tính.", "children": []}]}, {"id": "5e6f7a8b-9c0d-e1f2-a3b4-c5d6e7f89a0b", "title": "Thư Viện OpenCV và Anaconda", "summary": "OpenCV là thư viện hàng đầu, Anaconda hỗ trợ quản lý môi trường lập trình Python.", "children": [{"id": "6f7a8b9c-0def-1a2b-3c4d-5e6f7a8b9c0d", "title": "OpenCV: Thư Viện Hàng Đầu", "summary": "Thư viện mã nguồn mở miễn phí cho thị giác máy tính, xử lý ảnh, máy học và tăng tốc GPU.", "children": []}, {"id": "7a8b9c0d-e1f2-a3b4-c5d6-e7f89a0bcdef", "title": "Anaconda: Nền Tảng Python", "summary": "Nền tảng phân phối Python miễn phí cho tính toán khoa học và AI, dễ dàng quản lý môi trường.", "children": []}]}, {"id": "8b9c0def-1a2b-3c4d-5e6f-7a8b9c0def1a", "title": "Ảnh Trong Máy Tính: Pixel và Ma Trận", "summary": "Ảnh được lưu dưới dạng ma trận số, mỗi pixel biểu thị cường độ sáng. Ảnh màu RGB có 3 kênh.", "children": [{"id": "cdefabcdef-1234-5678-9abc-def012345678", "title": "Giá Trị Pixel và Kênh Màu", "summary": "Ảnh xám có giá trị pixel từ 0-255. Ảnh màu RGB có 3 kênh (Đỏ, Lục, Lam).", "children": []}, {"id": "def01234-5678-9abc-def0-123456789abc", "title": "Đọc và Hiển Thị Ảnh bằng OpenCV", "summary": "Sử dụng `cv2.imread()` để đọc ảnh và `cv2.imshow()` để hiển thị.", "children": []}]}]}}	{"spacing": 100, "direction": "horizontal"}	0887df4a-f607-4085-b4da-ef6b2825e689	7710814e-22b0-40c0-8d32-5bf9f74a14de	2025-12-18 09:27:10.540298+07	2025-12-18 09:27:10.540304+07
+0de35bb5-cbdc-493e-9a66-e852d9b9db83	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Tách Biên và Phát Hiện Biên trong Ảnh	{"root": {"id": "a1b2c3d4-e5f6-7890-1234-567890abcdef", "title": "Tách Biên và Phát Hiện Biên trong Ảnh", "summary": "Biên là đặc tính quan trọng, là tập hợp các điểm thay đổi nhanh về độ xám/màu. Có phương pháp trực tiếp và gián tiếp để phát hiện biên.", "children": [{"id": "b2c3d4e5-f678-9012-3456-7890abcdef01", "title": "Phương Pháp Phát Hiện Biên Trực Tiếp", "summary": "Dựa vào biến thiên độ sáng bằng đạo hàm (Gradient, Laplace). Bao gồm các toán tử Sobel, Prewitt, Robert, Laplace, Canny.", "children": [{"id": "c3d4e5f6-7890-1234-5678-90abcdef0123", "title": "Toán Tử Gradient (Sobel, Prewitt, Robert)", "summary": "Gradient là vectơ biểu thị tốc độ thay đổi mức xám. Sử dụng mặt nạ (toán tử Gradient) để tính đạo hàm gần đúng.", "children": [{"id": "d4e5f678-9012-3456-7890-abcdef012345", "title": "Thuật Toán Sobel chi tiết", "summary": "Lọc nhiễu, chuyển ảnh xám, nhân tích chập với kernel Sobel, lấy trị tuyệt đối và hiển thị kết quả.", "children": []}]}, {"id": "e5f67890-1234-5678-90ab-cdef01234567", "title": "Toán Tử Kirsh (Toán tử la bàn)", "summary": "Đo Gradient theo 8 hướng, mỗi hướng cách nhau 45 độ, lấy giá trị lớn nhất trong 8 đạo hàm hướng.", "children": []}, {"id": "f6789012-3456-7890-abcd-ef0123456789", "title": "Toán Tử Laplace (Đạo hàm bậc hai)", "summary": "Sử dụng đạo hàm bậc hai, phù hợp với độ sáng thay đổi chậm. Biên là khi X''(m,n) < 0, nhạy cảm với nhiễu.", "children": []}, {"id": "78901234-5678-90ab-cdef-0123456789ab", "title": "Thuật Toán Canny (Tách biên tốt)", "summary": "Loại bỏ nhiễu bằng Gauss, tách biên bằng hàm Canny với 2 ngưỡng trên/dưới và tỷ lệ ngưỡng.", "children": []}]}, {"id": "89012345-6789-0abc-def0-1234567890cd", "title": "Phương Pháp Phát Hiện Biên Gián Tiếp", "summary": "Phân vùng ảnh, sử dụng thông tin vùng để xác định biên giữa các vùng khác nhau.", "children": []}, {"id": "90123456-7890-abcd-ef01-234567890cde", "title": "Contours (Đường Viền)", "summary": "Tập các điểm liên tục tạo thành đường cong khép kín, dùng để phân tích, phát hiện và nhận dạng đối tượng.", "children": [{"id": "01234567-890a-bcde-f012-34567890cdef", "title": "Hàm cv2.findContours()", "summary": "Tìm contour trong ảnh nhị phân. Trả về danh sách các contour và hierarchy (mối quan hệ giữa chúng).", "children": []}, {"id": "12345678-90ab-cdef-0123-4567890def01", "title": "Hàm cv2.drawContours()", "summary": "Vẽ contour lên ảnh với màu sắc và độ dày tùy chọn. Có thể vẽ tất cả hoặc một contour cụ thể.", "children": []}]}, {"id": "23456789-0abc-def0-1234-567890def012", "title": "Định Dạng Ảnh OpenCV", "summary": "Các định dạng ảnh thường dùng trong OpenCV: CV_8U, CV_8S, CV_16U, CV_16S, CV_32S, CV_32F, CV_64F.", "children": []}]}}	{"spacing": 100, "direction": "horizontal"}	fb3411b9-afc9-457c-a975-c3536aaa022f	7710814e-22b0-40c0-8d32-5bf9f74a14de	2025-12-18 10:15:55.276114+07	2025-12-18 10:15:55.27612+07
 \.
 
 
@@ -1264,6 +1826,54 @@ a67b6a37-9fd2-480f-a72a-4ffcc2380cef	deb640ab-bd69-4a17-9a2c-aaab510bb084	Dựa 
 05d9ed9b-9ba7-4c2a-8aea-96e43f2eea4c	9388b8ee-35e9-41c9-aaee-95f8860806e3	Phân ngưỡng (thresholding) để tạo ảnh nhị phân.	t	Đúng vậy, ảnh nhị phân là đầu vào cần thiết cho hàm `cv2.findContours`.	2	2025-12-12 10:17:04.733676+07
 1a8ef12d-fe2d-41d8-afdf-338beb8c0796	9388b8ee-35e9-41c9-aaee-95f8860806e3	Áp dụng bộ lọc Gaussian.	f	Lọc Gaussian có thể giúp loại bỏ nhiễu, nhưng không phải là bước bắt buộc ngay trước khi tìm đường viền.	3	2025-12-12 10:17:04.733676+07
 474f4b21-0b8a-4f56-a44e-0267e15da406	9388b8ee-35e9-41c9-aaee-95f8860806e3	Vẽ đường viền lên ảnh gốc.	f	Vẽ đường viền là bước cuối cùng, sau khi đã tìm được đường viền.	4	2025-12-12 10:17:04.733676+07
+f69a4707-a578-4c27-ad3b-1f144a48c782	f70d6a08-434b-46a3-8af1-5c34f7dd225a	File > Settings	f	Không chính xác. Đường dẫn đúng là Window > Preferences > Server > Runtime Environment.	1	2025-12-18 00:13:41.642864+07
+33d4763a-2dd7-4f76-a249-68975a5e462c	f70d6a08-434b-46a3-8af1-5c34f7dd225a	Window > Preferences > Server > Runtime Environment	t	Chính xác!	2	2025-12-18 00:13:41.642864+07
+94e1ed08-f132-4201-8570-a06a064f9ab3	f70d6a08-434b-46a3-8af1-5c34f7dd225a	Project > Properties > Server	f	Không chính xác. Đường dẫn đúng là Window > Preferences > Server > Runtime Environment.	3	2025-12-18 00:13:41.642864+07
+be4b0a21-7331-44b2-8db6-75da66216424	f70d6a08-434b-46a3-8af1-5c34f7dd225a	Edit > Tomcat > Configuration	f	Không chính xác. Đường dẫn đúng là Window > Preferences > Server > Runtime Environment.	4	2025-12-18 00:13:41.642864+07
+5307ba0e-497d-4088-b84e-32827ce0cb61	34a0a832-dda1-4950-9314-0f953bd890ec	https://emmet.io/download/	f	Đường dẫn này có thể chứa thông tin về Emmet, nhưng không phải đường dẫn cài đặt plugin cho Eclipse.	1	2025-12-18 00:13:41.642864+07
+b469e774-a751-431b-ac9e-ea37a6c763b9	34a0a832-dda1-4950-9314-0f953bd890ec	http://download.emmet.io/eclipse/updates/	t	Chính xác!	2	2025-12-18 00:13:41.642864+07
+d61c5d08-cb5c-4c1e-80d8-93c13b1b45d9	34a0a832-dda1-4950-9314-0f953bd890ec	https://eclipse.org/marketplace/content/emmet	f	Đường dẫn này có thể chứa Emmet trên Eclipse Marketplace, nhưng không phải đường dẫn cài đặt trực tiếp.	3	2025-12-18 00:13:41.642864+07
+7a186c72-003f-48ac-a810-c4e76b66caa1	34a0a832-dda1-4950-9314-0f953bd890ec	Không thể cài đặt Emmet cho Eclipse	f	Emmet hoàn toàn có thể được cài đặt vào Eclipse	4	2025-12-18 00:13:41.642864+07
+1dcdeb56-42e4-4087-8b82-3763e88c2297	07dc7327-7138-4070-9435-b2aa93d55298	src	f	Sai. Thư mục 'src' thường chứa mã nguồn Java.	1	2025-12-18 00:13:41.642864+07
+123074cd-d735-44cc-b573-c2b393ec2dd5	07dc7327-7138-4070-9435-b2aa93d55298	webapp	t	Chính xác!	2	2025-12-18 00:13:41.642864+07
+15e7b478-3a96-4445-8804-ce1eaed5056b	07dc7327-7138-4070-9435-b2aa93d55298	WebContent	f	Trong một số cấu hình cũ, 'WebContent' có thể đúng, nhưng 'webapp' là chuẩn hơn cho Eclipse EE hiện tại.	3	2025-12-18 00:13:41.642864+07
+82446286-e585-489c-a0ba-b2989065a7e9	07dc7327-7138-4070-9435-b2aa93d55298	META-INF	f	Sai. Thư mục 'META-INF' chứa thông tin cấu hình của ứng dụng web.	4	2025-12-18 00:13:41.642864+07
+c31120ad-912f-4238-b367-d178498f5cfd	895882bb-05cf-4707-bea7-9f1870a85b00	processRequest()	f	Không chính xác, phương thức này không phải là chuẩn để xử lý request GET.	1	2025-12-18 00:13:41.642864+07
+40d71dac-04c7-45fe-9ce8-91efa1d6de63	895882bb-05cf-4707-bea7-9f1870a85b00	doGet()	t	Chính xác!	2	2025-12-18 00:13:41.642864+07
+a7b1fae6-6ccb-401a-9057-1df7ea7dc492	895882bb-05cf-4707-bea7-9f1870a85b00	doPost()	f	Không chính xác, doPost dùng cho request POST.	3	2025-12-18 00:13:41.642864+07
+f7a1a907-3fdd-448b-9644-6f90f04ff65e	895882bb-05cf-4707-bea7-9f1870a85b00	getRequest()	f	Không chính xác, phương thức này không tồn tại.	4	2025-12-18 00:13:41.642864+07
+8342df85-d602-48aa-a3f4-9244d83594c1	48560e85-c76a-4370-9db6-b46bda46b269	Lấy giá trị của tham số 'cd' từ request và chuyển đổi nó thành kiểu String.	f	Sai, nó chuyển thành kiểu double.	1	2025-12-18 00:13:41.642864+07
+9bac933e-91d4-4f6f-8893-22d8e7452487	48560e85-c76a-4370-9db6-b46bda46b269	Lấy giá trị của tham số 'cd' từ request và chuyển đổi nó thành kiểu double.	t	Chính xác!	2	2025-12-18 00:13:41.642864+07
+43793555-4072-475f-bfee-59092fe2094b	48560e85-c76a-4370-9db6-b46bda46b269	Tính căn bậc hai của tham số 'cd'.	f	Sai, không có phép tính căn bậc hai nào ở đây.	3	2025-12-18 00:13:41.642864+07
+6c8fd76d-4394-4b01-a71d-7f739b324f23	48560e85-c76a-4370-9db6-b46bda46b269	Kiểm tra xem tham số 'cd' có tồn tại trong request hay không.	f	Sai, nó cố gắng chuyển đổi giá trị của tham số thành kiểu double.	4	2025-12-18 00:13:41.642864+07
+f34fbe73-6155-4317-8e2d-9e5ff674325d	5f09778a-cb16-4e4a-b239-e3d2b1aa3c8a	GET, vì nó nhanh hơn và đơn giản hơn.	f	Sai. GET không phù hợp cho dữ liệu nhạy cảm.	1	2025-12-18 00:13:41.642864+07
+147370e3-63ed-40fd-8be9-2c31567a0eaf	5f09778a-cb16-4e4a-b239-e3d2b1aa3c8a	POST, vì nó cho phép gửi lượng dữ liệu lớn hơn GET.	f	Tuy kích thước dữ liệu có thể là một yếu tố, nhưng lý do chính là bảo mật.	2	2025-12-18 00:13:41.642864+07
+d6021749-324b-467d-958f-75e4bbe19a65	5f09778a-cb16-4e4a-b239-e3d2b1aa3c8a	POST, vì dữ liệu được gửi trong phần thân của request, bảo mật hơn GET.	t	Chính xác!	3	2025-12-18 00:13:41.642864+07
+35df6429-db7e-4a86-bece-451e417641c3	5f09778a-cb16-4e4a-b239-e3d2b1aa3c8a	Cả GET và POST đều phù hợp, không có sự khác biệt lớn.	f	Sai. Có sự khác biệt lớn về cách thức gửi dữ liệu và bảo mật.	4	2025-12-18 00:13:41.642864+07
+48ed59c3-e476-4aa1-8b52-6f31a29c9112	3096166b-94ae-4617-9bce-5ed53d623c32	Một loại phần mềm chỉnh sửa ảnh.	f	Đây chỉ là một ứng dụng nhỏ của xử lý ảnh.	1	2025-12-18 00:15:02.227762+07
+af1fccd7-cec9-4612-bb9f-f87aee7c0c08	3096166b-94ae-4617-9bce-5ed53d623c32	Lĩnh vực nghiên cứu giúp máy tính có khả năng "nhìn" và "hiểu" hình ảnh/video tương tự con người.	t	Chính xác! Thị giác máy tính giúp máy tính diễn giải hình ảnh giống như con người.	2	2025-12-18 00:15:02.227762+07
+a424cfe0-fb64-44c7-b9b2-af3dff574190	3096166b-94ae-4617-9bce-5ed53d623c32	Một ngôn ngữ lập trình mới.	f	Đây không phải là ngôn ngữ lập trình.	3	2025-12-18 00:15:02.227762+07
+f04c8899-9934-4dd8-b75c-aaa74c8f7e54	3096166b-94ae-4617-9bce-5ed53d623c32	Một loại cảm biến hình ảnh.	f	Cảm biến hình ảnh chỉ là một phần của quá trình thu thập dữ liệu cho thị giác máy tính.	4	2025-12-18 00:15:02.227762+07
+9d0ae443-4901-4510-bf11-0948de4441a1	acbb0d7b-49f0-471f-8de6-da5b2ce37141	TensorFlow	f	TensorFlow là một thư viện mạnh mẽ cho machine learning, nhưng OpenCV tập trung hơn vào thị giác máy tính.	1	2025-12-18 00:15:02.227762+07
+febd752c-4952-4844-aea1-455fc40e2eb1	acbb0d7b-49f0-471f-8de6-da5b2ce37141	OpenCV	t	Đúng vậy! OpenCV là thư viện hàng đầu cho các tác vụ thị giác máy tính.	2	2025-12-18 00:15:02.227762+07
+2a6cba59-2ce9-4d07-ac1b-387276c6d9aa	acbb0d7b-49f0-471f-8de6-da5b2ce37141	Anaconda	f	Anaconda là một nền tảng phân phối Python, không phải là một thư viện thị giác máy tính.	3	2025-12-18 00:15:02.227762+07
+621ca28f-f476-41e6-9bac-18b1b5c29ff6	acbb0d7b-49f0-471f-8de6-da5b2ce37141	matplotlib	f	matplotlib là một thư viện vẽ đồ thị.	4	2025-12-18 00:15:02.227762+07
+6b461c8b-6088-4b31-84c5-893c6605c02e	546f5612-65bd-446a-bc40-8b26d4505739	cv2.imshow()	f	Lệnh này dùng để hiển thị ảnh, không phải đọc ảnh.	1	2025-12-18 00:15:02.227762+07
+1e8f7072-e6f5-4626-abbd-622feee2e4f0	546f5612-65bd-446a-bc40-8b26d4505739	cv2.imwrite()	f	Lệnh này dùng để lưu ảnh, không phải đọc ảnh.	2	2025-12-18 00:15:02.227762+07
+abfb23e1-4446-49d3-b617-2ff4c3e7f946	546f5612-65bd-446a-bc40-8b26d4505739	cv2.imread()	t	Chính xác! Lệnh cv2.imread() dùng để đọc ảnh.	3	2025-12-18 00:15:02.227762+07
+441f0b6f-1991-47a5-a41e-f572d0db6192	546f5612-65bd-446a-bc40-8b26d4505739	cv2.waitKey()	f	Lệnh này dùng để chờ một phím được nhấn.	4	2025-12-18 00:15:02.227762+07
+1cf13d1f-cf9a-44ae-90a6-6c18d56d0d0b	be9a306a-e4c4-489c-b325-7cdf4e52166e	cv2.IMREAD_UNCHANGED (-1)	f	Lệnh này đọc ảnh giữ nguyên định dạng.	1	2025-12-18 00:15:02.227762+07
+4ba2fc2e-1abc-41d5-90d8-ece8eed8663a	be9a306a-e4c4-489c-b325-7cdf4e52166e	cv2.IMREAD_COLOR (1)	f	Lệnh này đọc ảnh màu.	2	2025-12-18 00:15:02.227762+07
+7dbb4baf-a4f5-4539-a6d7-6a0ef543a8d5	be9a306a-e4c4-489c-b325-7cdf4e52166e	cv2.IMREAD_GRAYSCALE (0)	t	Đúng vậy! Giá trị 0 tương ứng với cv2.IMREAD_GRAYSCALE.	3	2025-12-18 00:15:02.227762+07
+22e3fc8c-994e-4e3e-a0b2-1b157eec9291	be9a306a-e4c4-489c-b325-7cdf4e52166e	Không có tham số nào cả	f	Cần có tham số để chỉ định chế độ đọc ảnh.	4	2025-12-18 00:15:02.227762+07
+3630e719-0fc3-4a81-b59e-198d9defd2c7	ff9e830e-1967-4ec5-8c12-02b7f00cb1ea	Một ma trận duy nhất chứa các giá trị từ 0-255.	f	Một ma trận duy nhất chỉ phù hợp với ảnh xám.	1	2025-12-18 00:15:02.227762+07
+c1bcf19f-27ba-4db6-913c-de614c1ffea7	ff9e830e-1967-4ec5-8c12-02b7f00cb1ea	Ba ma trận (M x N), mỗi ma trận đại diện cho một kênh màu (Đỏ, Lục, Lam).	t	Chính xác! Ba kênh màu kết hợp để tạo ra hình ảnh màu.	2	2025-12-18 00:15:02.227762+07
+010ce67e-cd06-42b1-a8cb-752f6550fc9c	ff9e830e-1967-4ec5-8c12-02b7f00cb1ea	Một vector chứa các giá trị màu.	f	Vector không đủ để biểu diễn thông tin không gian của hình ảnh.	3	2025-12-18 00:15:02.227762+07
+9fd9913c-7c18-4607-856e-c877488319f7	ff9e830e-1967-4ec5-8c12-02b7f00cb1ea	Một chuỗi các ký tự mã hóa màu.	f	Máy tính lưu trữ ảnh dưới dạng số, không phải chuỗi ký tự.	4	2025-12-18 00:15:02.227762+07
+84746e1f-1063-4706-aba8-d144c8607b85	9ae6d5ba-06f6-4ea1-969d-b5f7e9fed926	Xe tự hành	f	Xe tự hành sử dụng thị giác máy tính để nhận diện làn đường, biển báo,...	1	2025-12-18 00:15:02.227762+07
+0b290f6d-e0d6-46f0-9cb1-9bbd8d0d3f24	9ae6d5ba-06f6-4ea1-969d-b5f7e9fed926	Giám sát an ninh	f	Giám sát an ninh sử dụng thị giác máy tính để nhận diện khuôn mặt, phát hiện hành vi bất thường,...	2	2025-12-18 00:15:02.227762+07
+7278e76a-8c2f-4b4e-81ce-6ba66c0cdc7e	9ae6d5ba-06f6-4ea1-969d-b5f7e9fed926	Soạn thảo văn bản	t	Đúng vậy, soạn thảo văn bản không liên quan trực tiếp đến thị giác máy tính.	3	2025-12-18 00:15:02.227762+07
+a14978c6-b81c-4c86-bd55-b0b4eb54f31c	9ae6d5ba-06f6-4ea1-969d-b5f7e9fed926	Kiểm tra lỗi sản phẩm trong công nghiệp	f	Kiểm tra lỗi sản phẩm sử dụng thị giác máy tính để phát hiện các khuyết tật trên sản phẩm.	4	2025-12-18 00:15:02.227762+07
 \.
 
 
@@ -1292,6 +1902,18 @@ deb640ab-bd69-4a17-9a2c-aaab510bb084	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Phươ
 e940c7ec-6582-45c1-b396-641ee152aace	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Trong phân ngưỡng thích nghi (Adaptive Thresholding) với phương pháp `ADAPTIVE_THRESH_MEAN_C`, ngưỡng được tính như thế nào?	Ngưỡng được tính bằng cách lấy giá trị trung bình của các pixel lân cận trong một vùng trừ đi hằng số C.	2	991c40a1-c2b1-4e62-972a-33deafd708ff	\N	\N	2025-12-12 10:17:04.733676+07	36d33719-16f4-4ba3-8915-0d658e19fdf6
 51f8711e-74cd-475f-8c2b-72f2aa89a4a5	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Hàm `cv2.findContours(image, mode, method)` trong OpenCV trả về những gì?	Hàm trả về danh sách các đường viền (contours) tìm được trong ảnh và thông tin về cấu trúc cây đường viền (hierarchy).	2	991c40a1-c2b1-4e62-972a-33deafd708ff	\N	\N	2025-12-12 10:17:04.733676+07	36d33719-16f4-4ba3-8915-0d658e19fdf6
 9388b8ee-35e9-41c9-aaee-95f8860806e3	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Trong quy trình tìm và vẽ đường viền, bước nào sau đây thường được thực hiện trước khi sử dụng hàm `cv2.findContours`?	Ảnh cần được chuyển đổi thành ảnh nhị phân thông qua phân ngưỡng (thresholding) trước khi tìm đường viền.	2	991c40a1-c2b1-4e62-972a-33deafd708ff	\N	\N	2025-12-12 10:17:04.733676+07	36d33719-16f4-4ba3-8915-0d658e19fdf6
+f70d6a08-434b-46a3-8af1-5c34f7dd225a	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Để cấu hình Tomcat trong Eclipse, bạn cần truy cập vào menu nào?	Để cấu hình Tomcat, bạn vào Window > Preferences > Server > Runtime Environment.	1	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:13:41.642864+07	480001ce-0be3-461a-b807-3c395b5e09f8
+34a0a832-dda1-4950-9314-0f953bd890ec	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Plugin Emmet cho Eclipse được cài đặt thông qua đường dẫn nào?	Đường dẫn cài đặt plugin Emmet là http://download.emmet.io/eclipse/updates/.	2	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:13:41.642864+07	480001ce-0be3-461a-b807-3c395b5e09f8
+07dc7327-7138-4070-9435-b2aa93d55298	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Để tạo một project Dynamic Web trong Eclipse, bạn cần tạo file index.html ở thư mục nào?	File index.html cần được tạo trong thư mục webapp của project.	1	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:13:41.642864+07	480001ce-0be3-461a-b807-3c395b5e09f8
+895882bb-05cf-4707-bea7-9f1870a85b00	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Trong Servlet, phương thức nào được sử dụng để xử lý yêu cầu HTTP GET?	Phương thức `doGet()` được sử dụng để xử lý các yêu cầu HTTP GET.	1	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:13:41.642864+07	480001ce-0be3-461a-b807-3c395b5e09f8
+48560e85-c76a-4370-9db6-b46bda46b269	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Cho đoạn code sau trong Vidu3.java: `double cd = Double.parseDouble(request.getParameter("cd"));`. Đoạn code này thực hiện chức năng gì?	Đoạn code này lấy giá trị của tham số 'cd' từ request và chuyển đổi nó thành kiểu double.	2	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:13:41.642864+07	480001ce-0be3-461a-b807-3c395b5e09f8
+5f09778a-cb16-4e4a-b239-e3d2b1aa3c8a	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Giả sử bạn muốn tạo một form đăng nhập và xử lý thông tin đăng nhập bằng Servlet. Bạn nên sử dụng phương thức HTTP nào để gửi dữ liệu từ form đến Servlet và tại sao?	Bạn nên sử dụng phương thức POST. POST phù hợp hơn cho việc gửi dữ liệu nhạy cảm như thông tin đăng nhập vì dữ liệu được gửi trong phần thân của request, không hiển thị trên URL như GET.	3	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:13:41.642864+07	480001ce-0be3-461a-b807-3c395b5e09f8
+3096166b-94ae-4617-9bce-5ed53d623c32	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Thị giác máy tính (Computer Vision) là gì?	Thị giác máy tính là lĩnh vực nghiên cứu giúp máy tính có khả năng "nhìn" và "hiểu" hình ảnh/video tương tự con người.	2	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:15:02.227762+07	a148b6d2-1263-424a-a78d-f329a8d5f75d
+acbb0d7b-49f0-471f-8de6-da5b2ce37141	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Thư viện mã nguồn mở nào là hàng đầu cho thị giác máy tính, xử lý ảnh và máy học?	OpenCV là thư viện mã nguồn mở hàng đầu cho thị giác máy tính, xử lý ảnh và máy học.	2	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:15:02.227762+07	a148b6d2-1263-424a-a78d-f329a8d5f75d
+546f5612-65bd-446a-bc40-8b26d4505739	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Trong OpenCV, lệnh nào dùng để đọc một ảnh từ file?	Lệnh `cv2.imread(filename, flags)` dùng để đọc ảnh từ file trong OpenCV.	2	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:15:02.227762+07	a148b6d2-1263-424a-a78d-f329a8d5f75d
+be9a306a-e4c4-489c-b325-7cdf4e52166e	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Trong OpenCV, tham số `flags` nào của hàm `cv2.imread()` được sử dụng để đọc ảnh ở chế độ ảnh xám (grayscale)?	Tham số `cv2.IMREAD_GRAYSCALE (0)` được sử dụng để đọc ảnh ở chế độ ảnh xám.	2	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:15:02.227762+07	a148b6d2-1263-424a-a78d-f329a8d5f75d
+ff9e830e-1967-4ec5-8c12-02b7f00cb1ea	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Ảnh màu RGB được biểu diễn như thế nào trong máy tính?	Ảnh màu RGB được biểu diễn bằng ba kênh (Đỏ, Lục, Lam), mỗi kênh là một ma trận giá trị từ 0-255 biểu thị cường độ màu.	2	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:15:02.227762+07	a148b6d2-1263-424a-a78d-f329a8d5f75d
+9ae6d5ba-06f6-4ea1-969d-b5f7e9fed926	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	Ứng dụng nào sau đây không phải là ứng dụng của thị giác máy tính?	Soạn thảo văn bản không phải là ứng dụng của thị giác máy tính.	2	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-18 00:15:02.227762+07	a148b6d2-1263-424a-a78d-f329a8d5f75d
 \.
 
 
@@ -1305,6 +1927,8 @@ a3333a6a-7773-4bff-8cc0-2a796c371068	Cơ sở dữ liệu tiên tiến	Môn **C�
 667fd949-9fad-4367-92fb-bdfb409fc00a	An toàn thông tin	Môn: An toàn thông tin\r\n----------------------\r\n\r\nMôn **An toàn thông tin** cung cấp kiến thức về các kỹ thuật, mô hình và công nghệ bảo vệ dữ liệu trong môi trường số. Nội dung trọng tâm bao gồm:\r\n\r\n*   Các nguyên lý bảo mật: tính bí mật, toàn vẹn, sẵn sàng (CIA)\r\n    \r\n*   Mã hóa đối xứng, bất đối xứng, chữ ký số và quản lý khóa\r\n    \r\n*   An ninh mạng: tường lửa, IDS/IPS, VPN, phân vùng mạng\r\n    \r\n*   Phân tích và phòng chống tấn công: SQL injection, XSS, CSRF, DDoS\r\n    \r\n*   Bảo mật ứng dụng web, API và hệ thống phân tán\r\n    \r\n*   Quản lý rủi ro, tiêu chuẩn bảo mật (ISO/IEC 27001), đánh giá lỗ hổng\r\n    \r\n*   Thực hành mô phỏng tấn công – phòng thủ (Blue Team / Red Team)\r\n    \r\n\r\nMôn học giúp sinh viên hiểu cách kẻ tấn công khai thác lỗ hổng, từ đó xây dựng và vận hành hệ thống an toàn, hạn chế rủi ro và đảm bảo dữ liệu luôn được bảo vệ.	community	public	991c40a1-c2b1-4e62-972a-33deafd708ff	/uploads/eaaad21c-0df0-47d5-a9c0-b0a13767d25a.webp	\N	2025-12-11 16:42:30.322062+07	2025-12-11 16:42:30.322074+07
 d56ea488-8983-4b83-9844-8d36239f05df	Notebook Tự Học Tiếng Anh Dành Cho Người Mới Bắt Đầu	# Notebook Tự Học Tiếng Anh Dành Cho Người Mới Bắt Đầu\n\nChào mừng bạn đến với notebook tự học tiếng Anh! Notebook này được thiết kế để giúp bạn bắt đầu hành trình chinh phục tiếng Anh một cách hiệu quả và thú vị.\n\n## Tổng quan\n\nNotebook này sẽ bao gồm:\n\n*   **Từ vựng:** Học từ vựng theo chủ đề, sử dụng flashcards và các kỹ thuật ghi nhớ hiệu quả.\n*   **Ngữ pháp:** Ôn tập các điểm ngữ pháp cơ bản, luyện tập các bài tập ngữ pháp.\n*   **Luyện nghe:** Nghe các đoạn hội thoại ngắn, podcast, bài hát tiếng Anh.\n*   **Luyện nói:** Thực hành nói tiếng Anh với người bản xứ hoặc bạn bè.\n*   **Luyện đọc:** Đọc các bài báo, truyện ngắn, sách tiếng Anh đơn giản.\n*   **Luyện viết:** Viết nhật ký, email, bài luận ngắn bằng tiếng Anh.\n\n## Các điểm chính\n\n*   **Học từ vựng hiệu quả:**\n    *   Học theo chủ đề.\n    *   Sử dụng flashcards (Anki là một lựa chọn tốt).\n    *   Học từ trong ngữ cảnh.\n    *   Ôn tập thường xuyên.\n    *   Sử dụng các ứng dụng học từ vựng như Memrise, Quizlet.\n\n*   **Nắm vững ngữ pháp cơ bản:**\n    *   Học các thì cơ bản (hiện tại đơn, quá khứ đơn, tương lai đơn).\n    *   Học các loại câu (câu đơn, câu phức, câu ghép).\n    *   Luyện tập các bài tập ngữ pháp.\n\n*   **Luyện nghe thường xuyên:**\n    *   Nghe các đoạn hội thoại ngắn, podcast, bài hát tiếng Anh.\n    *   Xem phim, chương trình TV bằng tiếng Anh (có phụ đề hoặc không phụ đề).\n    *   Luyện nghe chủ động và thụ động.\n\n*   **Tự tin luyện nói:**\n    *   Tìm người bản xứ hoặc bạn bè để luyện nói.\n    *   Tham gia các câu lạc bộ tiếng Anh.\n    *   Tự nói trước gương.\n    *   Đừng sợ mắc lỗi!\n\n*   **Đọc đa dạng:**\n    *   Bắt đầu với các bài báo, truyện ngắn, sách tiếng Anh đơn giản.\n    *   Đọc những chủ đề bạn yêu thích.\n    *   Sử dụng từ điển khi cần thiết.\n\n*   **Viết thường xuyên:**\n    *   Viết nhật ký bằng tiếng Anh.\n    *   Viết email cho bạn bè, người thân.\n    *   Viết bài luận ngắn về các chủ đề bạn quan tâm.\n\n## Lợi ích\n\n*   Cải thiện khả năng giao tiếp tiếng Anh.\n*   Mở rộng kiến thức và tầm nhìn.\n*   Nâng cao cơ hội học tập và làm việc.\n*   Tăng cường sự tự tin.\n\nChúc bạn thành công trên con đường chinh phục tiếng Anh!	personal	private	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-11 22:51:48.894819+07	2025-12-11 22:51:48.894829+07
 055dc832-3d50-46f3-bb71-6c535d7a668a	Gemini API: Vượt qua giới hạn sử dụng (Usage Limit)	# Gemini API: Vượt qua giới hạn sử dụng\n\n## Tổng quan\n\nNotebook này ghi lại các vấn đề liên quan đến giới hạn sử dụng (usage limit) của Gemini API và các giải pháp có thể để khắc phục. Nó tổng hợp thông tin từ nhiều nguồn, bao gồm các diễn đàn trực tuyến và tài liệu chính thức.\n\n## Các điểm chính\n\n*   **Vấn đề giới hạn sử dụng:** Người dùng thường gặp phải tình trạng giới hạn số lượng yêu cầu (requests) có thể gửi đến Gemini API trong một khoảng thời gian nhất định. Điều này có thể gây khó khăn cho việc phát triển và thử nghiệm ứng dụng.\n*   **Nguyên nhân:** Giới hạn sử dụng được áp đặt để đảm bảo sự ổn định và công bằng cho tất cả người dùng. Nó cũng giúp ngăn chặn việc lạm dụng API.\n*   **Giải pháp:**\n    *   **Tối ưu hóa yêu cầu:**\n        *   Giảm thiểu số lượng yêu cầu bằng cách gộp nhiều tác vụ vào một yêu cầu duy nhất.\n        *   Sử dụng bộ nhớ đệm (caching) để lưu trữ kết quả của các yêu cầu trước đó và tránh gửi lại các yêu cầu tương tự.\n        *   Sử dụng phiên bản API mới nhất, có thể có hiệu suất tốt hơn.\n    *   **Điều chỉnh tốc độ yêu cầu:**\n        *   Sử dụng kỹ thuật điều chỉnh tốc độ (rate limiting) để kiểm soát số lượng yêu cầu gửi đi trong một khoảng thời gian nhất định. Điều này giúp tránh vượt quá giới hạn và bị chặn.\n        *   Sử dụng các thư viện hỗ trợ điều chỉnh tốc độ.\n    *   **Liên hệ với Google Cloud Support:**\n        *   Nếu cần thiết, hãy liên hệ với Google Cloud Support để yêu cầu tăng giới hạn sử dụng. Cần cung cấp thông tin chi tiết về ứng dụng và lý do cần tăng giới hạn.\n    *   **Sử dụng Google AI Studio một cách tối ưu:** Nếu bạn là giáo viên và đang sử dụng Google AI Studio với Gemini Model, hãy xem xét hướng dẫn sau: [https://ai.google.dev/gemini-api/docs/prompting_with_media?](https://ai.google.dev/gemini-api/docs/prompting_with_media?)\n\n## Lợi ích\n\n*   Hiểu rõ hơn về giới hạn sử dụng của Gemini API.\n*   Áp dụng các giải pháp để vượt qua giới hạn sử dụng và tiếp tục phát triển ứng dụng.\n*   Nâng cao hiệu quả sử dụng API và giảm chi phí.	personal	private	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	\N	2025-12-11 23:40:53.55222+07	2025-12-11 23:40:53.552229+07
+2ca1e065-9beb-4e3f-b9c5-8cfe773b45be	Cấu trúc dữ liệu và giải thuật - Học kỳ 2 - Năm học 2025-2026	Tài liệu giảng dạy cho phân công: Cấu trúc dữ liệu và giải thuật - Học kỳ 2 - Năm học 2025-2026	assignment	private	22bfd357-e85d-40a7-8670-5bb5d545af83	\N	\N	2025-12-21 23:12:26.682221+07	2025-12-21 23:12:26.682221+07
+6b225cb1-8538-44f6-9d9c-ad7348bf2615	Cấu trúc dữ liệu và giải thuật - Học kỳ 1 - Năm học 2025-2026	Tài liệu giảng dạy cho phân công: Cấu trúc dữ liệu và giải thuật - Học kỳ 1 - Năm học 2025-2026	assignment	private	22bfd357-e85d-40a7-8670-5bb5d545af83	\N	\N	2025-12-22 00:49:44.722901+07	2025-12-22 00:49:44.722901+07
 \.
 
 
@@ -1313,47 +1937,146 @@ d56ea488-8983-4b83-9844-8d36239f05df	Notebook Tự Học Tiếng Anh Dành Cho N
 --
 
 COPY public.notifications (id, user_id, type, title, content, url, metadata, is_read, read_at, action, role_target, created_at, updated_at) FROM stdin;
-6c56d942-bfd4-437e-a67e-288aaf83242b	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: fdf	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "8822ff94-532c-4290-9ab1-0cb67a1429ad", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "fdf", "messageCreatedAt": "2025-12-04T21:50:41.217424+07:00"}	f	\N	view_chat	\N	2025-12-04 21:50:41.238867+07	2025-12-04 21:50:41.238867+07
-70cb1322-fc44-493b-ba4c-b663b27e34aa	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: dhasjhdasdsad	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "d7b44609-9902-4478-a48d-e7e7d54c216f", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "dhasjhdasdsad", "messageCreatedAt": "2025-12-04T21:50:55.290806+07:00"}	f	\N	view_chat	\N	2025-12-04 21:50:55.292502+07	2025-12-04 21:50:55.292502+07
-7e209601-53da-485e-93aa-93438c6e25f5	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: ăn lồn	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "97658e64-8ac0-4960-bc78-c1316a28f80d", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "ăn lồn", "messageCreatedAt": "2025-12-04T21:51:05.409265+07:00"}	f	\N	view_chat	\N	2025-12-04 21:51:05.411524+07	2025-12-04 21:51:05.411524+07
-5dd7fe5e-ce09-435d-97b5-df314125166e	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: dss	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "dfd7b1e9-c69a-4641-acb4-3bf7572cad38", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "dss", "messageCreatedAt": "2025-12-04T21:51:56.521097+07:00"}	f	\N	view_chat	\N	2025-12-04 21:51:56.530954+07	2025-12-04 21:51:56.530954+07
-f00cb982-06d3-46a2-a765-5ad7db6ae2cf	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	Natasha Black: đasas	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "74fa213b-db85-4dbf-9244-c4feaecb69b8", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "đasas", "messageCreatedAt": "2025-12-04T21:52:01.316829+07:00"}	f	\N	view_chat	\N	2025-12-04 21:52:01.319671+07	2025-12-04 21:52:01.319671+07
-151749f0-f70e-4705-a2e1-0a57d9b484ba	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: fdf	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "8822ff94-532c-4290-9ab1-0cb67a1429ad", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "fdf", "messageCreatedAt": "2025-12-04T21:50:41.217424+07:00"}	t	2025-12-04 22:20:55.374774+07	view_chat	\N	2025-12-04 21:50:41.238756+07	2025-12-04 22:20:55.374774+07
-aae66198-a7a4-4490-9d7e-c2bff74125a1	991c40a1-c2b1-4e62-972a-33deafd708ff	chat_message	Tin nhắn mới trong dsds	Natasha Black: đasas	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "74fa213b-db85-4dbf-9244-c4feaecb69b8", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "đasas", "messageCreatedAt": "2025-12-04T21:52:01.316829+07:00"}	t	2025-12-05 18:55:48.394245+07	view_chat	\N	2025-12-04 21:52:01.319678+07	2025-12-05 18:55:48.394245+07
-9e8041db-46a2-4b6d-b8a8-a5c9aee660cd	7710814e-22b0-40c0-8d32-5bf9f74a14de	abc	abc	abc	abc	{}	t	2025-12-04 22:20:55.374774+07	\N	{}	2025-12-04 21:32:30.85278+07	2025-12-04 22:20:55.374774+07
-366e2395-27e5-4d79-ab28-4d20f52b98fd	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	Natasha Black: dsd	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "a60d4cc8-2e17-4c35-b7b2-d0ed13b5744e", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "dsd", "messageCreatedAt": "2025-12-04T21:52:05.580274+07:00"}	f	\N	view_chat	\N	2025-12-04 21:52:05.595396+07	2025-12-04 21:52:05.595396+07
-da900aaa-70a1-4704-a7ad-20c4fee517ef	991c40a1-c2b1-4e62-972a-33deafd708ff	chat_message	Tin nhắn mới trong dsds	Natasha Black: dsd	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "a60d4cc8-2e17-4c35-b7b2-d0ed13b5744e", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "dsd", "messageCreatedAt": "2025-12-04T21:52:05.580274+07:00"}	t	2025-12-05 18:55:48.394245+07	view_chat	\N	2025-12-04 21:52:05.5954+07	2025-12-05 18:55:48.394245+07
-7f850db7-5ef1-441c-8a9a-2e1b097306a6	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	Natasha Black: sdsd	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "72e19cef-7177-4b19-b0ff-ad63654dc777", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "sdsd", "messageCreatedAt": "2025-12-04T21:52:10.138883+07:00"}	f	\N	view_chat	\N	2025-12-04 21:52:10.147924+07	2025-12-04 21:52:10.147924+07
-18af2999-3fcb-455a-a982-a4a90f4351d4	991c40a1-c2b1-4e62-972a-33deafd708ff	chat_message	Tin nhắn mới trong dsds	Natasha Black: sdsd	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "72e19cef-7177-4b19-b0ff-ad63654dc777", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "sdsd", "messageCreatedAt": "2025-12-04T21:52:10.138883+07:00"}	t	2025-12-05 18:55:48.394245+07	view_chat	\N	2025-12-04 21:52:10.147929+07	2025-12-05 18:55:48.394245+07
-49bbb80e-695e-4baa-baab-342539a21cb8	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: dhasjhdasdsad	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "d7b44609-9902-4478-a48d-e7e7d54c216f", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "dhasjhdasdsad", "messageCreatedAt": "2025-12-04T21:50:55.290806+07:00"}	t	2025-12-04 22:20:55.374774+07	view_chat	\N	2025-12-04 21:50:55.292488+07	2025-12-04 22:20:55.374774+07
-3d2cbc0d-c256-4c67-a1e4-65fc5d41610d	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: ăn lồn	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "97658e64-8ac0-4960-bc78-c1316a28f80d", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "ăn lồn", "messageCreatedAt": "2025-12-04T21:51:05.409265+07:00"}	t	2025-12-04 22:20:55.374774+07	view_chat	\N	2025-12-04 21:51:05.411502+07	2025-12-04 22:20:55.374774+07
-6180f4d0-58cf-48ae-8b28-306857df325e	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: dss	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "dfd7b1e9-c69a-4641-acb4-3bf7572cad38", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "dss", "messageCreatedAt": "2025-12-04T21:51:56.521097+07:00"}	t	2025-12-04 22:20:55.374774+07	view_chat	\N	2025-12-04 21:51:56.530929+07	2025-12-04 22:20:55.374774+07
-dd1c078b-c2fd-4bf6-934f-08107b378980	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	Natasha Black: được đó	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "9e601fb3-e467-49c6-8783-dfc743f55a1d", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "được đó", "messageCreatedAt": "2025-12-04T22:26:17.825093+07:00"}	f	\N	view_chat	\N	2025-12-04 22:26:17.837725+07	2025-12-04 22:26:17.837725+07
-7c70bf7f-35d1-4f81-b5e8-b0bf4871cf86	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: ghj	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "0434dab2-04b0-4583-90a8-01dc8ef2b9fc", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "ghj", "messageCreatedAt": "2025-12-05T17:10:35.475605+07:00"}	f	\N	view_chat	\N	2025-12-05 17:10:35.488071+07	2025-12-05 17:10:35.488071+07
-9a96c1ec-178f-4533-b5e6-ed37418627b6	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: ghj	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "0434dab2-04b0-4583-90a8-01dc8ef2b9fc", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "ghj", "messageCreatedAt": "2025-12-05T17:10:35.475605+07:00"}	f	\N	view_chat	\N	2025-12-05 17:10:35.488145+07	2025-12-05 17:10:35.488145+07
-949158bc-4305-46e2-b8cc-67041c052966	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: hj	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "201403b3-7691-4ecc-894c-e51233436a56", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "hj", "messageCreatedAt": "2025-12-05T17:10:38.702933+07:00"}	f	\N	view_chat	\N	2025-12-05 17:10:38.70459+07	2025-12-05 17:10:38.70459+07
-dfb51ddf-a69f-48a6-be5a-653636fb132e	991c40a1-c2b1-4e62-972a-33deafd708ff	chat_message	Tin nhắn mới trong dsds	Natasha Black: được đó	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "9e601fb3-e467-49c6-8783-dfc743f55a1d", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "được đó", "messageCreatedAt": "2025-12-04T22:26:17.825093+07:00"}	t	2025-12-05 18:55:48.394245+07	view_chat	\N	2025-12-04 22:26:17.837729+07	2025-12-05 18:55:48.394245+07
-97e39309-7fb1-4697-a0e3-60405b7828f9	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: hj	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "201403b3-7691-4ecc-894c-e51233436a56", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "hj", "messageCreatedAt": "2025-12-05T17:10:38.702933+07:00"}	f	\N	view_chat	\N	2025-12-05 17:10:38.704608+07	2025-12-05 17:10:38.704608+07
-15d37f59-0cd3-42c4-b7b7-9d6ffb837888	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: jytk	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "2300cd50-f95f-4905-a644-f96ffad33821", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "jytk", "messageCreatedAt": "2025-12-05T17:10:45.634823+07:00"}	f	\N	view_chat	\N	2025-12-05 17:10:45.641591+07	2025-12-05 17:10:45.641591+07
-8c204c96-e6ba-4fce-9028-493cdb2b9957	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: jytk	/notebooks/c3a7f558-faa7-4218-ae41-4ef57f976f34/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "2300cd50-f95f-4905-a644-f96ffad33821", "notebookId": "c3a7f558-faa7-4218-ae41-4ef57f976f34", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "jytk", "messageCreatedAt": "2025-12-05T17:10:45.634823+07:00"}	f	\N	view_chat	\N	2025-12-05 17:10:45.641601+07	2025-12-05 17:10:45.641601+07
-625d9749-6394-4dd3-b1af-8f68e0caf76d	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: dsds	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "77a26826-e63e-4dfb-9a0e-da37e47eb6b8", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "dsds", "messageCreatedAt": "2025-12-07T12:29:34.175168+07:00"}	f	\N	view_chat	\N	2025-12-07 12:29:34.190474+07	2025-12-07 12:29:34.190474+07
-203a3950-1af1-4a34-99a6-1c6b4977540a	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: dsds	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "77a26826-e63e-4dfb-9a0e-da37e47eb6b8", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "dsds", "messageCreatedAt": "2025-12-07T12:29:34.175168+07:00"}	f	\N	view_chat	\N	2025-12-07 12:29:34.190555+07	2025-12-07 12:29:34.190555+07
-2914807c-fb4b-457f-9ee4-82bf271c6017	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: sấ	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "e345cb98-e8c9-4833-baad-56383e836058", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "sấ", "messageCreatedAt": "2025-12-07T21:57:53.208839+07:00"}	f	\N	view_chat	\N	2025-12-07 21:57:53.222674+07	2025-12-07 21:57:53.222674+07
-0fffd2c2-621d-4a3f-ab28-4de29d3daa9e	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: sấ	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "e345cb98-e8c9-4833-baad-56383e836058", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "sấ", "messageCreatedAt": "2025-12-07T21:57:53.208839+07:00"}	f	\N	view_chat	\N	2025-12-07 21:57:53.22279+07	2025-12-07 21:57:53.22279+07
-3fa36717-7de3-44b7-ae2e-41313abc8626	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	Natasha Black: sấ	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "ae7292a3-c1a0-4822-aa90-40a237d148e0", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "sấ", "messageCreatedAt": "2025-12-07T21:57:58.756559+07:00"}	f	\N	view_chat	\N	2025-12-07 21:57:58.765106+07	2025-12-07 21:57:58.765106+07
-f245be7f-b587-466b-832f-f5b666117004	991c40a1-c2b1-4e62-972a-33deafd708ff	chat_message	Tin nhắn mới trong dsds	Natasha Black: sấ	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "ae7292a3-c1a0-4822-aa90-40a237d148e0", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "sấ", "messageCreatedAt": "2025-12-07T21:57:58.756559+07:00"}	f	\N	view_chat	\N	2025-12-07 21:57:58.765121+07	2025-12-07 21:57:58.765121+07
-db344a74-4ffc-4bdd-b68a-5cb7f4616f0d	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: sáas	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "810103be-b23c-4934-9d00-deba73ed2d48", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "sáas", "messageCreatedAt": "2025-12-07T21:58:07.722232+07:00"}	f	\N	view_chat	\N	2025-12-07 21:58:07.724106+07	2025-12-07 21:58:07.724106+07
-3c80ef55-3900-4203-98e2-02580b07250b	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: sáas	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "810103be-b23c-4934-9d00-deba73ed2d48", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "sáas", "messageCreatedAt": "2025-12-07T21:58:07.722232+07:00"}	f	\N	view_chat	\N	2025-12-07 21:58:07.724112+07	2025-12-07 21:58:07.724112+07
-cbb6ebc8-af34-4925-8841-027ea2d6f9c5	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	Natasha Black: sấ	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "ab89c40a-1523-4ce0-a799-e6dd10af0460", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "sấ", "messageCreatedAt": "2025-12-07T21:58:23.551969+07:00"}	f	\N	view_chat	\N	2025-12-07 21:58:23.562533+07	2025-12-07 21:58:23.562533+07
-8a814e4b-8263-4a42-859b-20a42b8a4298	991c40a1-c2b1-4e62-972a-33deafd708ff	chat_message	Tin nhắn mới trong dsds	Natasha Black: sấ	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "7710814e-22b0-40c0-8d32-5bf9f74a14de", "messageId": "ab89c40a-1523-4ce0-a799-e6dd10af0460", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "Natasha Black", "notebookTitle": "dsds", "messageContent": "sấ", "messageCreatedAt": "2025-12-07T21:58:23.551969+07:00"}	f	\N	view_chat	\N	2025-12-07 21:58:23.56255+07	2025-12-07 21:58:23.56255+07
-e77dd8e5-7435-4575-a303-287c3bcc2be5	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: âs	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "7c2c7b2c-75b2-4086-af6f-98524d781ec1", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "âs", "messageCreatedAt": "2025-12-07T21:58:26.738194+07:00"}	f	\N	view_chat	\N	2025-12-07 21:58:26.739867+07	2025-12-07 21:58:26.739867+07
-60f7c20b-e589-48a9-b91f-17044a9749d0	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: âs	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "7c2c7b2c-75b2-4086-af6f-98524d781ec1", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "âs", "messageCreatedAt": "2025-12-07T21:58:26.738194+07:00"}	f	\N	view_chat	\N	2025-12-07 21:58:26.739872+07	2025-12-07 21:58:26.739872+07
-67baf089-6b6d-4b40-92ef-58df56b47b22	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong dsds	ADMIN: ok	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "caeedff3-78a0-439e-bde5-b2a2f8eef2e1", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "ok", "messageCreatedAt": "2025-12-09T19:59:24.455685+07:00"}	f	\N	view_chat	\N	2025-12-09 19:59:24.459641+07	2025-12-09 19:59:24.459641+07
-06099913-42ab-478f-a57b-41638f075124	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong dsds	ADMIN: ok	/notebooks/95f69db9-e3e4-45d9-83ed-fe8d0cda70ba/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "caeedff3-78a0-439e-bde5-b2a2f8eef2e1", "notebookId": "95f69db9-e3e4-45d9-83ed-fe8d0cda70ba", "senderName": "ADMIN", "notebookTitle": "dsds", "messageContent": "ok", "messageCreatedAt": "2025-12-09T19:59:24.455685+07:00"}	f	\N	view_chat	\N	2025-12-09 19:59:24.459722+07	2025-12-09 19:59:24.459722+07
-d97c64c3-f8a3-492e-969f-02963a562d36	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong ok gái xinh 123	ADMIN: chào nha	/notebooks/d8cf4170-01b7-4cc4-8954-69bf82e33dbc/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "afba6f14-58e9-4b86-88e4-0f3b2763d68c", "notebookId": "d8cf4170-01b7-4cc4-8954-69bf82e33dbc", "senderName": "ADMIN", "notebookTitle": "ok gái xinh 123", "messageContent": "chào nha", "messageCreatedAt": "2025-12-11T00:31:40.347315+07:00"}	f	\N	view_chat	\N	2025-12-11 00:31:40.352754+07	2025-12-11 00:31:40.352754+07
-db789deb-1c4f-4b90-9186-1f03f5131175	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong ok gái xinh 123	ADMIN: chào nha	/notebooks/d8cf4170-01b7-4cc4-8954-69bf82e33dbc/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "afba6f14-58e9-4b86-88e4-0f3b2763d68c", "notebookId": "d8cf4170-01b7-4cc4-8954-69bf82e33dbc", "senderName": "ADMIN", "notebookTitle": "ok gái xinh 123", "messageContent": "chào nha", "messageCreatedAt": "2025-12-11T00:31:40.347315+07:00"}	f	\N	view_chat	\N	2025-12-11 00:31:40.352845+07	2025-12-11 00:31:40.352845+07
-c4e7f496-ccc0-45b9-86fb-c1eb4e6c47a6	2b569515-99dd-48d1-a767-8f524a005338	chat_message	Tin nhắn mới trong ok gái xinh 123	ADMIN: ok cháu	/notebooks/d8cf4170-01b7-4cc4-8954-69bf82e33dbc/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "6ebb6396-c569-49bf-8f1f-6e5e85db9794", "notebookId": "d8cf4170-01b7-4cc4-8954-69bf82e33dbc", "senderName": "ADMIN", "notebookTitle": "ok gái xinh 123", "messageContent": "ok cháu", "messageCreatedAt": "2025-12-11T00:32:15.014414+07:00"}	f	\N	view_chat	\N	2025-12-11 00:32:15.02775+07	2025-12-11 00:32:15.02775+07
-b8b3effa-50aa-47f2-9875-891f6e104dca	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_message	Tin nhắn mới trong ok gái xinh 123	ADMIN: ok cháu	/notebooks/d8cf4170-01b7-4cc4-8954-69bf82e33dbc/chat	{"senderId": "991c40a1-c2b1-4e62-972a-33deafd708ff", "messageId": "6ebb6396-c569-49bf-8f1f-6e5e85db9794", "notebookId": "d8cf4170-01b7-4cc4-8954-69bf82e33dbc", "senderName": "ADMIN", "notebookTitle": "ok gái xinh 123", "messageContent": "ok cháu", "messageCreatedAt": "2025-12-11T00:32:15.014414+07:00"}	t	2025-12-14 21:00:24.022868+07	view_chat	\N	2025-12-11 00:32:15.027737+07	2025-12-14 21:00:24.022871+07
+\.
+
+
+--
+-- Data for Name: org_units; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.org_units (id, code, name, type, parent_id, is_active, created_at, updated_at) FROM stdin;
+4dfb043d-e38b-4336-8cf2-0996a8deb9a8	VINH_SOE	Trường Sư phạm	SCHOOL	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+916a1c94-f6d6-4140-a19a-99922bcac9a7	VINH_SSH	Trường Khoa học Xã hội và Nhân văn	SCHOOL	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+322c4df6-2573-4a93-bbb1-bbf90b4f9d66	VINH_SE	Trường Kinh tế	SCHOOL	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+9e75865a-37eb-48e0-93d1-31319d41f8dc	VINH_ICBSE	Viện Công nghệ Hóa, Sinh và Môi trường	INSTITUTE	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+9e4ff701-e87a-4687-8db0-034e0960a3b3	VINH_IANR	Viện Nông nghiệp và Tài nguyên	INSTITUTE	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+4250f97a-933d-488b-9b8b-72876496cdb0	VINH_IOT	Viện Nghiên cứu và Đào tạo trực tuyến	INSTITUTE	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+bb21bbf0-93d0-43f5-8b01-1b585a1fd74e	VINH_FFL	Khoa Sư phạm Ngoại ngữ	FACULTY	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+9242a927-38d6-4d4b-9eac-6d4a52b74c9c	VINH_FCE	Khoa Xây dựng	FACULTY	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+dfb34150-4776-4c59-9e65-b9ab79af4807	VINH_FPE	Khoa Giáo dục thể chất	FACULTY	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 21:57:30.089169+07
+a7bde13b-fe08-4f94-ad77-6b56e3025b21	VINH_IET	Viện Kỹ thuật và Công nghệ	INSTITUTE	9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	t	2025-12-19 21:57:30.089169+07	2025-12-19 23:00:15.949291+07
+9c63619a-d0ee-4fa0-83f5-00ac688ad1ce	VINH_UNI	Đại học Vinh	UNIVERSITY	\N	t	2025-12-19 21:57:30.089169+07	2025-12-20 13:46:30.002235+07
+\.
+
+
+--
+-- Data for Name: subjects; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.subjects (id, code, name, credit, is_active, created_at, updated_at) FROM stdin;
+67fbeae6-8170-4e25-bc36-2e0976f1f6fe	INF20101	Nhập môn Công nghệ thông tin	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+8e573ca8-a157-4216-8885-1ecec7562806	MAT21002	Đại số tuyến tính	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+4045fd5d-9f43-4e76-a80e-64eb97effb0b	INF20102	Lập trình máy tính	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+5b2e44d0-20cc-450b-8738-8b19aeb6dc9b	PHY22001	Vật lí đại cương	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+7c212119-8110-4c53-8606-9565d4431033	MAT20006	Giải tích	5	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+61406cae-fd55-425b-848c-924b993d98c3	INF30064	Lập trình hướng đối tượng	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+b1d7f19b-9ddc-4c34-86f7-922d7d00765e	ENG10002	Tiếng Anh 2	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+21089283-258b-4388-a8d9-c9dfe5ac1072	POL11001	Triết học Mác - Lênin	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+11fa5656-770a-4771-b7f9-aa40d80d9ea6	NAP11001	Giáo dục quốc phòng 1	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+bac6fc70-df3e-48a5-b95a-836c893387dd	NAP11002	Giáo dục quốc phòng 2	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+ddfabea9-d83d-488f-bfd2-9c98f2a900ba	NAP11003	Giáo dục quốc phòng 3	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+3d8ba8ad-cf3d-4385-b37b-76d4bd377082	NAP11004	Giáo dục quốc phòng 4	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+a5354e8b-b021-431c-b00d-5a61464b85f3	SPO10001	Giáo dục thể chất	5	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+59d99539-82e5-461a-b273-0ebfde468d57	SKI10000	Kỹ năng mềm	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+5328fee1-2676-465b-92c9-3082393234e6	INF21105	Cấu trúc dữ liệu và giải thuật	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+b3d77ddc-4b28-4752-b57b-73fd26d801a0	INF30006	Cơ sở dữ liệu	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+8b5b8145-445d-4857-83dc-431716c03c6a	POL11002	Kinh tế chính trị Mác - Lênin	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+cd058133-7ffc-4045-855e-7cf481a7b86f	INF21110	Lập trình Web	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+943710f5-6092-404b-ac10-17be7160a172	MAT21009	Xác suất và Thống kê	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+32be0324-5561-41f1-8256-ed271d7cfac1	INF30032	Xử lý tín hiệu số	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+390f2f63-5dea-466b-baff-0661b5af5cc1	POL11003	Chủ nghĩa xã hội khoa học	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+5f855d12-41cb-4b8a-aab3-4fd3c19efcbc	INF30300	Công nghệ .NET	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+c3470e51-8f9d-4074-80bd-d6e05f561444	INF20009	Hệ điều hành	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+ac00ff6f-79c1-4a2c-ac14-de340027c622	INF30007	Hệ quản trị cơ sở dữ liệu	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+741d507a-8094-4b4d-9d96-719752b99a87	LAW20004	Pháp luật đại cương	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+eb4d6e7a-14bc-4507-a3d6-94f3aaf58ff3	POL11004	Lịch sử Đảng Cộng sản Việt Nam	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+f494038b-3145-464a-8c4b-1134c4d617dc	INF21113	Phân tích và thiết kế hệ thống thông tin	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+06133a03-7547-4c62-a653-c4464f5aef5c	INF30302	Phát triển ứng dụng Web	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+b5c46c51-f203-4381-89b1-5225b86e483f	INF21117	Tiếng Anh chuyên ngành CNTT	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+abd78c15-8a2e-405b-80db-061917a14015	INF30019	Toán rời rạc	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+68c2658c-d48f-40b5-9472-bf121f27b0b4	INF30075	Đồ án chuyên ngành	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+e6a9f207-fd84-4ff2-a59a-9b30404936af	INF30305	Phát triển ứng dụng với mã nguồn mở	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+61836e1f-2ccc-4d01-8c58-6caa95487170	INF20007	Trí tuệ nhân tạo	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+920f37d6-e750-4c36-8f5f-3960fc5d83bd	POL10002	Tư tưởng Hồ Chí Minh	2	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+c091b4e9-dc34-4361-8120-3c25d0a83241	INF31015	Mạng máy tính	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+754c3279-3933-4803-84e2-dca0c838e822	INF30033	An toàn thông tin	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+2b85e142-a172-4db5-befc-a2576dbdf1ba	INF30034	Công nghệ phần mềm	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+53545c43-eb99-4eb6-965d-2bd4478ab67a	INF30306	Phát triển ứng dụng với Java	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+3faeaf67-17ec-46aa-a719-76ffc797a906	INF20141	Thị giác máy tính	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+a952caf4-0828-4794-b7ef-4f0a8d337e50	INF30307	Thực tập chuyên ngành	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+ba35d302-0e37-4154-9f09-56875d89aa17	INF30310	Phát triển ứng dụng cho thiết bị di động	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+d8b240fa-c61d-47e1-895a-09ab868d1412	INF31062	Thực tập và Đồ án tốt nghiệp	12	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+1e7a577c-85db-422f-9647-fdde3198d5fd	INF30069	Sáng tạo và khởi nghiệp	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+7f233807-6fe1-425c-a262-21379d8c28f3	VIE10001	Tiếng Việt 1 (Cho sinh viên Lào)	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+1fe9b959-2018-4e23-8545-3150f183728a	VIE10002	Tiếng Việt 2 (Cho sinh viên Lào)	4	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+f481164f-71c6-4671-942c-2a75c78ec4b4	INF30057	Quản trị mạng	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+3fc97dca-c466-4791-8124-e7e1e612da9d	INF30212	Hệ điều hành Linux	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+48edf75b-0e6a-4247-8e8a-8b13173eee7a	INF30224	Web ngữ nghĩa	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+c746bae1-f1ac-4050-8927-455a66f9db52	INF30043	Hệ thống thông tin quản lý	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+f8109ac5-6c13-4a9c-837e-8b0595ef44c9	INF31104	Cơ sở dữ liệu tiên tiến	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+a61ef8e4-a6b9-4c1d-bccb-35ee6c8ba7f6	INF32079	Phân tích và thiết kế thuật toán	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+e6ddfe1e-d48f-4f70-a713-472fa333fb56	INF30209	Hệ hỗ trợ ra quyết định	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+5b011948-3801-4aa4-a69b-c8fdea888ed5	INF30321	Điện toán đám mây	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+40b8ea0f-2aa4-457b-8243-751dc5fb416d	INF30045	Khai phá dữ liệu	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+5f51886a-55ab-4021-8f8c-fade02176170	INF30059	Thương mại điện tử	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+49296235-3b4a-4f7b-b64c-71ec57884b31	INF20022	Xử lý dữ liệu lớn	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+8dd85212-c544-463f-baa4-2513785e0a2e	INF31021	Internet kết nối vạn vật	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+d0397ef5-464f-424c-87a3-96064893625f	INF30102	Cấu trúc dữ liệu và giải thuật nâng cao	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+495f0366-ab14-41e3-bc5b-d7b9cedf926c	INF30044	Học máy	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+6989647e-84fc-4a8b-ab1d-93c2faa0881c	INF30228	Lập trình Robot	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+67bebf6a-5979-4d00-9bd0-4b4c3830a5fb	INF31092	Nhập môn khoa học dữ liệu	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+38a3deb7-a61f-4930-9e9b-5c5f3a640f77	INF30060	Xử lý ngôn ngữ tự nhiên	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+e19e8c1f-61df-453f-bb43-fd7697d24bdc	INF30103	Phân tích và thiết kế mạng máy tính	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+b4df10a1-2051-484f-8a3e-8a44d53a0928	INF30221	Đánh giá hiệu năng mạng máy tính	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+7bffcb51-7819-4f5b-92a4-0ffba5a6bec7	INF30037	An ninh mạng	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+4930a166-797c-4175-9c4d-47d07d94d4e6	INF30051	Lập trình mạng	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+5bd016bc-7c59-4ba8-8090-dee897c77d84	INF30220	Mạng không dây	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 10:21:51.090044+07
+d123e7d5-f13c-4dc4-aab6-47225863659e	BUA20006	Quản trị doanh nghiệp và marketing	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 15:47:25.679991+07
+dfe8bd34-dca5-417b-a119-b487786a5693	INF30001	Kiến trúc máy tính	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 15:46:54.505218+07
+d1a7c839-3658-4c67-96d7-bb7ac55e190f	ENG10001	Tiếng Anh 1	3	t	2025-12-20 10:21:51.090044+07	2025-12-20 15:47:10.71993+07
+a1b2c3d4-e5f6-7890-abcd-ef1234567890	INF30087	Cấu trúc dữ liệu và giải thuật	3	t	2025-12-20 22:23:04.024354+07	2025-12-20 22:23:04.024354+07
+\.
+
+
+--
+-- Data for Name: teaching_assignments; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.teaching_assignments (id, term_id, subject_id, status, created_at, created_by, approval_status, approved_by, approved_at, note, lecturer_id, notebook_id) FROM stdin;
+8456e3f4-2077-46a3-ae85-ed7b8e526f06	e0194dfa-7693-4e4a-988e-779e8f2a440d	5328fee1-2676-465b-92c9-3082393234e6	ACTIVE	2025-12-21 23:12:26.682221+07	ADMIN	APPROVED	991c40a1-c2b1-4e62-972a-33deafd708ff	2025-12-21 23:12:26.682221+07		22bfd357-e85d-40a7-8670-5bb5d545af83	2ca1e065-9beb-4e3f-b9c5-8cfe773b45be
+9852a121-1b0b-4b20-bca5-cbd6f24fb835	1a42c38d-01a7-4e77-aa28-b2d2ff6b29b7	5328fee1-2676-465b-92c9-3082393234e6	ACTIVE	2025-12-22 00:49:33.749334+07	LECTURER	APPROVED	991c40a1-c2b1-4e62-972a-33deafd708ff	2025-12-22 00:49:44.718639+07	\N	22bfd357-e85d-40a7-8670-5bb5d545af83	6b225cb1-8538-44f6-9d9c-ad7348bf2615
+\.
+
+
+--
+-- Data for Name: terms; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.terms (id, code, name, start_date, end_date, is_active, created_at) FROM stdin;
+7ef2a9a7-cb2a-46f2-8440-fcad43230a61	2018_HK1	Học kỳ 1 - Năm học 2018-2019	2018-09-03	2019-01-20	f	2025-12-20 10:26:47.167054+07
+c9146fc0-e6c0-48dd-a9d2-0f70a220bb64	2018_HK2_1	Học kỳ 2 - Năm học 2018-2019	2019-02-11	2019-06-30	f	2025-12-20 10:26:47.167054+07
+42f69d6d-3d6b-475d-8301-9ce97836bc90	2018_HK2_2	Học kỳ hè - Năm học 2018-2019	2019-07-01	2019-08-25	f	2025-12-20 10:26:47.167054+07
+e3eb8370-b86c-443d-9952-42e12163deb3	2019_HK1	Học kỳ 1 - Năm học 2019-2020	2019-09-02	2020-01-19	f	2025-12-20 10:26:47.167054+07
+76dcefe3-22d0-40c7-88d2-e34747dd024d	2019_HK2_1	Học kỳ 2 - Năm học 2019-2020	2020-02-10	2020-06-28	f	2025-12-20 10:26:47.167054+07
+42ac0ff6-94d7-46f4-9c04-fbcb75823fe5	2019_HK2_2	Học kỳ hè - Năm học 2019-2020	2020-07-06	2020-08-30	f	2025-12-20 10:26:47.167054+07
+15fbbd33-03cb-49eb-8dcc-e6ccefb43b1d	2020_HK1	Học kỳ 1 - Năm học 2020-2021	2020-09-07	2021-01-24	f	2025-12-20 10:26:47.167054+07
+21c20f21-0d23-41cf-a60a-13fcb06c1ddd	2020_HK2_1	Học kỳ 2 - Năm học 2020-2021	2021-02-22	2021-06-27	f	2025-12-20 10:26:47.167054+07
+712ccd16-0bd3-4802-b7d7-f1c6be014b24	2020_HK2_2	Học kỳ hè - Năm học 2020-2021	2021-07-05	2021-08-29	f	2025-12-20 10:26:47.167054+07
+27569cf2-d80f-43c8-a83e-a4e3347c525e	2021_HK1	Học kỳ 1 - Năm học 2021-2022	2021-09-06	2022-01-23	f	2025-12-20 10:26:47.167054+07
+8df87f98-0fca-432b-b893-417dcbdcca02	2021_HK2_1	Học kỳ 2 - Năm học 2021-2022	2022-02-14	2022-06-26	f	2025-12-20 10:26:47.167054+07
+3f8fd37e-23da-484a-8d18-382fcd53d45a	2021_HK2_2	Học kỳ hè - Năm học 2021-2022	2022-07-04	2022-08-28	f	2025-12-20 10:26:47.167054+07
+24434f2d-8b07-4298-bdc9-5722109bb6ac	2022_HK1	Học kỳ 1 - Năm học 2022-2023	2022-09-05	2023-01-22	f	2025-12-20 10:26:47.167054+07
+a158fdc5-c673-45cc-ba18-a8298b205017	2022_HK2_1	Học kỳ 2 - Năm học 2022-2023	2023-02-06	2023-06-25	f	2025-12-20 10:26:47.167054+07
+e3fd00ff-32c4-4fdf-8779-f3b22712059c	2022_HK2_2	Học kỳ hè - Năm học 2022-2023	2023-07-03	2023-08-27	f	2025-12-20 10:26:47.167054+07
+0a6ef672-fdae-4fae-b904-268a12acbeaf	2023_HK1	Học kỳ 1 - Năm học 2023-2024	2023-09-04	2024-01-21	f	2025-12-20 10:26:47.167054+07
+f90f8e11-6202-4d2a-ae27-963cc8aed7f4	2023_HK2_1	Học kỳ 2 - Năm học 2023-2024	2024-02-05	2024-06-23	f	2025-12-20 10:26:47.167054+07
+3391989d-e2c4-48dd-b35c-bf5d4c9bf67d	2023_HK2_2	Học kỳ hè - Năm học 2023-2024	2024-07-01	2024-08-25	f	2025-12-20 10:26:47.167054+07
+2ba61d7c-4798-402b-82f0-9538e00136a0	2024_HK1	Học kỳ 1 - Năm học 2024-2025	2024-09-02	2025-01-19	f	2025-12-20 10:26:47.167054+07
+52b29908-62db-4906-93ad-463648c62b78	2024_HK2_1	Học kỳ 2 - Năm học 2024-2025	2025-02-10	2025-06-22	f	2025-12-20 10:26:47.167054+07
+a8177742-d283-464a-b95a-221242fd8a07	2024_HK2_2	Học kỳ hè - Năm học 2024-2025	2025-07-07	2025-08-31	f	2025-12-20 10:26:47.167054+07
+1a42c38d-01a7-4e77-aa28-b2d2ff6b29b7	2025_HK1	Học kỳ 1 - Năm học 2025-2026	2025-09-01	2026-01-18	t	2025-12-20 10:26:47.167054+07
+e0194dfa-7693-4e4a-988e-779e8f2a440d	2025_HK2_1	Học kỳ 2 - Năm học 2025-2026	2026-02-09	2026-06-21	t	2025-12-20 10:26:47.167054+07
+d4fa7753-ef9b-4789-a3fc-c6a017ea9be5	2025_HK2_2	Học kỳ hè - Năm học 2025-2026	2026-07-06	2026-08-30	t	2025-12-20 10:26:47.167054+07
 \.
 
 
@@ -1363,6 +2086,34 @@ b8b3effa-50aa-47f2-9875-891f6e104dca	7710814e-22b0-40c0-8d32-5bf9f74a14de	chat_m
 
 COPY public.tts_assets (id, notebook_id, created_by, language, voice_name, text_source, audio_url, duration_seconds, created_at, notebook_ai_sets) FROM stdin;
 ef5d2449-8fcc-4696-8a70-6074dea0a039	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	\N	Puck & Kore	Host: Chào các bạn thính giả của. Podcast. Giáo. Dục! Hôm nay chúng ta sẽ cùng tìm hiểu về Thị Giác. Máy. Tính, một lĩnh vực nghe rất thú vị. Xin chào chuyên gia! Expert: Xin chào bạn và quý vị thính giả. Rất vui được chia sẻ về Thị Giác. Máy. Tính hôm nay. Host: Nghe tên thì có vẻ quen thuộc, nhưng thực chất. Thị Giác. Máy. Tính là gì vậy ạ? Nó có giống như mắt người không? Expert: Đúng là tên gọi gợi liên tưởng đến mắt người. Về cơ bản, Thị Giác. Máy. Tính là việc trang bị cho máy tính khả năng "nhìn" và "hiểu" hình ảnh, video giống như con người. Tức là, máy tính có thể thu nhận, xử lý, phân tích và nhận dạng hình ảnh để trích xuất ra thông tin hữu ích. Host: Ồ, vậy ứng dụng của nó trong thực tế là gì? Em thấy bảo là xe tự lái cũng dùng cái này đúng không? Expert: Chính xác! Xe tự lái là một ví dụ điển hình. Ngoài ra, Thị Giác. Máy. Tính còn được ứng dụng rộng rãi trong y học để chẩn đoán bệnh, trong nông nghiệp để theo dõi mùa màng, hay trong an ninh để nhận dạng khuôn mặt. Thậm chí cả trong công nghiệp để kiểm tra sản phẩm nữa đấy. Host: Thật là đa dạng! Vậy nếu em muốn bắt đầu tìm hiểu về Thị Giác. Máy. Tính thì nên bắt đầu từ đâu ạ? Expert: Bạn có thể bắt đầu bằng việc cài đặt. Anaconda và OpenCV. OpenCV là một thư viện mã nguồn mở rất mạnh mẽ và phổ biến trong lĩnh vực này. Anaconda sẽ giúp bạn quản lý các thư viện và môi trường lập trình. Python một cách dễ dàng. Host: Cảm ơn chuyên gia rất nhiều vì những chia sẻ vô cùng hữu ích! Mong rằng các bạn thính giả đã có cái nhìn tổng quan về Thị Giác. Máy. Tính.	/uploads/tts/audio_podcast_b1ebc168-9158-4f85-bdfb-10a4a84809d3.wav	\N	2025-12-12 09:29:58.015056+07	005b3a84-987b-4df3-a0ca-3a3e01871905
+5acc8e59-201a-4550-910c-1cd36740bd29	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	Puck & Pulcherrima	Host: Chào các bạn đến với. Podcast. Giáo dục! Hôm nay, chúng ta sẽ cùng nhau tìm hiểu về cách cài đặt môi trường lập trình. Java. Web. Servlet. Xin chào chuyên gia! Expert: Xin chào! Rất vui được chia sẻ với các bạn. Host: Để bắt đầu, chuyên gia có thể tóm tắt các bước cài đặt cơ bản được không? Expert: Chắc chắn rồi. Đầu tiên, chúng ta cần cài đặt. JDK, sau đó đến. Eclipse. EE, MySQL, MySQL. Workbench và cuối cùng là Tomcat. Các bạn nhớ tải các phiên bản mới nhất nhé. Host: Sau khi cài đặt xong, chúng ta cần làm gì tiếp theo? Expert: Quan trọng là phải cấu hình. Tomcat trong. Eclipse để kết nối các công cụ lại với nhau. Sau đó, chúng ta tạo một server mới và cài đặt plugin. Emmet để hỗ trợ code nhanh hơn. Cuối cùng, tạo project. Dynamic. Web và bắt đầu viết code thôi! Host: Nghe có vẻ hơi phức tạp, nhưng em tin rằng với hướng dẫn chi tiết này, các bạn sẽ dễ dàng thực hiện được. Cảm ơn chuyên gia đã chia sẻ!	/uploads/tts/audio_podcast_6a2f5c57-4e04-4a00-98db-069f48c6f0e3.wav	\N	2025-12-17 23:58:10.75313+07	66afa84e-ea6b-4681-8d14-18b620e8b7d1
+81740e24-f3e6-4e32-84c6-b69372c5ceac	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	Puck & Kore	Host: Chào các bạn thính giả của. Podcast. Giáo. Dục! Hôm nay, chúng ta sẽ khám phá một chủ đề thú vị trong xử lý ảnh: Phát hiện biên. Xin chào chuyên gia của chương trình, anh có thể giải thích đơn giản biên của ảnh là gì không? Expert: Xin chào mọi người! Biên ảnh, hiểu đơn giản, là những đường ranh giới phân chia các vùng khác nhau trong ảnh, nơi mà độ sáng hoặc màu sắc thay đổi đột ngột. Nó giúp chúng ta nhận biết hình dạng và chi tiết của các vật thể. Host: Vậy, có những phương pháp nào để phát hiện biên ảnh, thưa anh? Expert: Có hai nhóm chính: trực tiếp và gián tiếp. Phương pháp trực tiếp dựa vào đạo hàm như Gradient và Laplace, để tìm những điểm thay đổi nhanh về mức xám. Còn gián tiếp thì sử dụng phân vùng ảnh. Host: Anh có thể nói rõ hơn về phương pháp. Gradient được không? Nghe có vẻ hơi trừu tượng. Expert: Chắc chắn rồi. Gradient giống như một vectơ chỉ hướng thay đổi của mức xám. Chúng ta sử dụng các toán tử như Sobel, Prewitt, Robert để tính đạo hàm theo các hướng khác nhau, và biên sẽ nằm ở nơi đạo hàm đạt giá trị cực đại. Ví dụ, toán tử Sobel và Prewitt dùng các ma trận khác nhau để tính đạo hàm, còn thuật toán. Canny thì tối ưu hơn bằng cách lọc nhiễu và dùng ngưỡng kép để tìm biên chính xác. Host: Cảm ơn anh về những chia sẻ rất hữu ích này! Hẹn gặp lại quý vị trong các podcast tiếp theo.	/uploads/tts/audio_podcast_b12044b3-3489-479c-b233-f98b7d262d3b.wav	\N	2025-12-18 09:20:50.207248+07	7489f50e-0a83-48d0-8ca3-b19fea1c1241
+\.
+
+
+--
+-- Data for Name: tts_voices; Type: TABLE DATA; Schema: public; Owner: admin
+--
+
+COPY public.tts_voices (id, voice_id, voice_name, description, provider, gender, language, accent, style, age_group, use_case, sample_audio_url, sample_text, sample_duration_ms, default_speed, default_pitch, is_active, is_premium, sort_order, created_at, updated_at) FROM stdin;
+c5dc35f2-2b5f-48d2-8de1-b063fe3fda63	Aoede	Aoede	Giọng nữ, cao độ trung bình, phong cách tự nhiên, phù hợp đọc truyện/tin tức.	gemini	female	en	\N	\N	\N	\N	/uploads/tts/voice_aoede.wav	Xin chào! Tên tôi là Aoede. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	1	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+eb4f6fce-6da4-45e1-98d8-8a8c220db391	Charon	Charon	Giọng nam trầm, dày, phong cách kể chuyện, phù hợp sách nói/tài liệu dài.	gemini	male	en	\N	\N	\N	\N	/uploads/tts/voice_charon.wav	Xin chào! Tên tôi là Charon. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	2	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+ae60562a-c1b9-4331-97fd-ce51b48efea5	Fenrir	Fenrir	Giọng nam, mạnh mẽ, dứt khoát, phù hợp nội dung động lực/thể thao.	gemini	male	en	\N	\N	\N	\N	/uploads/tts/voice_fenrir.wav	Xin chào! Tên tôi là Fenrir. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	3	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+054dec43-8aba-4585-892d-1fd341ffbe98	Kore	Kore	Giọng nữ, trẻ trung, năng động, phù hợp nội dung sáng tạo/vui vẻ.	gemini	female	en	\N	\N	\N	\N	/uploads/tts/voice_kore.wav	Xin chào! Tên tôi là Kore. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	4	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+67322bc5-9b15-4e35-8901-2d8e1a4ded84	Leda	Leda	Giọng nữ, thanh lịch, chuyên nghiệp, phù hợp thuyết trình/học thuật.	gemini	female	en	\N	\N	\N	\N	/uploads/tts/voice_leda.wav	Xin chào! Tên tôi là Leda. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	5	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+1cfb3a9a-8ab2-452e-b77c-075c451ed611	Orus	Orus	Giọng nam, ấm áp, thân thiện, dễ nghe, phù hợp giáo dục/hướng dẫn.	gemini	male	en	\N	\N	\N	\N	/uploads/tts/voice_orus.wav	Xin chào! Tên tôi là Orus. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	6	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+49e2456e-893d-4d30-8f7d-338558b07e9a	Puck	Puck	Giọng nam, vui tươi, nhanh nhẹn, pha chút hài hước.	gemini	male	en	\N	\N	\N	\N	/uploads/tts/voice_puck.wav	Xin chào! Tên tôi là Puck. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	7	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+25276d59-fdca-493a-9eed-a6b553b83dbe	Zephyr	Zephyr	Giọng trung tính, nhẹ nhàng, êm ái, phù hợp thư giãn/thiền.	gemini	neutral	en	\N	\N	\N	\N	/uploads/tts/voice_zephyr.wav	Xin chào! Tên tôi là Zephyr. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	8	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+86f09dfe-04ac-49e6-ba66-689f5d0e5a7d	Despina	Despina	Giọng nữ, vui vẻ, thân thiện (Moon voice).	gemini	female	en	\N	\N	\N	\N	/uploads/tts/voice_despina.wav	Xin chào! Tên tôi là Despina. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	9	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+a10102ff-8142-4336-bcb5-db7e14134945	Achernar	Achernar	Giọng nam, rõ ràng, trung tính (Star voice).	gemini	male	en	\N	\N	\N	\N	/uploads/tts/voice_achernar.wav	Xin chào! Tên tôi là Achernar. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	10	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+1c72dcb6-ceb4-4c50-b64b-f490a39b1000	Autonoe	Autonoe	Giọng nữ, nhẹ nhàng (Moon voice).	gemini	female	en	\N	\N	\N	\N	/uploads/tts/voice_autonoe.wav	Xin chào! Tên tôi là Autonoe. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	11	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+d5f26f79-7d89-4384-993f-4bf22c4e32be	Callirrhoe	Callirrhoe	Giọng nữ, cao, sắc sảo (Moon voice).	gemini	female	en	\N	\N	\N	\N	/uploads/tts/voice_callirrhoe.wav	Xin chào! Tên tôi là Callirrhoe. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	12	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+98230007-9cf4-4e7b-9fa8-2a6a2a1f85a5	Pulcherrima	Pulcherrima	Giọng nữ, ấm áp (Star voice).	gemini	female	en	\N	\N	\N	\N	/uploads/tts/voice_pulcherrima.wav	Xin chào! Tên tôi là Pulcherrima. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	13	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+6a0c410b-69c3-4d22-af8e-503c318bd3a3	Rasalgethi	Rasalgethi	Giọng nam, trầm ấm (Star voice).	gemini	male	en	\N	\N	\N	\N	/uploads/tts/voice_rasalgethi.wav	Xin chào! Tên tôi là Rasalgethi. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	14	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+ff036223-68e6-4c70-8882-2299165ae358	Sadachbia	Sadachbia	Giọng trung tính, đều đều (Star voice).	gemini	neutral	en	\N	\N	\N	\N	/uploads/tts/voice_sadachbia.wav	Xin chào! Tên tôi là Sadachbia. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	15	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+2620c715-0e1a-4d38-9737-5ee5a2588f5e	Sadaltager	Sadaltager	Giọng trung tính, nhanh (Star voice).	gemini	neutral	en	\N	\N	\N	\N	/uploads/tts/voice_sadaltager.wav	Xin chào! Tên tôi là Sadaltager. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	16	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+d8474d78-6311-4e53-ad53-c2e56fe7e1a8	Schedar	Schedar	Giọng nam, mạnh mẽ (Star voice).	gemini	male	en	\N	\N	\N	\N	/uploads/tts/voice_schedar.wav	Xin chào! Tên tôi là Schedar. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	17	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
+610ad5c8-7def-4b21-a72d-ce687757586d	Sulafat	Sulafat	Giọng trung tính, du dương (Star voice).	gemini	neutral	en	\N	\N	\N	\N	/uploads/tts/voice_sulafat.wav	Xin chào! Tên tôi là Sulafat. Tôi được phát triển bởi team F4 - NotebookAI. Rất vui được hỗ trợ bạn trong việc học tập và nghiên cứu. Hãy để tôi đọc tài liệu cho bạn nhé!	\N	1	0	t	f	18	2025-12-17 22:02:16.543022+07	2025-12-17 22:02:16.543022+07
 \.
 
 
@@ -1370,13 +2121,14 @@ ef5d2449-8fcc-4696-8a70-6074dea0a039	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: admin
 --
 
-COPY public.users (id, email, password_hash, full_name, role, avatar_url, created_at, updated_at, avatar) FROM stdin;
-bd11d69b-8264-4eb7-ac45-3ad7c901e1b2	nguyenhuynhdt22@gmail.com	$2a$10$jC4usbtxPLWH75EW3aNGgeTNiUR/Rw728z1d/3U/sbqa47nOGekom	string	STUDENT	\N	2025-11-29 08:13:09.08651	2025-11-29 08:13:09.086513	\N
-b26bbbd2-5074-4a93-a10e-6320b65d8ef2	string@gmail.com	$2a$10$OP7hPwYRhETJrFfbac3IkOxr5Nuy9r38C/xsNA0cz9i6vpLVeOiSe	string 123	STUDENT	\N	2025-11-29 08:19:55.810092	2025-11-29 08:30:05.225211	\N
-7710814e-22b0-40c0-8d32-5bf9f74a14de	admin_f8@gmail.com	$2a$10$Tss7uLsIWjz1fmTebWY1UeJ5hrV/iAojADkg4LWupkrhQjCMKo3xa	Natasha Black	STUDENT	/uploads/17545c95-8125-4a77-8dfc-b432edf89e8c.jpeg	\N	2025-12-04 15:55:36.672852	\N
-6f8cf993-fb51-492d-8866-803b1de6fca6	nguyenhuynhdt371@gmail.com	$2a$10$H2IXc7I3CiOPdTut3toDrOd1t/kAn8m/eqxsNOMNnVY0ZZZbxi/8u	Huỳnh Nguyễn Xuân	STUDENT	\N	\N	\N	\N
-2b569515-99dd-48d1-a767-8f524a005338	nguyenhuynhtk37@gmail.com	$2a$10$5jmdqOKgsSQO8eBwHMtlvON0r1qdh9TiRsxPVs.9EosZblSngqnF2	Huỳnh Cu Bự	STUDENT	/uploads/3b56b24b-b3d1-44bc-9a6b-334e792d5d2e.png	\N	2025-12-11 09:26:29.654942	\N
-991c40a1-c2b1-4e62-972a-33deafd708ff	nguyenhuynhdt37@gmail.com	$2a$10$CIhWJWY3x2LEA8lRe8n4oO.B5AgS6NytOzjVTTAu4C9ScITjKP4VG	ADMIN NOTEBOOKS	ADMIN	/uploads/fb9566c8-ba50-42c0-8044-4a317eacc463.jpeg	2025-11-28 13:57:12.9733	2025-12-11 10:36:14.969383	\N
+COPY public.users (id, email, password_hash, full_name, role, avatar_url, created_at, updated_at, avatar, student_code, cohort_year, program, class_code, major_id, lecturer_code, primary_org_unit_id, academic_degree, academic_rank, specialization) FROM stdin;
+bd11d69b-8264-4eb7-ac45-3ad7c901e1b2	nguyenhuynhdt22@gmail.com	$2a$10$jC4usbtxPLWH75EW3aNGgeTNiUR/Rw728z1d/3U/sbqa47nOGekom	string	STUDENT	\N	2025-11-29 08:13:09.08651	2025-11-29 08:13:09.086513	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+b26bbbd2-5074-4a93-a10e-6320b65d8ef2	string@gmail.com	$2a$10$OP7hPwYRhETJrFfbac3IkOxr5Nuy9r38C/xsNA0cz9i6vpLVeOiSe	string 123	STUDENT	\N	2025-11-29 08:19:55.810092	2025-11-29 08:30:05.225211	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+2b569515-99dd-48d1-a767-8f524a005338	nguyenhuynhtk37@gmail.com	$2a$10$5jmdqOKgsSQO8eBwHMtlvON0r1qdh9TiRsxPVs.9EosZblSngqnF2	Huỳnh	STUDENT	/uploads/3b56b24b-b3d1-44bc-9a6b-334e792d5d2e.png	\N	2025-12-20 13:56:06.568143	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+22bfd357-e85d-40a7-8670-5bb5d545af83	22574802011019@vinhuni.edu.vn	$2a$10$CIhWJWY3x2LEA8lRe8n4oO.B5AgS6NytOzjVTTAu4C9ScITjKP4VG	NGUYỄN XUÂN HUỲNH	TEACHER	/uploads/a8e9a830-29d4-4c31-889b-0793e8571b45.jpeg	2025-12-19 17:06:54.386717	2025-12-20 14:28:45.62557	\N	\N	\N	\N	\N	\N	22574802011019	a7bde13b-fe08-4f94-ad77-6b56e3025b21	ThS	PGS	AI
+7710814e-22b0-40c0-8d32-5bf9f74a14de	admin_f8@gmail.com	$2a$10$Tss7uLsIWjz1fmTebWY1UeJ5hrV/iAojADkg4LWupkrhQjCMKo3xa	Natasha Black	STUDENT	/uploads/17545c95-8125-4a77-8dfc-b432edf89e8c.jpeg	\N	2025-12-04 15:55:36.672852	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+6f8cf993-fb51-492d-8866-803b1de6fca6	nguyenhuynhdt371@gmail.com	$2a$10$H2IXc7I3CiOPdTut3toDrOd1t/kAn8m/eqxsNOMNnVY0ZZZbxi/8u	Huỳnh Nguyễn Xuân	STUDENT	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+991c40a1-c2b1-4e62-972a-33deafd708ff	nguyenhuynhdt37@gmail.com	$2a$10$CIhWJWY3x2LEA8lRe8n4oO.B5AgS6NytOzjVTTAu4C9ScITjKP4VG	ADMIN NOTEBOOKS	ADMIN	/uploads/fb9566c8-ba50-42c0-8044-4a317eacc463.jpeg	2025-11-28 13:57:12.9733	2025-12-11 10:36:14.969383	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
 \.
 
 
@@ -1389,7 +2141,26 @@ cbaf036d-b085-4ffc-a07e-3a0230fbd224	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40
 9fce90d4-d508-4a1c-a84e-ac1d62fa8347	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	\N	CORPORATE	Video Overview	/uploads/videos/video_bb86a262.mp4	188	2025-12-13 22:50:07.57567+07	bb86a262-fc97-44a6-a972-1122b8563f90
 569dc0ae-8bf1-4c7d-bfe5-710444e3920a	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	991c40a1-c2b1-4e62-972a-33deafd708ff	\N	CORPORATE	Video Overview	/uploads/videos/video_2b099673.mp4	372	2025-12-13 23:05:04.480802+07	2b099673-2f32-40ab-bbfd-515e9e8bedd1
 a1e73500-e388-45a7-ac6e-afd560f5c19e	667fd949-9fad-4367-92fb-bdfb409fc00a	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	CORPORATE	Video	/uploads/videos/video_6e177a05.mp4	404	2025-12-14 10:36:03.488805+07	6e177a05-3d8d-4310-82b0-ece9b9f90610
+5fb4de34-410b-4617-8a77-d749f9ed5c63	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	CORPORATE	Video	/uploads/videos/video_33bb60c7.mp4	142	2025-12-17 17:21:18.903653+07	33bb60c7-4c54-4987-bf6a-93449fc15ee0
+381c53f3-9d6e-461a-943a-06ab7333cf6e	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	CORPORATE	Chào mừng đến với thế giới Thị Giác Máy Tính!	/uploads/videos/video_394cdc78.mp4	446	2025-12-18 00:29:10.951452+07	394cdc78-a866-4315-b9ef-12bc5bdae2a4
+d28ae4ab-53f5-46d8-9dee-8f126dea3458	d8cf4170-01b7-4cc4-8954-69bf82e33dbc	7710814e-22b0-40c0-8d32-5bf9f74a14de	\N	CORPORATE	Video	/uploads/videos/video_1664e046.mp4	189	2025-12-18 09:25:24.396387+07	1664e046-976a-4e9a-90ba-4846c168c786
 \.
+
+
+--
+-- Name: class_members class_members_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.class_members
+    ADD CONSTRAINT class_members_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: classes classes_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.classes
+    ADD CONSTRAINT classes_pkey PRIMARY KEY (id);
 
 
 --
@@ -1422,6 +2193,30 @@ ALTER TABLE ONLY public.llm_models
 
 ALTER TABLE ONLY public.llm_models
     ADD CONSTRAINT llm_models_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: major_subjects major_subjects_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.major_subjects
+    ADD CONSTRAINT major_subjects_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: majors majors_code_key; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.majors
+    ADD CONSTRAINT majors_code_key UNIQUE (code);
+
+
+--
+-- Name: majors majors_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.majors
+    ADD CONSTRAINT majors_pkey PRIMARY KEY (id);
 
 
 --
@@ -1470,6 +2265,14 @@ ALTER TABLE ONLY public.notebook_ai_set_suggestions
 
 ALTER TABLE ONLY public.notebook_ai_sets
     ADD CONSTRAINT notebook_ai_sets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notebook_ai_summaries notebook_ai_summaries_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.notebook_ai_summaries
+    ADD CONSTRAINT notebook_ai_summaries_pkey PRIMARY KEY (id);
 
 
 --
@@ -1577,11 +2380,107 @@ ALTER TABLE ONLY public.notifications
 
 
 --
+-- Name: org_units org_units_code_key; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.org_units
+    ADD CONSTRAINT org_units_code_key UNIQUE (code);
+
+
+--
+-- Name: org_units org_units_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.org_units
+    ADD CONSTRAINT org_units_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subjects subjects_code_key; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.subjects
+    ADD CONSTRAINT subjects_code_key UNIQUE (code);
+
+
+--
+-- Name: subjects subjects_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.subjects
+    ADD CONSTRAINT subjects_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: teaching_assignments teaching_assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.teaching_assignments
+    ADD CONSTRAINT teaching_assignments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: terms terms_code_key; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.terms
+    ADD CONSTRAINT terms_code_key UNIQUE (code);
+
+
+--
+-- Name: terms terms_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.terms
+    ADD CONSTRAINT terms_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: tts_assets tts_assets_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
 --
 
 ALTER TABLE ONLY public.tts_assets
     ADD CONSTRAINT tts_assets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tts_voices tts_voices_pkey; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.tts_voices
+    ADD CONSTRAINT tts_voices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tts_voices tts_voices_voice_id_key; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.tts_voices
+    ADD CONSTRAINT tts_voices_voice_id_key UNIQUE (voice_id);
+
+
+--
+-- Name: class_members uq_class_student; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.class_members
+    ADD CONSTRAINT uq_class_student UNIQUE (class_id, student_code);
+
+
+--
+-- Name: classes uq_classes_assignment_classcode; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.classes
+    ADD CONSTRAINT uq_classes_assignment_classcode UNIQUE (teaching_assignment_id, class_code);
+
+
+--
+-- Name: major_subjects uq_major_subject; Type: CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.major_subjects
+    ADD CONSTRAINT uq_major_subject UNIQUE (major_id, subject_id);
 
 
 --
@@ -1630,6 +2529,41 @@ CREATE INDEX idx_bot_messages_notebook ON public.notebook_bot_messages USING btr
 
 
 --
+-- Name: idx_class_members_class; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_class_members_class ON public.class_members USING btree (class_id);
+
+
+--
+-- Name: idx_class_members_student_code; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_class_members_student_code ON public.class_members USING btree (student_code);
+
+
+--
+-- Name: idx_classes_assignment; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_classes_assignment ON public.classes USING btree (teaching_assignment_id);
+
+
+--
+-- Name: idx_classes_subject_code; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_classes_subject_code ON public.classes USING btree (subject_code);
+
+
+--
+-- Name: idx_classes_time; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_classes_time ON public.classes USING btree (start_date, end_date);
+
+
+--
 -- Name: idx_file_chunks_embedding; Type: INDEX; Schema: public; Owner: admin
 --
 
@@ -1662,6 +2596,41 @@ CREATE INDEX idx_flashcards_notebook ON public.flashcards USING btree (notebook_
 --
 
 CREATE INDEX idx_llm_models_active ON public.llm_models USING btree (is_active);
+
+
+--
+-- Name: idx_major_subjects_major; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_major_subjects_major ON public.major_subjects USING btree (major_id);
+
+
+--
+-- Name: idx_major_subjects_subject; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_major_subjects_subject ON public.major_subjects USING btree (subject_id);
+
+
+--
+-- Name: idx_major_subjects_term; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_major_subjects_term ON public.major_subjects USING btree (major_id, term_no);
+
+
+--
+-- Name: idx_majors_active; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_majors_active ON public.majors USING btree (is_active);
+
+
+--
+-- Name: idx_majors_org_unit; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_majors_org_unit ON public.majors USING btree (org_unit_id);
 
 
 --
@@ -1704,6 +2673,20 @@ CREATE INDEX idx_notebook_activity_notebook ON public.notebook_activity_logs USI
 --
 
 CREATE INDEX idx_notebook_activity_user ON public.notebook_activity_logs USING btree (user_id, created_at);
+
+
+--
+-- Name: idx_notebook_ai_summaries_created_at; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_notebook_ai_summaries_created_at ON public.notebook_ai_summaries USING btree (created_at);
+
+
+--
+-- Name: idx_notebook_ai_summaries_tts; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_notebook_ai_summaries_tts ON public.notebook_ai_summaries USING btree (tts_provider, tts_model);
 
 
 --
@@ -1770,10 +2753,80 @@ CREATE INDEX idx_notebooks_type_visibility ON public.notebooks USING btree (type
 
 
 --
+-- Name: idx_org_units_is_active; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_org_units_is_active ON public.org_units USING btree (is_active);
+
+
+--
+-- Name: idx_org_units_parent_id; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_org_units_parent_id ON public.org_units USING btree (parent_id);
+
+
+--
+-- Name: idx_subjects_active; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_subjects_active ON public.subjects USING btree (is_active);
+
+
+--
+-- Name: idx_teaching_assignments_subject; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_teaching_assignments_subject ON public.teaching_assignments USING btree (subject_id);
+
+
+--
+-- Name: idx_teaching_assignments_term; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_teaching_assignments_term ON public.teaching_assignments USING btree (term_id);
+
+
+--
+-- Name: idx_terms_active; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_terms_active ON public.terms USING btree (is_active);
+
+
+--
 -- Name: idx_tts_assets_notebook; Type: INDEX; Schema: public; Owner: admin
 --
 
 CREATE INDEX idx_tts_assets_notebook ON public.tts_assets USING btree (notebook_id, created_at);
+
+
+--
+-- Name: idx_tts_voices_gender; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_tts_voices_gender ON public.tts_voices USING btree (gender);
+
+
+--
+-- Name: idx_tts_voices_is_active; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_tts_voices_is_active ON public.tts_voices USING btree (is_active);
+
+
+--
+-- Name: idx_tts_voices_language; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_tts_voices_language ON public.tts_voices USING btree (language);
+
+
+--
+-- Name: idx_tts_voices_provider; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE INDEX idx_tts_voices_provider ON public.tts_voices USING btree (provider);
 
 
 --
@@ -1812,6 +2865,36 @@ CREATE UNIQUE INDEX ux_bot_conv_state_user_notebook ON public.notebook_bot_conve
 
 
 --
+-- Name: ux_users_lecturer_code; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE UNIQUE INDEX ux_users_lecturer_code ON public.users USING btree (lecturer_code) WHERE (lecturer_code IS NOT NULL);
+
+
+--
+-- Name: ux_users_student_code; Type: INDEX; Schema: public; Owner: admin
+--
+
+CREATE UNIQUE INDEX ux_users_student_code ON public.users USING btree (student_code) WHERE (student_code IS NOT NULL);
+
+
+--
+-- Name: class_members class_members_class_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.class_members
+    ADD CONSTRAINT class_members_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: classes classes_teaching_assignment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.classes
+    ADD CONSTRAINT classes_teaching_assignment_id_fkey FOREIGN KEY (teaching_assignment_id) REFERENCES public.teaching_assignments(id) ON DELETE CASCADE;
+
+
+--
 -- Name: file_chunks file_chunks_file_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
@@ -1836,6 +2919,22 @@ ALTER TABLE ONLY public.notifications
 
 
 --
+-- Name: notebook_ai_summaries fk_summary_set; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.notebook_ai_summaries
+    ADD CONSTRAINT fk_summary_set FOREIGN KEY (id) REFERENCES public.notebook_ai_sets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: users fk_users_major; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT fk_users_major FOREIGN KEY (major_id) REFERENCES public.majors(id);
+
+
+--
 -- Name: flashcards flashcards_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
@@ -1857,6 +2956,30 @@ ALTER TABLE ONLY public.flashcards
 
 ALTER TABLE ONLY public.flashcards
     ADD CONSTRAINT flashcards_notebook_id_fkey FOREIGN KEY (notebook_id) REFERENCES public.notebooks(id) ON DELETE CASCADE;
+
+
+--
+-- Name: major_subjects major_subjects_major_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.major_subjects
+    ADD CONSTRAINT major_subjects_major_id_fkey FOREIGN KEY (major_id) REFERENCES public.majors(id) ON DELETE CASCADE;
+
+
+--
+-- Name: major_subjects major_subjects_subject_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.major_subjects
+    ADD CONSTRAINT major_subjects_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: majors majors_org_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.majors
+    ADD CONSTRAINT majors_org_unit_id_fkey FOREIGN KEY (org_unit_id) REFERENCES public.org_units(id) ON DELETE SET NULL;
 
 
 --
@@ -1945,6 +3068,14 @@ ALTER TABLE ONLY public.notebook_ai_sets
 
 ALTER TABLE ONLY public.notebook_ai_sets
     ADD CONSTRAINT notebook_ai_sets_notebook_id_fkey FOREIGN KEY (notebook_id) REFERENCES public.notebooks(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notebook_ai_summaries notebook_ai_summaries_users_fk; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.notebook_ai_summaries
+    ADD CONSTRAINT notebook_ai_summaries_users_fk FOREIGN KEY (create_by) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -2156,6 +3287,46 @@ ALTER TABLE ONLY public.notebooks
 
 
 --
+-- Name: org_units org_units_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.org_units
+    ADD CONSTRAINT org_units_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.org_units(id) ON DELETE SET NULL;
+
+
+--
+-- Name: teaching_assignments teaching_assignments_notebook_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.teaching_assignments
+    ADD CONSTRAINT teaching_assignments_notebook_id_fkey FOREIGN KEY (notebook_id) REFERENCES public.notebooks(id);
+
+
+--
+-- Name: teaching_assignments teaching_assignments_subject_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.teaching_assignments
+    ADD CONSTRAINT teaching_assignments_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: teaching_assignments teaching_assignments_term_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.teaching_assignments
+    ADD CONSTRAINT teaching_assignments_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.terms(id) ON DELETE CASCADE;
+
+
+--
+-- Name: teaching_assignments teaching_assignments_users_fk; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.teaching_assignments
+    ADD CONSTRAINT teaching_assignments_users_fk FOREIGN KEY (lecturer_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: tts_assets tts_assets_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: admin
 --
 
@@ -2177,6 +3348,14 @@ ALTER TABLE ONLY public.tts_assets
 
 ALTER TABLE ONLY public.tts_assets
     ADD CONSTRAINT tts_assets_notebook_id_fkey FOREIGN KEY (notebook_id) REFERENCES public.notebooks(id) ON DELETE CASCADE;
+
+
+--
+-- Name: users users_org_units_fk; Type: FK CONSTRAINT; Schema: public; Owner: admin
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_org_units_fk FOREIGN KEY (primary_org_unit_id) REFERENCES public.org_units(id) ON DELETE SET NULL;
 
 
 --
@@ -2207,5 +3386,5 @@ ALTER TABLE ONLY public.video_assets
 -- PostgreSQL database dump complete
 --
 
-\unrestrict D1XobVuE6y8Je4v5RFqtZdg6Rly3Xe468q9iiVZU81qcyfT4TBU3updkzFVnQiF
+\unrestrict ggeji4KkxrWXiglYBevpZvnb07UNl1Uq9U3vDyVSzcVNSs1vei0PBhDb1SGoFWR
 
