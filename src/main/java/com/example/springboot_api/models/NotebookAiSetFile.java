@@ -3,6 +3,7 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -16,7 +17,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = NotebookAiSetFile.ENTITY_NAME)
 @Table(name = NotebookAiSetFile.TABLE_NAME, schema = "public", uniqueConstraints = {
         @UniqueConstraint(name = "notebook_ai_set_files_ai_set_id_file_id_key", columnNames = {"ai_set_id", "file_id"})
@@ -26,7 +28,7 @@ public class NotebookAiSetFile implements Serializable {
     public static final String TABLE_NAME = "notebook_ai_set_files";
     public static final String COLUMN_ID_NAME = "id";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 6007035132457123606L;
+    private static final long serialVersionUID = 249413478405063953L;
 
 
     private UUID id;

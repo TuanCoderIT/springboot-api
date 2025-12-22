@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -17,9 +20,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = User.ENTITY_NAME)
 @Table(name = User.TABLE_NAME, schema = "public", indexes = {
+        @Index(name = "ux_users_student_code", columnList = "student_code", unique = true),
+        @Index(name = "ux_users_lecturer_code", columnList = "lecturer_code", unique = true),
         @Index(name = "idx_users_email", columnList = "email")
 }, uniqueConstraints = {
         @UniqueConstraint(name = "users_email_key", columnNames = {"email"})
@@ -36,7 +42,15 @@ public class User implements Serializable {
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
     public static final String COLUMN_AVATAR_NAME = "avatar";
-    private static final long serialVersionUID = -6538775550842250442L;
+    public static final String COLUMN_STUDENTCODE_NAME = "student_code";
+    public static final String COLUMN_COHORTYEAR_NAME = "cohort_year";
+    public static final String COLUMN_PROGRAM_NAME = "program";
+    public static final String COLUMN_CLASSCODE_NAME = "class_code";
+    public static final String COLUMN_LECTURERCODE_NAME = "lecturer_code";
+    public static final String COLUMN_ACADEMICDEGREE_NAME = "academic_degree";
+    public static final String COLUMN_ACADEMICRANK_NAME = "academic_rank";
+    public static final String COLUMN_SPECIALIZATION_NAME = "specialization";
+    private static final long serialVersionUID = -2852535219521871813L;
 
 
     private UUID id;
@@ -56,6 +70,26 @@ public class User implements Serializable {
     private Instant updatedAt;
 
     private String avatar;
+
+    private String studentCode;
+
+    private Integer cohortYear;
+
+    private String program;
+
+    private String classCode;
+
+    private Major major;
+
+    private String lecturerCode;
+
+    private OrgUnit primaryOrgUnit;
+
+    private String academicDegree;
+
+    private String academicRank;
+
+    private String specialization;
 
     private Set<Flashcard> flashcards = new LinkedHashSet<>();
 
@@ -88,6 +122,8 @@ public class User implements Serializable {
     private Set<Notebook> notebooks = new LinkedHashSet<>();
 
     private Set<Notification> notifications = new LinkedHashSet<>();
+
+    private Set<TeachingAssignment> teachingAssignments = new LinkedHashSet<>();
 
     private Set<TtsAsset> ttsAssets = new LinkedHashSet<>();
 
@@ -146,6 +182,66 @@ public class User implements Serializable {
     @Column(name = COLUMN_AVATAR_NAME, length = Integer.MAX_VALUE)
     public String getAvatar() {
         return avatar;
+    }
+
+    @Size(max = 50)
+    @Column(name = COLUMN_STUDENTCODE_NAME, length = 50)
+    public String getStudentCode() {
+        return studentCode;
+    }
+
+    @Column(name = COLUMN_COHORTYEAR_NAME)
+    public Integer getCohortYear() {
+        return cohortYear;
+    }
+
+    @Size(max = 255)
+    @Column(name = COLUMN_PROGRAM_NAME)
+    public String getProgram() {
+        return program;
+    }
+
+    @Size(max = 50)
+    @Column(name = COLUMN_CLASSCODE_NAME, length = 50)
+    public String getClassCode() {
+        return classCode;
+    }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "major_id")
+    public Major getMajor() {
+        return major;
+    }
+
+    @Size(max = 50)
+    @Column(name = COLUMN_LECTURERCODE_NAME, length = 50)
+    public String getLecturerCode() {
+        return lecturerCode;
+    }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "primary_org_unit_id")
+    public OrgUnit getPrimaryOrgUnit() {
+        return primaryOrgUnit;
+    }
+
+    @Size(max = 255)
+    @Column(name = COLUMN_ACADEMICDEGREE_NAME)
+    public String getAcademicDegree() {
+        return academicDegree;
+    }
+
+    @Size(max = 255)
+    @Column(name = COLUMN_ACADEMICRANK_NAME)
+    public String getAcademicRank() {
+        return academicRank;
+    }
+
+    @Size(max = 255)
+    @Column(name = COLUMN_SPECIALIZATION_NAME)
+    public String getSpecialization() {
+        return specialization;
     }
 
     @OneToMany(mappedBy = "createdBy")
@@ -226,6 +322,11 @@ public class User implements Serializable {
     @OneToMany(mappedBy = "user")
     public Set<Notification> getNotifications() {
         return notifications;
+    }
+
+    @OneToMany(mappedBy = "lecturer")
+    public Set<TeachingAssignment> getTeachingAssignments() {
+        return teachingAssignments;
     }
 
     @OneToMany(mappedBy = "createdBy")

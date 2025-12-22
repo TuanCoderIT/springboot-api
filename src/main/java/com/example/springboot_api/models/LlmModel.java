@@ -3,6 +3,7 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -19,7 +20,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = LlmModel.ENTITY_NAME)
 @Table(name = LlmModel.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_llm_models_active", columnList = "is_active")
@@ -37,7 +39,7 @@ public class LlmModel implements Serializable {
     public static final String COLUMN_ISDEFAULT_NAME = "is_default";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 2434333559678126647L;
+    private static final long serialVersionUID = -412393383062517509L;
 
 
     private UUID id;

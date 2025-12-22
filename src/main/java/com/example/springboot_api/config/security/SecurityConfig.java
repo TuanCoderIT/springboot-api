@@ -48,7 +48,6 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**", "/chat-test.html").permitAll()
 
                 .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/db-test").permitAll()
 
                 // Test AI Image generation (có thể remove sau)
                 .requestMatchers("/user/ai-images/**").permitAll()
@@ -56,6 +55,7 @@ public class SecurityConfig {
 
                 // ========== PHÂN QUYỀN ==========
                 .requestMatchers("/admin/**").hasRole("ADMIN") // ROLE_ADMIN
+                .requestMatchers("/lecturer/**").hasRole("TEACHER") // ROLE_TEACHER
 
                 // Cả hai đều xài được
                 .requestMatchers("/shared/**").hasAnyRole("ADMIN", "STUDENT")

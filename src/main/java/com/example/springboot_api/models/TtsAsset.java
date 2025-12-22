@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -17,7 +18,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = TtsAsset.ENTITY_NAME)
 @Table(name = TtsAsset.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_tts_assets_notebook", columnList = "notebook_id, created_at")
@@ -32,7 +34,7 @@ public class TtsAsset implements Serializable {
     public static final String COLUMN_AUDIOURL_NAME = "audio_url";
     public static final String COLUMN_DURATIONSECONDS_NAME = "duration_seconds";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 5553417680604496525L;
+    private static final long serialVersionUID = 5172023898590404126L;
 
 
     private UUID id;

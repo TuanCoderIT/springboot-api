@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -17,7 +18,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = MessageReaction.ENTITY_NAME)
 @Table(name = MessageReaction.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "uq_message_reactions", columnList = "message_id, user_id, emoji", unique = true),
@@ -29,7 +31,7 @@ public class MessageReaction implements Serializable {
     public static final String COLUMN_ID_NAME = "id";
     public static final String COLUMN_EMOJI_NAME = "emoji";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 4225502309280816094L;
+    private static final long serialVersionUID = 1315153012904152085L;
 
 
     private UUID id;

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.io.Serializable;
@@ -15,7 +16,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = TtsVoice.ENTITY_NAME)
 @Table(name = TtsVoice.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_tts_voices_provider", columnList = "provider"),
@@ -49,7 +51,7 @@ public class TtsVoice implements Serializable {
     public static final String COLUMN_SORTORDER_NAME = "sort_order";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = 208532082284298852L;
+    private static final long serialVersionUID = -5097645110376115955L;
 
 
     private UUID id;

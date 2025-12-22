@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -20,7 +21,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = NotebookActivityLog.ENTITY_NAME)
 @Table(name = NotebookActivityLog.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_notebook_activity_notebook", columnList = "notebook_id, created_at"),
@@ -35,7 +37,7 @@ public class NotebookActivityLog implements Serializable {
     public static final String COLUMN_TARGETTYPE_NAME = "target_type";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = 6890323411900251113L;
+    private static final long serialVersionUID = -5427554431748727081L;
 
 
     private UUID id;

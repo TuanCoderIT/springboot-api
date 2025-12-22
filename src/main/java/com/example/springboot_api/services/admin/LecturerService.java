@@ -19,8 +19,11 @@ import com.example.springboot_api.dto.admin.lecturer.LecturerResponse;
 import com.example.springboot_api.dto.admin.lecturer.ListLecturerRequest;
 import com.example.springboot_api.dto.admin.lecturer.UpdateLecturerRequest;
 import com.example.springboot_api.dto.shared.PagedResponse;
+import com.example.springboot_api.mappers.LecturerMapper;
+import com.example.springboot_api.models.OrgUnit;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.admin.LecturerRepository;
+import com.example.springboot_api.repositories.shared.OrgUnitRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,25 +31,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class LecturerService {
 
-    private static final String ROLE_LECTURER = "LECTURER";
+    private static final String ROLE_LECTURER = "TEACHER";
 
     private final LecturerRepository lecturerRepo;
+    private final OrgUnitRepository orgUnitRepo;
     private final BCryptPasswordEncoder encoder;
-
-    /**
-     * Map User entity sang LecturerResponse DTO
-     */
-    private LecturerResponse mapToResponse(User user) {
-        LecturerResponse response = new LecturerResponse();
-        response.setId(user.getId());
-        response.setFullName(user.getFullName());
-        response.setEmail(user.getEmail());
-        response.setRole(user.getRole());
-        response.setAvatarUrl(user.getAvatarUrl());
-        response.setCreatedAt(user.getCreatedAt());
-        response.setUpdatedAt(user.getUpdatedAt());
-        return response;
-    }
+    private final LecturerMapper lecturerMapper;
 
     /**
      * Lấy danh sách giảng viên với phân trang và filter
@@ -62,10 +52,10 @@ public class LecturerService {
 
         Pageable pageable = PageRequest.of(req.getPage(), req.getSize(), sort);
 
-        Page<User> result = lecturerRepo.findAllLecturers(req.getQ(), pageable);
+        Page<User> result = lecturerRepo.findAllLecturers(req.getQ(), req.getOrgUnitId(), pageable);
 
         return new PagedResponse<>(
-                result.map(this::mapToResponse).getContent(),
+                result.map(lecturerMapper::toLecturerResponse).getContent(),
                 new PagedResponse.Meta(
                         result.getNumber(),
                         result.getSize(),
@@ -79,7 +69,7 @@ public class LecturerService {
     @Transactional(readOnly = true)
     public LecturerResponse getOne(UUID id) {
         return lecturerRepo.findLecturerById(id)
-                .map(this::mapToResponse)
+                .map(lecturerMapper::toLecturerResponse)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy giảng viên"));
     }
 
@@ -93,20 +83,39 @@ public class LecturerService {
             throw new ConflictException("Email đã tồn tại trong hệ thống");
         }
 
+        // Kiểm tra lecturerCode đã tồn tại chưa
+        if (lecturerRepo.existsByLecturerCode(req.getLecturerCode())) {
+            throw new ConflictException("Mã giảng viên đã tồn tại trong hệ thống");
+        }
+
+        // Lấy OrgUnit nếu có
+        OrgUnit orgUnit = null;
+        if (req.getOrgUnitId() != null) {
+            orgUnit = orgUnitRepo.findById(req.getOrgUnitId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy đơn vị tổ chức"));
+        }
+
         Instant now = Instant.now();
 
+        // Tạo User với tất cả thông tin giảng viên
         User lecturer = User.builder()
                 .email(req.getEmail())
                 .fullName(req.getFullName())
                 .role(ROLE_LECTURER)
                 .passwordHash(encoder.encode(req.getPassword()))
                 .avatarUrl(req.getAvatarUrl())
+                .lecturerCode(req.getLecturerCode())
+                .primaryOrgUnit(orgUnit)
+                .academicDegree(req.getAcademicDegree())
+                .academicRank(req.getAcademicRank())
+                .specialization(req.getSpecialization())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
 
         lecturerRepo.save(lecturer);
-        return mapToResponse(lecturer);
+
+        return lecturerMapper.toLecturerResponse(lecturer);
     }
 
     /**
@@ -125,7 +134,7 @@ public class LecturerService {
             lecturer.setEmail(req.getEmail());
         }
 
-        // Cập nhật các field khác nếu có
+        // Cập nhật các field User
         if (req.getFullName() != null) {
             lecturer.setFullName(req.getFullName());
         }
@@ -138,10 +147,37 @@ public class LecturerService {
             lecturer.setAvatarUrl(req.getAvatarUrl());
         }
 
-        lecturer.setUpdatedAt(Instant.now());
+        // Kiểm tra lecturerCode mới có trùng không
+        if (req.getLecturerCode() != null && !req.getLecturerCode().equals(lecturer.getLecturerCode())) {
+            if (lecturerRepo.existsByLecturerCode(req.getLecturerCode())) {
+                throw new ConflictException("Mã giảng viên đã tồn tại trong hệ thống");
+            }
+            lecturer.setLecturerCode(req.getLecturerCode());
+        }
 
+        // Cập nhật OrgUnit
+        if (req.getOrgUnitId() != null) {
+            OrgUnit orgUnit = orgUnitRepo.findById(req.getOrgUnitId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy đơn vị tổ chức"));
+            lecturer.setPrimaryOrgUnit(orgUnit);
+        }
+
+        if (req.getAcademicDegree() != null) {
+            lecturer.setAcademicDegree(req.getAcademicDegree());
+        }
+
+        if (req.getAcademicRank() != null) {
+            lecturer.setAcademicRank(req.getAcademicRank());
+        }
+
+        if (req.getSpecialization() != null) {
+            lecturer.setSpecialization(req.getSpecialization());
+        }
+
+        lecturer.setUpdatedAt(Instant.now());
         lecturerRepo.save(lecturer);
-        return mapToResponse(lecturer);
+
+        return lecturerMapper.toLecturerResponse(lecturer);
     }
 
     /**

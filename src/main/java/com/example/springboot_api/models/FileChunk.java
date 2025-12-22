@@ -1,41 +1,27 @@
 package com.example.springboot_api.models;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.Map;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = FileChunk.ENTITY_NAME)
 @Table(name = FileChunk.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "idx_file_chunks_notebook", columnList = "notebook_id"),
@@ -51,7 +37,8 @@ public class FileChunk implements Serializable {
     public static final String COLUMN_EMBEDDING_NAME = "embedding";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
-    private static final long serialVersionUID = -3696288209630314774L;
+    private static final long serialVersionUID = -3847114740962135435L;
+
 
     private UUID id;
 
@@ -59,13 +46,14 @@ public class FileChunk implements Serializable {
 
     private NotebookFile file;
 
-    private List<Double> embedding;
-
     private Integer chunkIndex;
 
     private String content;
 
+    private Object embedding;
+
     private Map<String, Object> metadata;
+
     private OffsetDateTime createdAt;
 
     @Id
@@ -103,6 +91,12 @@ public class FileChunk implements Serializable {
         return content;
     }
 
+    @NotNull
+    @Column(name = COLUMN_EMBEDDING_NAME, nullable = false)
+    public Object getEmbedding() {
+        return embedding;
+    }
+
     @Column(name = COLUMN_METADATA_NAME)
     @JdbcTypeCode(SqlTypes.JSON)
     public Map<String, Object> getMetadata() {
@@ -116,10 +110,4 @@ public class FileChunk implements Serializable {
         return createdAt;
     }
 
-    /*
-     * TODO [Reverse Engineering] create field to map the 'embedding' column
-     * Available actions: Define target Java type | Uncomment as is | Remove column
-     * mapping
-     * private Object embedding;
-     */
 }

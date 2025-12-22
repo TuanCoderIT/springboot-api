@@ -3,6 +3,7 @@ package com.example.springboot_api.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
@@ -19,7 +20,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
+@Accessors(chain = true)
 @Entity(name = NotebookBotConversationState.ENTITY_NAME)
 @Table(name = NotebookBotConversationState.TABLE_NAME, schema = "public", indexes = {
         @Index(name = "ux_bot_conv_state_user_notebook", columnList = "user_id, notebook_id", unique = true)
@@ -30,7 +32,7 @@ public class NotebookBotConversationState implements Serializable {
     public static final String COLUMN_ID_NAME = "id";
     public static final String COLUMN_LASTOPENEDAT_NAME = "last_opened_at";
     public static final String COLUMN_METADATA_NAME = "metadata";
-    private static final long serialVersionUID = -1460569587807336761L;
+    private static final long serialVersionUID = -6519227578546841695L;
 
 
     private UUID id;
