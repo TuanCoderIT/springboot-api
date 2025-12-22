@@ -14,10 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.springboot_api.dto.lecturer.ClassResponse;
 import com.example.springboot_api.dto.lecturer.ClassStudentResponse;
+import com.example.springboot_api.dto.lecturer.LecturerAssignmentDetailResponse;
 import com.example.springboot_api.dto.lecturer.LecturerAssignmentResponse;
 import com.example.springboot_api.dto.lecturer.RequestTeachingRequest;
 import com.example.springboot_api.dto.shared.PagedResponse;
 import com.example.springboot_api.services.lecturer.LecturerAssignmentService;
+import com.example.springboot_api.services.lecturer.LecturerClassService;
+import com.example.springboot_api.services.lecturer.LecturerStudentService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +37,8 @@ import lombok.RequiredArgsConstructor;
 public class LecturerAssignmentController {
 
     private final LecturerAssignmentService assignmentService;
+    private final LecturerClassService classService;
+    private final LecturerStudentService studentService;
 
     // ========== TEACHING ASSIGNMENTS ==========
 
@@ -47,6 +52,13 @@ public class LecturerAssignmentController {
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return assignmentService.getMyAssignments(termId, status, termStatus, pageable);
+    }
+
+    @GetMapping("/teaching-assignments/{assignmentId}")
+    @Operation(summary = "Lấy chi tiết 1 phân công giảng dạy")
+    public LecturerAssignmentDetailResponse getAssignmentDetail(
+            @PathVariable UUID assignmentId) {
+        return assignmentService.getAssignmentDetail(assignmentId);
     }
 
     @PostMapping("/teaching-assignments/request")
@@ -64,32 +76,19 @@ public class LecturerAssignmentController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "classCode") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
-        return assignmentService.getMyClasses(assignmentId, q, page, size, sortBy, sortDir);
+        return classService.getMyClasses(assignmentId, q, page, size, sortBy, sortDir);
     }
 
     @GetMapping("/teaching-assignments/{assignmentId}/students")
-    @Operation(summary = "Lấy toàn bộ sinh viên trong phân công (từ tất cả lớp)")
+    @Operation(summary = "Lấy sinh viên trong phân công (có thể lọc theo lớp)")
     public PagedResponse<ClassStudentResponse> getAssignmentStudents(
             @PathVariable UUID assignmentId,
+            @RequestParam(required = false) UUID classId,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "studentCode") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
-        return assignmentService.getAssignmentStudents(assignmentId, q, page, size, sortBy, sortDir);
-    }
-
-    // ========== CLASSES ==========
-
-    @GetMapping("/classes/{classId}/members")
-    @Operation(summary = "Lấy danh sách sinh viên trong 1 lớp học phần cụ thể")
-    public PagedResponse<ClassStudentResponse> getClassMembers(
-            @PathVariable UUID classId,
-            @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "studentCode") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir) {
-        return assignmentService.getClassStudents(classId, q, page, size, sortBy, sortDir);
+        return studentService.getAssignmentStudents(assignmentId, classId, q, page, size, sortBy, sortDir);
     }
 }

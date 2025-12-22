@@ -69,4 +69,7 @@ public interface TeachingAssignmentRepository extends JpaRepository<TeachingAssi
          * Kiểm tra xem đã tồn tại assignment cho lecturer + term + subject chưa
          */
         boolean existsByTermIdAndSubjectIdAndLecturerId(UUID termId, UUID subjectId, UUID lecturerId);
+
+        @Query("SELECT ta FROM Teaching_Assignment ta WHERE ta.notebook.id = :notebookId")
+        java.util.Optional<TeachingAssignment> findByNotebookId(@Param("notebookId") UUID notebookId);
 }

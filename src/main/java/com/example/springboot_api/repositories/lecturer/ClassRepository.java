@@ -18,34 +18,54 @@ import com.example.springboot_api.models.Class;
 @Repository
 public interface ClassRepository extends JpaRepository<Class, UUID> {
 
-    /**
-     * Lấy danh sách lớp theo teaching assignment (không phân trang)
-     */
-    @Query("""
-            SELECT c FROM Class c
-            WHERE c.teachingAssignment.id = :assignmentId
-            ORDER BY c.classCode ASC
-            """)
-    List<Class> findByAssignmentId(@Param("assignmentId") UUID assignmentId);
+        /**
+         * Lấy danh sách lớp theo teaching assignment (không phân trang)
+         */
+        @Query("""
+                        SELECT c FROM Class c
+                        WHERE c.teachingAssignment.id = :assignmentId
+                        ORDER BY c.classCode ASC
+                        """)
+        List<Class> findByAssignmentId(@Param("assignmentId") UUID assignmentId);
 
-    /**
-     * Lấy danh sách lớp theo assignment với phân trang, tìm kiếm
-     */
-    @Query("""
-            SELECT c FROM Class c
-            WHERE c.teachingAssignment.id = :assignmentId
-            AND (:q IS NULL OR :q = ''
-                OR LOWER(c.classCode) LIKE LOWER(CONCAT('%', :q, '%'))
-                OR LOWER(c.subjectName) LIKE LOWER(CONCAT('%', :q, '%')))
-            """)
-    Page<Class> findByAssignmentIdWithFilters(
-            @Param("assignmentId") UUID assignmentId,
-            @Param("q") String q,
-            Pageable pageable);
+        /**
+         * Lấy danh sách lớp theo assignment với phân trang, tìm kiếm
+         */
+        @Query("""
+                        SELECT c FROM Class c
+                        WHERE c.teachingAssignment.id = :assignmentId
+                        AND (:q IS NULL OR :q = ''
+                            OR LOWER(c.classCode) LIKE LOWER(CONCAT('%', :q, '%'))
+                            OR LOWER(c.subjectName) LIKE LOWER(CONCAT('%', :q, '%')))
+                        """)
+        Page<Class> findByAssignmentIdWithFilters(
+                        @Param("assignmentId") UUID assignmentId,
+                        @Param("q") String q,
+                        Pageable pageable);
 
-    /**
-     * Đếm số lớp theo assignment
-     */
-    @Query("SELECT COUNT(c) FROM Class c WHERE c.teachingAssignment.id = :assignmentId")
-    Long countByAssignmentId(@Param("assignmentId") UUID assignmentId);
+        /**
+         * Đếm số lớp theo assignment
+         */
+        @Query("SELECT COUNT(c) FROM Class c WHERE c.teachingAssignment.id = :assignmentId")
+        Long countByAssignmentId(@Param("assignmentId") UUID assignmentId);
+
+        /**
+         * Lấy danh sách tất cả các lớp của giảng viên với bộ lọc nâng cao
+         */
+        @Query("""
+                        SELECT c FROM Class c
+                        JOIN c.teachingAssignment ta
+                        WHERE ta.lecturer.id = :lecturerId
+                        AND (:termId IS NULL OR ta.term.id = :termId)
+                        AND (:assignmentId IS NULL OR ta.id = :assignmentId)
+                        AND (:q IS NULL OR :q = ''
+                            OR LOWER(c.classCode) LIKE LOWER(CONCAT('%', :q, '%'))
+                            OR LOWER(c.subjectName) LIKE LOWER(CONCAT('%', :q, '%')))
+                        """)
+        Page<Class> findAllByLecturerWithFilters(
+                        @Param("lecturerId") UUID lecturerId,
+                        @Param("termId") UUID termId,
+                        @Param("assignmentId") UUID assignmentId,
+                        @Param("q") String q,
+                        Pageable pageable);
 }
