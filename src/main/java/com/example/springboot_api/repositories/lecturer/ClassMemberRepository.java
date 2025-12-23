@@ -39,9 +39,11 @@ public interface ClassMemberRepository extends JpaRepository<ClassMember, UUID> 
     @Query("SELECT cm FROM Class_Member cm " +
            "JOIN cm.classField c " +
            "WHERE c.teachingAssignment.id = :assignmentId " +
+           "AND (:classId IS NULL OR c.id = :classId) " +
            "AND (:q IS NULL OR :q = '' OR LOWER(cm.fullName) LIKE LOWER(CONCAT('%', :q, '%')) " +
            "OR LOWER(cm.studentCode) LIKE LOWER(CONCAT('%', :q, '%')))")
     Page<ClassMember> findByAssignmentIdWithFilters(@Param("assignmentId") UUID assignmentId,
+                                                   @Param("classId") UUID classId,
                                                    @Param("q") String keyword,
                                                    Pageable pageable);
 }
