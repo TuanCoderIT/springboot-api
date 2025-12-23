@@ -18,6 +18,7 @@ import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.common.security.CurrentUserProvider;
 import com.example.springboot_api.dto.lecturer.chapter.ChapterFileUploadRequest;
 import com.example.springboot_api.dto.lecturer.chapter.ChapterItemResponse;
+import com.example.springboot_api.dto.lecturer.chapter.ChapterYoutubeUploadRequest;
 import com.example.springboot_api.models.ChapterItem;
 import com.example.springboot_api.models.Notebook;
 import com.example.springboot_api.models.NotebookChapter;
@@ -135,6 +136,8 @@ public class ChapterItemService {
                     .sortOrder(nextOrder++)
                     .metadata(metadata)
                     .createdAt(OffsetDateTime.now())
+                    .visibleInLesson(true)
+                    .visibleInNotebook(true)
                     .build();
             ChapterItem savedItem = itemRepo.save(item);
 
@@ -142,6 +145,100 @@ public class ChapterItemService {
         }
 
         return results;
+    }
+
+    // ============================
+    // ADD YOUTUBE VIDEO TO CHAPTER
+    // ============================
+    /**
+     * Thêm video YouTube vào chapter.
+     * Tạo record ngay → async: trích xuất phụ đề + tạo chunks + embedding.
+     * API trả response ngay lập tức, xử lý nặng chạy nền.
+     */
+    public ChapterItemResponse addYoutubeVideoToChapter(UUID chapterId, ChapterYoutubeUploadRequest req) {
+        System.out.println("🎬 Adding YouTube video to chapter: " + chapterId);
+        NotebookChapter chapter = validateChapterAccess(chapterId);
+        Notebook notebook = chapter.getNotebook();
+        UUID lecturerId = userProvider.getCurrentUserId();
+        User lecturer = userRepo.findById(lecturerId)
+                .orElseThrow(() -> new NotFoundException("User không tồn tại"));
+
+        String youtubeUrl = req.getYoutubeUrl();
+        if (youtubeUrl == null || youtubeUrl.isBlank()) {
+            throw new BadRequestException("URL video YouTube không được để trống");
+        }
+
+        // 1. Tạo NotebookFile để lưu thông tin video (ngay lập tức)
+        NotebookFile videoFile = NotebookFile.builder()
+                .notebook(notebook)
+                .uploadedBy(lecturer)
+                .originalFilename("youtube_" + extractVideoId(youtubeUrl) + ".txt")
+                .mimeType("video/youtube")
+                .fileSize(0L) // Sẽ update sau khi trích xuất subtitle
+                .storageUrl(youtubeUrl)
+                .status("approved")
+                .ocrDone(true) // Không cần OCR với video
+                .embeddingDone(false)
+                .chunkSize(2000)
+                .chunkOverlap(200)
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
+        NotebookFile savedFile = fileRepo.save(videoFile);
+
+        // 2. Gọi async để: trích xuất phụ đề + tạo chunks + embedding (không block
+        // response)
+        System.out.println("📤 Calling startYoutubeProcessing for video: " + savedFile.getId());
+        fileProcessingService.startYoutubeProcessing(savedFile, youtubeUrl);
+        System.out.println("📤 Called startYoutubeProcessing (async)");
+
+        // 3. Tạo ChapterItem (ngay lập tức)
+        Integer maxOrder = itemRepo.findMaxSortOrderByChapterId(chapterId);
+        int nextOrder = (maxOrder == null) ? 0 : maxOrder + 1;
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("youtubeUrl", youtubeUrl);
+        metadata.put("videoId", extractVideoId(youtubeUrl));
+        if (req.getDescription() != null) {
+            metadata.put("description", req.getDescription());
+        }
+
+        String displayTitle = (req.getTitle() != null && !req.getTitle().isBlank())
+                ? req.getTitle()
+                : "Video YouTube: " + extractVideoId(youtubeUrl);
+
+        ChapterItem item = ChapterItem.builder()
+                .chapter(chapter)
+                .itemType(ChapterItemType.VIDEO)
+                .refId(savedFile.getId())
+                .title(displayTitle)
+                .sortOrder(nextOrder)
+                .metadata(metadata)
+                .createdAt(OffsetDateTime.now())
+                .visibleInLesson(true)
+                .visibleInNotebook(true)
+                .build();
+        ChapterItem savedItem = itemRepo.save(item);
+
+        System.out.println("✅ YouTube video added successfully: " + savedItem.getId());
+        return toResponse(savedItem);
+    }
+
+    /**
+     * Trích xuất video ID từ YouTube URL.
+     */
+    private String extractVideoId(String url) {
+        if (url.contains("youtu.be/")) {
+            String id = url.substring(url.indexOf("youtu.be/") + 9);
+            int queryIndex = id.indexOf("?");
+            return queryIndex > 0 ? id.substring(0, queryIndex) : id;
+        }
+        if (url.contains("v=")) {
+            String id = url.substring(url.indexOf("v=") + 2);
+            int ampIndex = id.indexOf("&");
+            return ampIndex > 0 ? id.substring(0, ampIndex) : id;
+        }
+        return url;
     }
 
     // ============================
@@ -196,6 +293,8 @@ public class ChapterItemService {
                 .sortOrder(item.getSortOrder())
                 .metadata(item.getMetadata())
                 .createdAt(item.getCreatedAt())
+                .visibleInLesson(item.getVisibleInLesson())
+                .visibleInNotebook(item.getVisibleInNotebook())
                 .build();
     }
 

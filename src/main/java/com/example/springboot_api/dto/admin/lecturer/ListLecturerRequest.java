@@ -10,7 +10,7 @@ public class ListLecturerRequest {
     private Boolean active;
     private UUID orgUnitId; // Filter theo đơn vị tổ chức
     private int page = 0;
-    private int size = 10;
+    private int size = 11;
     private String sortBy;
     private String sortDir;
 }

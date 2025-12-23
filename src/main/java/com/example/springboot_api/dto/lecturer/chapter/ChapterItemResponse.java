@@ -17,4 +17,6 @@ public class ChapterItemResponse {
     private Integer sortOrder;
     private Map<String, Object> metadata;
     private OffsetDateTime createdAt;
+    private Boolean visibleInLesson;
+    private Boolean visibleInNotebook;
 }

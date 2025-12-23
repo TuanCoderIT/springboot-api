@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.springboot_api.dto.lecturer.chapter.ChapterFileUploadRequest;
 import com.example.springboot_api.dto.lecturer.chapter.ChapterItemResponse;
+import com.example.springboot_api.dto.lecturer.chapter.ChapterYoutubeUploadRequest;
 import com.example.springboot_api.dto.lecturer.chapter.MoveItemRequest;
 import com.example.springboot_api.dto.lecturer.chapter.ReorderItemsRequest;
 import com.example.springboot_api.services.lecturer.ChapterItemService;
@@ -45,6 +46,15 @@ public class LecturerChapterItemController {
             @RequestPart("files") List<MultipartFile> files) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(itemService.uploadFilesToChapter(chapterId, req, files));
+    }
+
+    @PostMapping("/youtube")
+    @Operation(summary = "Thêm video YouTube vào chương (itemType=VIDEO)", description = "Trích xuất phụ đề từ video YouTube và tạo RAG chunks cho AI")
+    public ResponseEntity<ChapterItemResponse> addYoutubeVideo(
+            @PathVariable UUID chapterId,
+            @Valid @RequestBody ChapterYoutubeUploadRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(itemService.addYoutubeVideoToChapter(chapterId, req));
     }
 
     @PatchMapping("/{itemId}/move")
