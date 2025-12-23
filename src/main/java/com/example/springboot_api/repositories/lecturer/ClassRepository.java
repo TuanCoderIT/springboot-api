@@ -29,4 +29,18 @@ public interface ClassRepository extends JpaRepository<Class, UUID> {
     Page<Class> findByAssignmentIdWithFilters(@Param("assignmentId") UUID assignmentId,
                                              @Param("q") String keyword,
                                              Pageable pageable);
+    
+    @Query("SELECT c FROM Class c " +
+           "JOIN c.teachingAssignment ta " +
+           "WHERE ta.lecturer.id = :lecturerId " +
+           "AND (:termId IS NULL OR ta.term.id = :termId) " +
+           "AND (:assignmentId IS NULL OR ta.id = :assignmentId) " +
+           "AND (:q IS NULL OR :q = '' OR " +
+           "     LOWER(c.classCode) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+           "     LOWER(ta.subject.name) LIKE LOWER(CONCAT('%', :q, '%')))")
+    Page<Class> findAllByLecturerWithFilters(@Param("lecturerId") UUID lecturerId,
+                                           @Param("termId") UUID termId,
+                                           @Param("assignmentId") UUID assignmentId,
+                                           @Param("q") String keyword,
+                                           Pageable pageable);
 }

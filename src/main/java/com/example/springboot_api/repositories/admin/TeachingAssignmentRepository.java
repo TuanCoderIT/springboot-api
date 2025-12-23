@@ -72,4 +72,13 @@ public interface TeachingAssignmentRepository extends JpaRepository<TeachingAssi
 
         @Query("SELECT ta FROM Teaching_Assignment ta WHERE ta.notebook.id = :notebookId")
         java.util.Optional<TeachingAssignment> findByNotebookId(@Param("notebookId") UUID notebookId);
+        
+        /**
+         * Tìm teaching assignment theo lecturer và subject
+         */
+        @Query("SELECT ta FROM Teaching_Assignment ta " +
+               "WHERE ta.lecturer.id = :lecturerId AND ta.subject.id = :subjectId " +
+               "ORDER BY ta.createdAt DESC")
+        List<TeachingAssignment> findByLecturerIdAndSubjectId(@Param("lecturerId") UUID lecturerId, 
+                                                             @Param("subjectId") UUID subjectId);
 }

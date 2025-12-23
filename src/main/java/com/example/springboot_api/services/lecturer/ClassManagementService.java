@@ -14,6 +14,7 @@ import com.example.springboot_api.repositories.admin.UserRepository;
 import com.example.springboot_api.repositories.admin.SubjectRepository;
 import com.example.springboot_api.repositories.lecturer.ClassRepository;
 import com.example.springboot_api.repositories.lecturer.ClassMemberRepository;
+import com.example.springboot_api.services.shared.UserManagementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ public class ClassManagementService {
     private final SubjectRepository subjectRepository;
     private final TeachingAssignmentRepository teachingAssignmentRepository;
     private final ExcelReaderService excelReaderService;
+    private final UserManagementService userManagementService;
     
     @Transactional
     public StudentImportResult createClassWithStudents(ClassImportRequest request, UUID lecturerId) {
@@ -238,11 +240,11 @@ public class ClassManagementService {
                 return;
             }
             
-            // Thêm vào notebook với role student
+            // Thêm vào notebook với role member
             NotebookMember notebookMember = NotebookMember.builder()
                     .notebook(notebook)
                     .user(student)
-                    .role("student")
+                    .role("member")  // Sửa từ "student" thành "member"
                     .status("approved")
                     .joinedAt(OffsetDateTime.now())
                     .createdAt(OffsetDateTime.now())
@@ -254,6 +256,194 @@ public class ClassManagementService {
             
         } catch (Exception e) {
             log.error("Lỗi thêm sinh viên {} vào notebook: {}", studentCode, e.getMessage());
+        }
+    }
+    
+    // ==================== MANUAL CLASS & STUDENT MANAGEMENT ====================
+    
+    /**
+     * Tạo lớp học phần thủ công (không cần Excel)
+     */
+    @Transactional
+    public com.example.springboot_api.models.Class createManualClass(ManualClassCreateRequest request, UUID lecturerId) {
+        try {
+            // Tìm teaching assignment của giảng viên cho môn học này
+            TeachingAssignment teachingAssignment = findTeachingAssignmentForSubject(lecturerId, request.getSubjectId());
+            
+            // Lấy thông tin môn học
+            Subject subject = subjectRepository.findById(request.getSubjectId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy môn học"));
+            
+            // Tạo lớp học phần
+            com.example.springboot_api.models.Class newClass = com.example.springboot_api.models.Class.builder()
+                    .teachingAssignment(teachingAssignment)
+                    .classCode(request.getClassName())
+                    .subjectCode(subject.getCode())
+                    .subjectName(subject.getName())
+                    .room(request.getRoom())
+                    .dayOfWeek(request.getDayOfWeek())
+                    .periods(request.getPeriods())
+                    .note(request.getNote())
+                    .isActive(true)
+                    .createdAt(OffsetDateTime.now())
+                    .updatedAt(OffsetDateTime.now())
+                    .build();
+            
+            newClass = classRepository.save(newClass);
+            
+            // Tự động tạo notebook cộng đồng cho lớp (nếu chưa có)
+            Notebook notebook = getOrCreateNotebookForClass(newClass, lecturerId);
+            
+            log.info("Đã tạo lớp học phần thủ công: {} cho môn {}", request.getClassName(), subject.getName());
+            return newClass;
+            
+        } catch (Exception e) {
+            log.error("Lỗi tạo lớp học phần thủ công: {}", e.getMessage(), e);
+            throw new RuntimeException("Lỗi tạo lớp học phần: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Thêm sinh viên thủ công vào lớp
+     */
+    @Transactional
+    public ManualStudentAddResult addManualStudent(ManualStudentAddRequest request) {
+        try {
+            // Kiểm tra lớp học phần tồn tại
+            com.example.springboot_api.models.Class classEntity = classRepository.findByIdWithDetails(request.getClassId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học phần"));
+            
+            UUID subjectId = classEntity.getTeachingAssignment().getSubject().getId();
+            
+            // Kiểm tra trùng sinh viên trong cùng môn học
+            List<ClassMember> existingMembers = classMemberRepository
+                    .findByStudentCodeAndSubjectId(request.getStudentCode(), subjectId);
+            
+            if (!existingMembers.isEmpty()) {
+                return ManualStudentAddResult.builder()
+                        .success(false)
+                        .message("Sinh viên đã tồn tại trong môn học này")
+                        .userCreated(false)
+                        .emailSent(false)
+                        .studentCode(request.getStudentCode())
+                        .fullName(request.getFullName())
+                        .email(request.getEmail())
+                        .build();
+            }
+            
+            // Tách họ và tên
+            String[] nameParts = splitFullName(request.getFullName());
+            String firstName = nameParts[0];
+            String lastName = nameParts[1];
+            
+            // Tạo class member
+            ClassMember classMember = ClassMember.builder()
+                    .classField(classEntity)
+                    .studentCode(request.getStudentCode())
+                    .fullName(request.getFullName())
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .dob(request.getDateOfBirth())
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+            
+            classMemberRepository.save(classMember);
+            
+            // Xử lý tài khoản user
+            UserManagementService.UserCreationResult userResult = userManagementService
+                    .findOrCreateStudentUser(request.getEmail(), request.getStudentCode(), request.getFullName());
+            
+            // Thêm sinh viên vào notebook
+            Notebook notebook = classEntity.getTeachingAssignment().getNotebook();
+            if (notebook != null && userResult.getUser() != null) {
+                addUserToNotebook(userResult.getUser(), notebook);
+            }
+            
+            String message = userResult.isNewUser() 
+                    ? "Đã thêm sinh viên và tạo tài khoản mới" 
+                    : "Đã thêm sinh viên (tài khoản đã tồn tại)";
+            
+            log.info("Đã thêm sinh viên thủ công: {} vào lớp {}", request.getStudentCode(), classEntity.getClassCode());
+            
+            return ManualStudentAddResult.builder()
+                    .success(true)
+                    .message(message)
+                    .userCreated(userResult.isNewUser())
+                    .emailSent(userResult.isEmailSent())
+                    .studentCode(request.getStudentCode())
+                    .fullName(request.getFullName())
+                    .email(request.getEmail())
+                    .build();
+            
+        } catch (Exception e) {
+            log.error("Lỗi thêm sinh viên thủ công: {}", e.getMessage(), e);
+            return ManualStudentAddResult.builder()
+                    .success(false)
+                    .message("Lỗi hệ thống: " + e.getMessage())
+                    .userCreated(false)
+                    .emailSent(false)
+                    .studentCode(request.getStudentCode())
+                    .fullName(request.getFullName())
+                    .email(request.getEmail())
+                    .build();
+        }
+    }
+    
+    // ==================== HELPER METHODS ====================
+    
+    private TeachingAssignment findTeachingAssignmentForSubject(UUID lecturerId, UUID subjectId) {
+        List<TeachingAssignment> assignments = teachingAssignmentRepository
+                .findByLecturerIdAndSubjectId(lecturerId, subjectId);
+        
+        if (assignments.isEmpty()) {
+            throw new RuntimeException("Giảng viên chưa được phân công dạy môn học này");
+        }
+        
+        // Lấy assignment gần nhất (có thể có nhiều học kỳ)
+        return assignments.get(0);
+    }
+    
+    private String[] splitFullName(String fullName) {
+        if (fullName == null || fullName.trim().isEmpty()) {
+            return new String[]{"", ""};
+        }
+        
+        String[] parts = fullName.trim().split("\\s+");
+        if (parts.length == 1) {
+            return new String[]{parts[0], ""};
+        }
+        
+        // Tên là từ cuối cùng, họ là phần còn lại
+        String firstName = parts[parts.length - 1];
+        String lastName = String.join(" ", java.util.Arrays.copyOf(parts, parts.length - 1));
+        
+        return new String[]{firstName, lastName};
+    }
+    
+    private void addUserToNotebook(User user, Notebook notebook) {
+        try {
+            // Kiểm tra đã là member chưa
+            if (notebookMemberRepository.findByNotebookIdAndUserId(notebook.getId(), user.getId()).isPresent()) {
+                log.info("User {} đã là member của notebook", user.getEmail());
+                return;
+            }
+            
+            // Thêm vào notebook với role member
+            NotebookMember notebookMember = NotebookMember.builder()
+                    .notebook(notebook)
+                    .user(user)
+                    .role("member")  // Sửa từ "student" thành "member"
+                    .status("approved")
+                    .joinedAt(OffsetDateTime.now())
+                    .createdAt(OffsetDateTime.now())
+                    .updatedAt(OffsetDateTime.now())
+                    .build();
+            
+            notebookMemberRepository.save(notebookMember);
+            log.info("Đã thêm user {} vào notebook", user.getEmail());
+            
+        } catch (Exception e) {
+            log.error("Lỗi thêm user {} vào notebook: {}", user.getEmail(), e.getMessage());
         }
     }
 }
