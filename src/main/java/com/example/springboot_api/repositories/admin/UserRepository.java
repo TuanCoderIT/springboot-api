@@ -24,5 +24,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             Pageable pageable);
 
     java.util.Optional<User> findByEmail(String email);
+    
+    @Query("SELECT u FROM User u WHERE u.studentCode = :studentCode")
+    User findByStudentCode(@Param("studentCode") String studentCode);
+    
+    @Query("SELECT u FROM User u WHERE u.lecturerCode = :lecturerCode")
+    User findByLecturerCode(@Param("lecturerCode") String lecturerCode);
 
 }
