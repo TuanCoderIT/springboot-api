@@ -89,7 +89,7 @@ public class LecturerStudentService {
     private PagedResponse<ClassStudentResponse> getStudents(
             UUID classId, UUID assignmentId, String q, int page, int size, String sortBy, String sortDir) {
 
-        String sortField = (sortBy != null && !sortBy.isBlank()) ? sortBy : "studentCode";
+        String sortField = mapSortField(sortBy);
         Sort sort = "desc".equalsIgnoreCase(sortDir)
                 ? Sort.by(sortField).descending()
                 : Sort.by(sortField).ascending();
@@ -99,10 +99,6 @@ public class LecturerStudentService {
         if (classId != null) {
             result = classMemberRepo.findByClassIdWithFilters(classId, q, pageable);
         } else {
-            // Nếu có assignmentId (và classId null, vì nếu có classId thì đã vào case trên
-            // hoặc filter trong query repo)
-            // Tuy nhiên repository function findByAssignmentIdWithFilters có tham số
-            // classId để filter thêm
             result = classMemberRepo.findByAssignmentIdWithFilters(assignmentId, classId, q, pageable);
         }
 
@@ -117,5 +113,24 @@ public class LecturerStudentService {
                         result.getSize(),
                         result.getTotalElements(),
                         result.getTotalPages()));
+    }
+
+    /**
+     * Map field name từ frontend sang field name trong ClassMember entity.
+     * Đảm bảo an toàn khi sorting để tránh lỗi PropertyReferenceException.
+     */
+    private String mapSortField(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return "studentCode";
+        }
+
+        // Map các field thường dùng
+        return switch (sortBy) {
+            case "studentCode", "student_code" -> "studentCode";
+            case "fullName", "full_name" -> "fullName";
+            case "email" -> "email";
+            case "createdAt", "created_at" -> "createdAt";
+            default -> "studentCode"; // Fallback an toàn
+        };
     }
 }

@@ -36,7 +36,7 @@ public class NotebookBotConversation implements Serializable {
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = -359135541343919030L;
+    private static final long serialVersionUID = 2504922457122022613L;
 
 
     private UUID id;
@@ -56,6 +56,8 @@ public class NotebookBotConversation implements Serializable {
     private Set<NotebookBotConversationState> notebookBotConversationStates = new LinkedHashSet<>();
 
     private Set<NotebookBotMessage> notebookBotMessages = new LinkedHashSet<>();
+
+    private Set<RegulationChatAnalytic> regulationChatAnalytics = new LinkedHashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -111,6 +113,11 @@ public class NotebookBotConversation implements Serializable {
     @OneToMany(mappedBy = "conversation")
     public Set<NotebookBotMessage> getNotebookBotMessages() {
         return notebookBotMessages;
+    }
+
+    @OneToMany(mappedBy = "conversation")
+    public Set<RegulationChatAnalytic> getRegulationChatAnalytics() {
+        return regulationChatAnalytics;
     }
 
 }
