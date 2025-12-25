@@ -1,5 +1,8 @@
 package com.example.springboot_api.common.exceptions;
 
+import com.example.springboot_api.exceptions.ExportGenerationException;
+import com.example.springboot_api.exceptions.InvalidExportFormatException;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -110,6 +113,24 @@ public class GlobalExceptionHandler {
         message,
         LocalDateTime.now());
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+  }
+
+  @ExceptionHandler(ExportGenerationException.class)
+  public ResponseEntity<ErrorResponse> handleExportGeneration(ExportGenerationException ex) {
+    ErrorResponse error = new ErrorResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+        ex.getMessage(),
+        LocalDateTime.now());
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+  }
+
+  @ExceptionHandler(InvalidExportFormatException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidExportFormat(InvalidExportFormatException ex) {
+    ErrorResponse error = new ErrorResponse(
+        HttpStatus.BAD_REQUEST.value(),
+        ex.getMessage(),
+        LocalDateTime.now());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
   }
 
   public static class ErrorResponse {

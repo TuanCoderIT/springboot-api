@@ -86,15 +86,6 @@
 - **✅ Manual Test Examples**: `docs/manual_class_api_test_examples.http`
 - **✅ Sample Data**: `docs/sample_students.csv`
 
-### 🚀 Trạng thái:
-
-- **✅ Build**: Thành công (thêm spring-boot-starter-mail)
-- **✅ Server**: Sẵn sàng chạy trên port 8386
-- **✅ Database**: Kết nối PostgreSQL thành công
-- **✅ Swagger UI**: http://localhost:8386/swagger-ui/index.html
-- **✅ API Docs**: http://localhost:8386/v3/api-docs
-- **✅ Email Config**: Cần cấu hình SMTP trong application.yml
-
 ### 🧪 Test sẵn sàng:
 
 ```bash
@@ -109,20 +100,6 @@ curl -X POST "http://localhost:8386/api/lecturer/manual-class-management/add-stu
   -H "Content-Type: application/json" \
   -d '{"classId":"class-uuid","studentCode":"2021001","fullName":"Nguyễn Văn A","email":"student@example.com"}'
 ```
-
-### 📧 Cấu hình Email:
-
-Thêm vào `application.yml`:
-```yaml
-spring:
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME:your-email@gmail.com}
-    password: ${MAIL_PASSWORD:your-app-password}
-    from: ${MAIL_FROM:noreply@university.edu.vn}
-```
-
 ## 🎉 Kết luận
 
 Backend cho tính năng quản lý lớp học phần đã được triển khai hoàn chỉnh với cả 2 luồng:

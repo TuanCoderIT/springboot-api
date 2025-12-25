@@ -170,31 +170,6 @@ LƯU Ý QUAN TRỌNG:
 Trân trọng,
 Hệ thống quản lý học tập
 ```
-
-## Cấu hình Email
-
-Thêm vào `application.yml`:
-
-```yaml
-spring:
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME:your-email@gmail.com}
-    password: ${MAIL_PASSWORD:your-app-password}
-    from: ${MAIL_FROM:noreply@university.edu.vn}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-
-app:
-  base-url: ${APP_BASE_URL:http://localhost:8386}
-```
-
 ## Test Examples
 
 ### Tạo lớp mới

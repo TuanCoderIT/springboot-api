@@ -56,6 +56,7 @@ public class SecurityConfig {
                 // ========== PHÂN QUYỀN ==========
                 .requestMatchers("/admin/**").hasRole("ADMIN") // ROLE_ADMIN
                 .requestMatchers("/lecturer/**").hasRole("TEACHER") // ROLE_TEACHER
+                .requestMatchers("/api/exams/**").hasAnyRole("TEACHER", "STUDENT") // Exam system
 
                 // Cả hai đều xài được
                 .requestMatchers("/shared/**").hasAnyRole("ADMIN", "STUDENT")

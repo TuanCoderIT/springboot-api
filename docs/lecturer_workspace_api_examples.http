@@ -1,0 +1,211 @@
+### Lecturer AI Workspace API Examples
+### Tái sử dụng hoàn toàn logic AI từ Notebook user
+
+# Variables
+@baseUrl = http://localhost:8080
+@lecturerId = 123e4567-e89b-12d3-a456-426614174000
+@workspaceId = 987fcdeb-51a2-43d1-9f12-123456789abc
+
+### 1. Tạo workspace mới cho giảng viên
+POST {{baseUrl}}/api/lecturer/workspace-management
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "title": "Lập trình Java - HK1 2024",
+  "description": "Lớp học phần Lập trình Java học kỳ 1 năm 2024-2025. Bao gồm các chủ đề: OOP, Collections, Exception Handling, File I/O.",
+  "subject": "Lập trình Java",
+  "semester": "HK1",
+  "academicYear": "2024-2025",
+  "thumbnailUrl": "https://example.com/java-course-thumbnail.jpg"
+}
+
+### 2. Lấy danh sách workspace của giảng viên
+GET {{baseUrl}}/api/lecturer/workspace-management
+X-User-Id: {{lecturerId}}
+
+### 3. Lấy chi tiết workspace
+GET {{baseUrl}}/api/lecturer/workspace-management/{{workspaceId}}
+X-User-Id: {{lecturerId}}
+
+### 4. Upload tài liệu vào workspace
+POST {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/files
+Content-Type: multipart/form-data
+X-User-Id: {{lecturerId}}
+
+# Form data:
+# file: [select PDF file - Java_Chapter1_OOP.pdf]
+# chapter: Chương 1 - Lập trình hướng đối tượng
+# purpose: teaching_material
+# notes: Tài liệu bài giảng chương 1 về OOP trong Java
+
+### 5. Lấy danh sách tài liệu trong workspace
+GET {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/files
+X-User-Id: {{lecturerId}}
+
+### 6. Lấy tài liệu theo chương
+GET {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/files?chapter=Chương 1 - Lập trình hướng đối tượng
+X-User-Id: {{lecturerId}}
+
+### 7. Tạo tóm tắt AI từ tài liệu (Reuse SummaryGenerationService)
+POST {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/summary
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "fileIds": ["file-uuid-1", "file-uuid-2"],
+  "title": "Tóm tắt Chương 1 - OOP",
+  "description": "Tóm tắt các khái niệm cơ bản về lập trình hướng đối tượng trong Java",
+  "chapter": "Chương 1 - Lập trình hướng đối tượng",
+  "modelCode": "gemini",
+  "customPrompt": "Tóm tắt theo cấu trúc: 1) Khái niệm cơ bản, 2) Ví dụ minh họa, 3) Ứng dụng thực tế. Sử dụng ngôn ngữ dễ hiểu cho sinh viên."
+}
+
+### 8. Tạo quiz AI từ tài liệu (Reuse QuizGenerationService)
+POST {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/quiz
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "fileIds": ["file-uuid-1", "file-uuid-2"],
+  "title": "Quiz Chương 1 - OOP",
+  "description": "Bộ câu hỏi trắc nghiệm kiểm tra kiến thức về OOP",
+  "chapter": "Chương 1 - Lập trình hướng đối tượng",
+  "modelCode": "gemini",
+  "quizCount": 15,
+  "customPrompt": "Tạo câu hỏi từ cơ bản đến nâng cao. Bao gồm: khái niệm lý thuyết (40%), code reading (30%), code writing (30%). Đáp án phải rõ ràng và có giải thích."
+}
+
+### 9. Tạo flashcard AI từ tài liệu (Reuse FlashcardGenerationService)
+POST {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/flashcard
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "fileIds": ["file-uuid-1", "file-uuid-2"],
+  "title": "Flashcard Chương 1 - OOP",
+  "description": "Bộ thẻ ghi nhớ các thuật ngữ và khái niệm OOP",
+  "chapter": "Chương 1 - Lập trình hướng đối tượng",
+  "modelCode": "gemini",
+  "flashcardCount": 25,
+  "customPrompt": "Tập trung vào thuật ngữ quan trọng, định nghĩa chính xác, và ví dụ ngắn gọn. Mặt trước: thuật ngữ/câu hỏi, mặt sau: định nghĩa/đáp án + ví dụ."
+}
+
+### 10. Tạo video learning content AI (Reuse VideoGenerationService)
+POST {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/video
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "fileIds": ["file-uuid-1", "file-uuid-2"],
+  "title": "Video Chương 1 - OOP",
+  "description": "Video bài giảng về lập trình hướng đối tượng",
+  "chapter": "Chương 1 - Lập trình hướng đối tượng",
+  "modelCode": "gemini",
+  "customPrompt": "Tạo video giải thích từng bước với ví dụ code cụ thể. Bao gồm: giới thiệu khái niệm, demo code, bài tập thực hành. Thời lượng khoảng 15-20 phút."
+}
+
+### 11. Lấy tất cả AI content đã tạo
+GET {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/content
+X-User-Id: {{lecturerId}}
+
+### 12. Lấy AI content theo loại
+GET {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/content?contentType=quiz
+X-User-Id: {{lecturerId}}
+
+### 13. Lấy AI content theo loại khác
+GET {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/content?contentType=summary
+X-User-Id: {{lecturerId}}
+
+### 14. Cập nhật thông tin workspace
+PUT {{baseUrl}}/api/lecturer/workspace-management/{{workspaceId}}
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "title": "Lập trình Java Nâng cao - HK1 2024",
+  "description": "Lớp học phần Lập trình Java nâng cao học kỳ 1 năm 2024-2025. Bao gồm: Advanced OOP, Design Patterns, Multithreading, Spring Framework.",
+  "subject": "Lập trình Java Nâng cao",
+  "semester": "HK1",
+  "academicYear": "2024-2025",
+  "thumbnailUrl": "https://example.com/java-advanced-thumbnail.jpg"
+}
+
+### 15. Xóa workspace (chỉ owner)
+DELETE {{baseUrl}}/api/lecturer/workspace-management/{{workspaceId}}
+X-User-Id: {{lecturerId}}
+
+### ===== WORKFLOW EXAMPLE =====
+
+### Workflow: Giảng viên tạo nội dung cho bài học mới
+
+# Step 1: Tạo workspace
+POST {{baseUrl}}/api/lecturer/workspace-management
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "title": "Cấu trúc dữ liệu và giải thuật - HK2 2024",
+  "description": "Lớp học phần CTDL&GT học kỳ 2 năm 2024",
+  "subject": "Cấu trúc dữ liệu và giải thuật",
+  "semester": "HK2",
+  "academicYear": "2024-2025"
+}
+
+# Step 2: Upload tài liệu chương 1
+# (Multipart form - use Postman or similar tool)
+
+# Step 3: Tạo tóm tắt AI
+POST {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/summary
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "fileIds": ["new-file-uuid"],
+  "title": "Tóm tắt Chương 1 - Mảng và Danh sách",
+  "chapter": "Chương 1",
+  "customPrompt": "Tóm tắt các khái niệm về mảng và danh sách liên kết, bao gồm ưu nhược điểm và ứng dụng"
+}
+
+# Step 4: Tạo quiz AI
+POST {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/quiz
+Content-Type: application/json
+X-User-Id: {{lecturerId}}
+
+{
+  "fileIds": ["new-file-uuid"],
+  "title": "Quiz Chương 1 - Mảng và Danh sách",
+  "chapter": "Chương 1",
+  "quizCount": 10,
+  "customPrompt": "Tạo câu hỏi về độ phức tạp thuật toán, cách implement và so sánh mảng vs danh sách liên kết"
+}
+
+# Step 5: Kiểm tra kết quả
+GET {{baseUrl}}/api/lecturer/workspace/{{workspaceId}}/ai/content
+X-User-Id: {{lecturerId}}
+
+### ===== NOTES =====
+# 
+# 🎯 KEY FEATURES:
+# ✅ Tái sử dụng 100% logic AI từ notebook user
+# ✅ Không duplicate code
+# ✅ Workspace = Notebook với type="class"
+# ✅ Permission system thông qua NotebookMember
+# ✅ Metadata để organize content theo chapter/subject
+# ✅ Dễ dàng mở rộng cho exam management và student distribution
+#
+# 🔄 REUSED SERVICES:
+# - SummaryGenerationService ✅
+# - QuizGenerationService ✅  
+# - FlashcardGenerationService ✅
+# - VideoGenerationService ✅
+# - FileProcessingTaskService ✅
+# - All AI pipeline components ✅
+#
+# 📊 FUTURE EXTENSIONS:
+# - Student management (add students to workspace)
+# - Exam creation from AI quizzes
+# - Content distribution to students
+# - Progress tracking and analytics
+# - Grade management integration
+#
