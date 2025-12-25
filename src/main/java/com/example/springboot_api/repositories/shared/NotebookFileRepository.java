@@ -167,4 +167,22 @@ public interface NotebookFileRepository extends JpaRepository<NotebookFile, UUID
                         @Param("notebookId") UUID notebookId,
                         @Param("userId") UUID userId,
                         @Param("search") String search);
+
+        // Methods for Lecturer Workspace
+        @Query("""
+                        SELECT nf FROM Notebook_File nf
+                        WHERE nf.notebook.id = :notebookId
+                        ORDER BY nf.createdAt DESC
+                        """)
+        List<NotebookFile> findByNotebookIdOrderByCreatedAtDesc(@Param("notebookId") UUID notebookId);
+
+        @Query(value = """
+                        SELECT nf.* FROM notebook_files nf
+                        WHERE nf.notebook_id = CAST(:notebookId AS uuid)
+                        AND nf.extra_metadata->>'chapter' = :chapter
+                        ORDER BY nf.created_at DESC
+                        """, nativeQuery = true)
+        List<NotebookFile> findByNotebookIdAndMetadataChapter(
+                        @Param("notebookId") UUID notebookId,
+                        @Param("chapter") String chapter);
 }

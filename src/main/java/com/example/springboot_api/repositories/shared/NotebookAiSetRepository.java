@@ -90,4 +90,22 @@ public interface NotebookAiSetRepository extends JpaRepository<NotebookAiSet, UU
     long countByNotebookIdAndStatus(UUID notebookId, String status);
 
     long countByNotebookIdAndSetType(UUID notebookId, String setType);
+
+    // Methods for Lecturer Workspace
+    @Query("""
+            SELECT nas FROM Notebook_Ai_Set nas
+            WHERE nas.notebook.id = :notebookId
+            ORDER BY nas.createdAt DESC
+            """)
+    List<NotebookAiSet> findByNotebookIdOrderByCreatedAtDesc(@Param("notebookId") UUID notebookId);
+
+    @Query("""
+            SELECT nas FROM Notebook_Ai_Set nas
+            WHERE nas.notebook.id = :notebookId
+            AND nas.setType = :setType
+            ORDER BY nas.createdAt DESC
+            """)
+    List<NotebookAiSet> findByNotebookIdAndSetTypeOrderByCreatedAtDesc(
+            @Param("notebookId") UUID notebookId,
+            @Param("setType") String setType);
 }

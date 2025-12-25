@@ -60,4 +60,18 @@ public interface NotebookRepository extends JpaRepository<Notebook, UUID> {
             @Param("userId") UUID userId,
             @Param("q") String keyword,
             Pageable pageable);
+
+    // Method for Lecturer Workspace Management
+    @Query("""
+            SELECT n FROM Notebook n
+            WHERE n.type = 'class'
+            AND n.id IN (
+                SELECT nm.notebook.id FROM Notebook_Member nm
+                WHERE nm.user.id = :lecturerId
+                AND nm.role IN ('owner', 'lecturer')
+                AND nm.status = 'approved'
+            )
+            ORDER BY n.createdAt DESC
+            """)
+    java.util.List<Notebook> findClassNotebooksByLecturerId(@Param("lecturerId") UUID lecturerId);
 }

@@ -118,28 +118,6 @@ TeachingAssignmentRepository
 - **User-friendly messages** cho frontend
 - **Graceful degradation** khi email service down
 
-## 📧 Email Configuration
-
-### Application.yml
-```yaml
-spring:
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME:your-email@gmail.com}
-    password: ${MAIL_PASSWORD:your-app-password}
-    from: ${MAIL_FROM:noreply@university.edu.vn}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-app:
-  base-url: ${APP_BASE_URL:http://localhost:8386}
-```
-
 ### Environment Variables
 ```bash
 MAIL_USERNAME=your-email@gmail.com
