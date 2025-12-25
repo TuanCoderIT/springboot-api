@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class ListOrgUnitRequest {
     private Integer page = 0;
-    private Integer size = 20;
+    private Integer size = 11;
     private String sortBy = "createdAt";
     private String sortDir = "desc";
     private String q; // Search query

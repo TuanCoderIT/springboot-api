@@ -1,5 +1,6 @@
 package com.example.springboot_api.repositories.admin;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -13,6 +14,11 @@ import com.example.springboot_api.models.Notebook;
 
 @Repository
 public interface NotebookRepository extends JpaRepository<Notebook, UUID> {
+
+    /**
+     * Tìm notebooks theo type (ví dụ: "regulation", "community", "personal").
+     */
+    List<Notebook> findByType(String type);
 
     @Query("""
             SELECT n FROM Notebook n

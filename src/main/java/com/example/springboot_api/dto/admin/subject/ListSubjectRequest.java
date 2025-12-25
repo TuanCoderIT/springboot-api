@@ -10,7 +10,7 @@ public class ListSubjectRequest {
     private Boolean isActive;
     private UUID majorId;
     private int page = 0;
-    private int size = 10;
+    private int size = 11;
     private String sortBy = "code";
     private String sortDir = "asc";
 }

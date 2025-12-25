@@ -200,15 +200,31 @@ public class ChatBotService {
             UUID notebookId,
             UUID userId,
             UUID cursorNext) {
+        return listConversations(notebookId, userId, cursorNext, 10);
+    }
 
-        Pageable pageable = PageRequest.of(0, 11); // Lấy 11 để check hasMore
+    public ListConversationsResponse listConversations(
+            UUID notebookId,
+            UUID userId,
+            UUID cursorNext,
+            Integer limit) {
+
+        // Validate and cap limit
+        if (limit == null || limit <= 0) {
+            limit = 10;
+        }
+        if (limit > 100) {
+            limit = 100; // Max 100 items per request
+        }
+
+        Pageable pageable = PageRequest.of(0, limit + 1); // Lấy +1 để check hasMore
 
         List<NotebookBotConversation> conversations = conversationRepository
                 .findByNotebookIdAndUserIdWithCursor(notebookId, userId, cursorNext, pageable);
 
-        boolean hasMore = conversations.size() > 10;
+        boolean hasMore = conversations.size() > limit;
         if (hasMore) {
-            conversations = conversations.subList(0, 10);
+            conversations = conversations.subList(0, limit);
         }
 
         List<ConversationItem> items = conversations.stream()
@@ -1468,12 +1484,14 @@ public class ChatBotService {
      * @param notebookId     Notebook ID
      * @param userId         User ID (phải là người tạo conversation)
      * @param conversationId Conversation ID cần xóa
+     * @return ConversationItem của conversation tiếp theo (nếu có), null nếu không
+     *         còn conversation nào
      * @throws NotFoundException   nếu conversation không tồn tại
      * @throws BadRequestException nếu không có quyền xóa hoặc conversation không
      *                             thuộc notebook
      */
     @Transactional
-    public void deleteConversation(UUID notebookId, UUID userId, UUID conversationId) {
+    public ConversationItem deleteConversation(UUID notebookId, UUID userId, UUID conversationId) {
         // Validate notebook tồn tại
         notebookRepository.findById(notebookId)
                 .orElseThrow(() -> new NotFoundException("Notebook không tồn tại."));
@@ -1553,11 +1571,34 @@ public class ChatBotService {
                     state.setLastOpenedAt(OffsetDateTime.now());
                 }
                 conversationStateRepository.save(state);
+
+                // Trả về conversation mới active
+                String firstMessage = messageRepository
+                        .findByConversationIdOrderByCreatedAtAsc(latestConversation.getId(), PageRequest.of(0, 1))
+                        .stream()
+                        .findFirst()
+                        .map(msg -> msg.getContent())
+                        .orElse(null);
+
+                long totalMessages = messageRepository.countByConversationId(latestConversation.getId());
+
+                return new ConversationItem(
+                        latestConversation.getId(),
+                        latestConversation.getTitle(),
+                        notebookId,
+                        latestConversation.getCreatedAt(),
+                        null,
+                        firstMessage,
+                        totalMessages);
             } else {
                 // Không còn conversation nào, xóa state nếu có
                 conversationStateRepository.findByUserIdAndNotebookId(userId, notebookId)
                         .ifPresent(conversationStateRepository::delete);
+                return null;
             }
         }
+
+        // Conversation không active, không cần trả về gì
+        return null;
     }
 }

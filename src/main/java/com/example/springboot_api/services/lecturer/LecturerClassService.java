@@ -69,8 +69,8 @@ public class LecturerClassService {
                 : Sort.by(sortField).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<Class> result = classRepo.findAllByLecturerWithFilters(
-                lecturerId, termId, assignmentId, q, pageable);
+        Page<Class> result = classRepo.findByAssignmentIdWithFilters(
+                assignmentId, q, pageable);
 
         List<ClassResponse> content = result.getContent().stream()
                 .map(c -> {

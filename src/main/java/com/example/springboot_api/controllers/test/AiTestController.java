@@ -182,4 +182,28 @@ public class AiTestController {
             boolean groqOk,
             String groqError) {
     }
+
+    private final com.example.springboot_api.services.shared.ai.YoutubeSubtitleService youtubeSubtitleService;
+
+    public record SubtitleRequest(String url) {
+    }
+
+    /**
+     * Test lấy phụ đề từ URL video (YouTube) - có timestamp.
+     * POST /test/ai/subtitle
+     * Body: { "url": "https://www.youtube.com/watch?v=..." }
+     * Response: text thuần có timestamp, mỗi dòng xuống hàng
+     */
+    @PostMapping("/subtitle")
+    public ResponseEntity<String> testSubtitle(@RequestBody SubtitleRequest request) {
+        try {
+            var result = youtubeSubtitleService.extractSubtitleWithTimestamps(request.url());
+            if (result.formattedText().isEmpty()) {
+                return ResponseEntity.ok("No subtitle found");
+            }
+            return ResponseEntity.ok(result.formattedText());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+        }
+    }
 }

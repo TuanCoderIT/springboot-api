@@ -50,7 +50,7 @@ public class User implements Serializable {
     public static final String COLUMN_ACADEMICDEGREE_NAME = "academic_degree";
     public static final String COLUMN_ACADEMICRANK_NAME = "academic_rank";
     public static final String COLUMN_SPECIALIZATION_NAME = "specialization";
-    private static final long serialVersionUID = -2852535219521871813L;
+    private static final long serialVersionUID = -668003510068088095L;
 
 
     private UUID id;
@@ -122,6 +122,8 @@ public class User implements Serializable {
     private Set<Notebook> notebooks = new LinkedHashSet<>();
 
     private Set<Notification> notifications = new LinkedHashSet<>();
+
+    private Set<RegulationChatAnalytic> regulationChatAnalytics = new LinkedHashSet<>();
 
     private Set<TeachingAssignment> teachingAssignments = new LinkedHashSet<>();
 
@@ -269,7 +271,8 @@ public class User implements Serializable {
         return notebookAiSets;
     }
 
-    @OneToMany(mappedBy = "createBy")
+    @OneToMany
+    @JoinColumn(name = "create_by")
     public Set<NotebookAiSummary> getNotebookAiSummaries() {
         return notebookAiSummaries;
     }
@@ -289,7 +292,8 @@ public class User implements Serializable {
         return notebookBotMessages;
     }
 
-    @OneToMany(mappedBy = "uploadedBy")
+    @OneToMany
+    @JoinColumn(name = "uploaded_by")
     public Set<NotebookFile> getNotebookFiles() {
         return notebookFiles;
     }
@@ -324,7 +328,13 @@ public class User implements Serializable {
         return notifications;
     }
 
-    @OneToMany(mappedBy = "lecturer")
+    @OneToMany(mappedBy = "user")
+    public Set<RegulationChatAnalytic> getRegulationChatAnalytics() {
+        return regulationChatAnalytics;
+    }
+
+    @OneToMany
+    @JoinColumn(name = "lecturer_id")
     public Set<TeachingAssignment> getTeachingAssignments() {
         return teachingAssignments;
     }

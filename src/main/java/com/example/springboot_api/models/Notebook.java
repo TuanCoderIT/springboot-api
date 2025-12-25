@@ -42,7 +42,7 @@ public class Notebook implements Serializable {
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
     public static final String COLUMN_UPDATEDAT_NAME = "updated_at";
-    private static final long serialVersionUID = 5663394014749219204L;
+    private static final long serialVersionUID = -2679779955613157021L;
 
 
     private UUID id;
@@ -90,6 +90,8 @@ public class Notebook implements Serializable {
     private Set<NotebookMindmap> notebookMindmaps = new LinkedHashSet<>();
 
     private Set<NotebookQuizz> notebookQuizzes = new LinkedHashSet<>();
+
+    private Set<RegulationChatAnalytic> regulationChatAnalytics = new LinkedHashSet<>();
 
     private Set<TeachingAssignment> teachingAssignments = new LinkedHashSet<>();
 
@@ -226,6 +228,11 @@ public class Notebook implements Serializable {
     @OneToMany(mappedBy = "notebook")
     public Set<NotebookQuizz> getNotebookQuizzes() {
         return notebookQuizzes;
+    }
+
+    @OneToMany(mappedBy = "notebook")
+    public Set<RegulationChatAnalytic> getRegulationChatAnalytics() {
+        return regulationChatAnalytics;
     }
 
     @OneToMany(mappedBy = "notebook")

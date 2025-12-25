@@ -1,19 +1,33 @@
 package com.example.springboot_api.models;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import lombok.*;
-import lombok.experimental.Accessors;
+import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.util.Map;
+import java.util.UUID;
+
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
-import java.io.Serializable;
-import java.time.OffsetDateTime;
-import java.util.Map;
-import java.util.UUID;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 @Builder
 @AllArgsConstructor
@@ -34,8 +48,9 @@ public class ChapterItem implements Serializable {
     public static final String COLUMN_SORTORDER_NAME = "sort_order";
     public static final String COLUMN_METADATA_NAME = "metadata";
     public static final String COLUMN_CREATEDAT_NAME = "created_at";
+    public static final String COLUMN_VISIBLE_IN_LESSON_NAME = "visible_in_lesson";
+    public static final String COLUMN_VISIBLE_IN_NOTEBOOK_NAME = "visible_in_notebook";
     private static final long serialVersionUID = 1055570440939484806L;
-
 
     private UUID id;
 
@@ -52,6 +67,10 @@ public class ChapterItem implements Serializable {
     private Map<String, Object> metadata;
 
     private OffsetDateTime createdAt;
+
+    private Boolean visibleInLesson = true;
+
+    private Boolean visibleInNotebook = true;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -102,6 +121,20 @@ public class ChapterItem implements Serializable {
     @Column(name = COLUMN_CREATEDAT_NAME, nullable = false)
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    @NotNull
+    @ColumnDefault("true")
+    @Column(name = COLUMN_VISIBLE_IN_LESSON_NAME, nullable = false)
+    public Boolean getVisibleInLesson() {
+        return visibleInLesson;
+    }
+
+    @NotNull
+    @ColumnDefault("true")
+    @Column(name = COLUMN_VISIBLE_IN_NOTEBOOK_NAME, nullable = false)
+    public Boolean getVisibleInNotebook() {
+        return visibleInNotebook;
     }
 
 }

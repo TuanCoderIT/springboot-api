@@ -13,7 +13,7 @@ public class ListMajorRequest {
     private Boolean isActive; // Filter theo trạng thái active
     private UUID orgUnitId; // Filter theo đơn vị tổ chức
     private int page = 0;
-    private int size = 10;
+    private int size = 11;
     private String sortBy = "code"; // Default sort theo code
     private String sortDir = "asc";
 }

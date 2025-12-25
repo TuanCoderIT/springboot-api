@@ -7,10 +7,10 @@ import lombok.Data;
  */
 @Data
 public class ListTermRequest {
-    private String q = "";           // Search theo code hoặc name
-    private Boolean isActive;        // Filter theo trạng thái active
+    private String q = ""; // Search theo code hoặc name
+    private Boolean isActive; // Filter theo trạng thái active
     private int page = 0;
-    private int size = 10;
+    private int size = 11;
     private String sortBy = "createdAt";
     private String sortDir = "desc";
 }
