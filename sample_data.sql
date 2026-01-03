@@ -14,7 +14,7 @@ VALUES (
 ) ON CONFLICT (code) DO NOTHING;
 
 -- 2. Tạo Teaching Assignment (ID = User ID của giảng viên do @MapsId)
-INSERT INTO teaching_assignments (id, term_id, subject_id, teacher_user_id, status, created_at, created_by, approval_status, note)
+INSERT INTO teaching_assignments (id, term_id, subject_id, lecturer_id, status, created_at, created_by, approval_status, note)
 VALUES (
     '22bfd357-e85d-40a7-8670-5bb5d545af83',
     '7ef2a9a7-cb2a-46f2-8440-fcad43230a61',
