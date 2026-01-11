@@ -213,20 +213,6 @@ public class LecturerNotebookFileService {
             result.add(toNotebookSummary(notebook));
         }
         
-        // 3. DEBUG: Lấy tất cả notebooks để test (tạm thời)
-        if (result.isEmpty()) {
-            log.warn("No notebooks found for lecturer, getting all notebooks for debug");
-            List<Notebook> allNotebooks = notebookRepository.findAll();
-            log.info("Total notebooks in database: {}", allNotebooks.size());
-            
-            // Lấy tối đa 5 notebooks đầu tiên để test
-            for (int i = 0; i < Math.min(5, allNotebooks.size()); i++) {
-                Notebook notebook = allNotebooks.get(i);
-                log.info("Debug notebook: {} - {} - {}", notebook.getId(), notebook.getTitle(), notebook.getType());
-                result.add(toNotebookSummary(notebook));
-            }
-        }
-        
         log.info("Returning {} notebooks for lecturer", result.size());
         return result;
     }

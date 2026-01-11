@@ -67,7 +67,7 @@ public class ExamConfig {
         /**
          * Default AI model for question generation
          */
-        private String defaultAiModel = "gpt-4";
+        private String defaultAiModel = "gemini-1.5-flash";
         
         /**
          * Default number of questions to generate

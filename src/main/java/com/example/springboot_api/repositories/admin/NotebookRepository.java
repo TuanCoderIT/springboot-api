@@ -70,7 +70,7 @@ public interface NotebookRepository extends JpaRepository<Notebook, UUID> {
     // Method for Lecturer Workspace Management
     @Query("""
             SELECT n FROM Notebook n
-            WHERE n.type = 'class'
+            WHERE n.type IN ('assignment', 'community')
             AND n.id IN (
                 SELECT nm.notebook.id FROM Notebook_Member nm
                 WHERE nm.user.id = :lecturerId
