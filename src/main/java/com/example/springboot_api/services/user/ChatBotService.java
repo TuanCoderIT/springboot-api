@@ -110,6 +110,19 @@ public class ChatBotService {
      * @return Danh sách RagChunk
      */
     public List<RagChunk> searchRagChunks(UUID notebookId, String queryText, List<UUID> fileIds) {
+        return searchRagChunks(notebookId, queryText, fileIds, 5); // Default limit = 5
+    }
+
+    /**
+     * Truy vấn RAG sử dụng hàm SQL rag_search_chunks với custom limit.
+     * 
+     * @param notebookId Notebook ID
+     * @param queryText  Text câu hỏi để tạo embedding
+     * @param fileIds    Danh sách file IDs để search
+     * @param limit      Số lượng chunks tối đa trả về
+     * @return Danh sách RagChunk
+     */
+    public List<RagChunk> searchRagChunks(UUID notebookId, String queryText, List<UUID> fileIds, int limit) {
         if (fileIds == null || fileIds.isEmpty()) {
             return Collections.emptyList();
         }
@@ -126,17 +139,17 @@ public class ChatBotService {
 
         // Gọi SQL function rag_search_chunks (p_notebook_id, p_query_embedding,
         // p_file_ids, p_limit)
-        // p_limit có default = 4, có thể bỏ qua
         return jdbcTemplate.query(con -> {
             Array fileIdArray = con.createArrayOf("uuid", fileIds.toArray());
 
             var ps = con.prepareCall(
                     "SELECT file_id, chunk_index, content, similarity, distance " +
-                            "FROM public.rag_search_chunks(?, ?::vector, ?)");
+                            "FROM public.rag_search_chunks(?, ?::vector, ?, ?)");
 
             ps.setObject(1, notebookId);
             ps.setString(2, vectorString);
             ps.setArray(3, fileIdArray);
+            ps.setInt(4, limit);
 
             return ps;
         }, (rs, rowNum) -> new RagChunk(

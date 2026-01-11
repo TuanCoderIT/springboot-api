@@ -1,7 +1,0 @@
-### Test the fixed exam available API
-GET http://localhost:8386/api/exams/available
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMjU3MTQwMjEwMTAwMDIiLCJpYXQiOjE3MzU5NzU4NzQsImV4cCI6MTczNjA2MjI3NH0.Qs8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8
-
-### Alternative test with different student code
-GET http://localhost:8386/api/exams/available
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMjU3MTQwMjEwMTAwMDMiLCJpYXQiOjE3MzU5NzU4NzQsImV4cCI6MTczNjA2MjI3NH0.Qs8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8
