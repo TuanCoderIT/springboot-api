@@ -48,15 +48,21 @@ public interface ExamRepository extends JpaRepository<Exam, UUID> {
     @Query("SELECT COUNT(cm) > 0 FROM Class_Member cm WHERE cm.classField.id = :classId AND cm.studentCode = :studentCode")
     boolean isStudentInClass(@Param("classId") UUID classId, @Param("studentCode") String studentCode);
     
-    // Tìm kỳ thi mà sinh viên có thể tham gia
-    @Query("SELECT e FROM Exam e " +
-           "JOIN Class_Member cm ON cm.classField.id = e.classEntity.id " +
-           "WHERE cm.studentCode = :studentCode " +
-           "AND e.status = 'ACTIVE' " +
-           "AND e.startTime <= :now " +
-           "AND e.endTime > :now " +
-           "ORDER BY e.startTime ASC")
-    List<Exam> findAvailableExamsForStudent(@Param("studentCode") String studentCode, @Param("now") LocalDateTime now);
+    // FIXED: Native SQL query matching your working SQL
+    @Query(value = "SELECT * FROM exams e " +
+                   "WHERE e.class_id IN (" +
+                   "    SELECT cm.class_id FROM class_members cm " +
+                   "    WHERE cm.student_code = :studentCode" +
+                   ") " +
+                   "AND e.status = 'ACTIVE' " +
+                   "ORDER BY e.start_time ASC", nativeQuery = true)
+    List<Exam> findAvailableExamsForStudent(@Param("studentCode") String studentCode);
+    
+    // Debug query - Kiểm tra sinh viên có trong lớp nào (Native SQL)
+    @Query(value = "SELECT cm.class_id, c.class_code FROM class_members cm " +
+                   "JOIN classes c ON c.id = cm.class_id " +
+                   "WHERE cm.student_code = :studentCode", nativeQuery = true)
+    List<Object[]> findClassesForStudent(@Param("studentCode") String studentCode);
     
     // Tìm kỳ thi với thông tin chi tiết (chỉ fetch questions, không fetch options để tránh MultipleBagFetchException)
     @Query("SELECT e FROM Exam e " +

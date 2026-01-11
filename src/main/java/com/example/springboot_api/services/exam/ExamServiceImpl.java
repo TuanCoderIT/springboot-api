@@ -256,7 +256,9 @@ public class ExamServiceImpl implements ExamService {
     @Override
     @Transactional(readOnly = true)
     public List<ExamResponse> getAvailableExamsForStudent(String studentCode) {
-        List<Exam> exams = examRepository.findAvailableExamsForStudent(studentCode, LocalDateTime.now());
+        List<Exam> exams = examRepository.findAvailableExamsForStudent(studentCode);
+        System.out.println("Found " + exams.size() + " exams for student " + studentCode);
+        
         return exams.stream()
             .map(exam -> mapToExamResponseForStudent(exam, studentCode))
             .collect(Collectors.toList());

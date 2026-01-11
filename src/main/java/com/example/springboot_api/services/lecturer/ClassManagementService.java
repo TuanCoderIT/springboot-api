@@ -128,7 +128,7 @@ public class ClassManagementService {
         Notebook notebook = Notebook.builder()
                 .title(classEntity.getSubjectName() + " - " + classEntity.getTeachingAssignment().getTerm().getName())
                 .description("Notebook cho môn " + classEntity.getSubjectName())
-                .type("community")
+                .type("assignment")  // Sửa từ "community" thành "assignment"
                 .visibility("private")
                 .createdBy(lecturer)
                 .createdAt(OffsetDateTime.now())
