@@ -25,7 +25,7 @@ public class WebSearchService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
 
-    @Value("${google.api.search_key}")
+    @Value("${google.api.gemini_key}")
     private String apiKey;
 
     @Value("${google.api.cx}")
