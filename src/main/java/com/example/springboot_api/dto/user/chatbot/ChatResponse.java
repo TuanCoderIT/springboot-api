@@ -19,6 +19,9 @@ public class ChatResponse {
     // ID của message
     private UUID id;
 
+    // ID của conversation
+    private UUID conversationId;
+
     // Nội dung trả lời (markdown)
     private String content;
 
