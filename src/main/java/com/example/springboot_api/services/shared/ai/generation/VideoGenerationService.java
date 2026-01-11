@@ -107,7 +107,17 @@ public class VideoGenerationService {
                 return;
             }
 
-            videoTitle = (String) plan.getOrDefault("title", "Video");
+            videoTitle = extractString(plan.getOrDefault("title", "Video"));
+
+            // Cập nhật title cho AiSet ngay sau khi có từ AI
+            NotebookAiSet aiSet = aiSetRepository.findById(aiSetId).orElse(null);
+            if (aiSet != null) {
+                aiSet.setTitle(videoTitle);
+                aiSet.setUpdatedAt(OffsetDateTime.now());
+                aiSetRepository.save(aiSet);
+                log.info("📝 [VIDEO] Cập nhật title AiSet: {}", videoTitle);
+            }
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> slidesData = (List<Map<String, Object>>) plan.get("slides");
             if (slidesData == null || slidesData.isEmpty()) {
@@ -121,10 +131,10 @@ public class VideoGenerationService {
                 Map<String, Object> sd = slidesData.get(i);
                 slides.add(VideoSlide.builder()
                         .index(i)
-                        .title((String) sd.get("title"))
-                        .body((String) sd.get("body"))
-                        .imagePrompt(generateImages ? (String) sd.get("imagePrompt") : null)
-                        .audioScript((String) sd.get("audioScript"))
+                        .title(extractString(sd.get("title")))
+                        .body(extractString(sd.get("body")))
+                        .imagePrompt(generateImages ? extractString(sd.get("imagePrompt")) : null)
+                        .audioScript(extractString(sd.get("audioScript")))
                         .build());
             }
             log.info("✅ [VIDEO] Plan: {} slides, title: {}", slides.size(), videoTitle);
@@ -205,23 +215,14 @@ public class VideoGenerationService {
                 double totalDuration = slides.stream().mapToDouble(s -> s.getAudioDuration()).sum();
                 String videoUrl = "/uploads/videos/" + fileName;
 
-                // Save VideoAsset và cập nhật AiSet title trong cùng transaction
-                NotebookAiSet aiSet = aiSetRepository.findById(aiSetId).orElse(null);
-                if (aiSet != null) {
-                    // Cập nhật title từ LLM response vào AiSet
-                    aiSet.setTitle(videoTitle);
-                    aiSet.setUpdatedAt(OffsetDateTime.now());
-                    aiSetRepository.save(aiSet);
-                    log.info("📝 [VIDEO] Cập nhật title AiSet: {}", videoTitle);
-                } else {
-                    log.warn("⚠️ [VIDEO] AiSet {} không tồn tại", aiSetId);
-                }
+                // Lấy aiSet để link với VideoAsset (title đã được cập nhật ở Step 2)
+                NotebookAiSet finalAiSet = aiSetRepository.findById(aiSetId).orElse(null);
 
                 VideoAsset videoAsset = VideoAsset.builder()
                         .notebook(notebook).createdBy(user).style(templateName)
                         .textSource(videoTitle).videoUrl(videoUrl)
                         .durationSeconds((int) totalDuration).createdAt(OffsetDateTime.now())
-                        .notebookAiSets(aiSet).build();
+                        .notebookAiSets(finalAiSet).build();
                 VideoAsset savedVideoAsset = videoAssetRepository.save(videoAsset);
 
                 // Flush để đảm bảo tất cả thay đổi được persist
@@ -274,12 +275,12 @@ public class VideoGenerationService {
 
                         THÔNG TIN KÊNH:
                         - Video do nhóm F4 phát triển
-                        - Kênh NotebookAI - Công cụ học tập thông minh
+                        - EduGenius Đại học Vinh - Công cụ học tập thông minh
 
                         QUY TẮC QUAN TRỌNG:
                         1. VIDEO PHẢI CÓ FLOW LIÊN TỤC - mỗi slide nối tiếp slide trước như một câu chuyện
                         2. Slide ĐẦU TIÊN (INTRO): Chào đón, giới thiệu nhóm F4 phát triển video
-                        3. Slide CUỐI CÙNG (OUTRO): Tóm tắt, cảm ơn, kêu gọi like/subscribe kênh NotebookAI
+                        3. Slide CUỐI CÙNG (OUTRO): Tóm tắt, cảm ơn, kêu gọi like/subscribe EduGenius Đại học Vinh
                         4. Các slide giữa giải thích từng ý TUẦN TỰ
 
                         CHO MỖI SLIDE:
@@ -318,5 +319,26 @@ public class VideoGenerationService {
         } catch (Exception e) {
             log.error("Merge error: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Chuyển đổi Object thành String an toàn.
+     * Xử lý trường hợp LLM trả về ArrayList thay vì String.
+     */
+    @SuppressWarnings("unchecked")
+    private String extractString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        if (value instanceof List) {
+            List<Object> list = (List<Object>) value;
+            return String.join("\n• ", list.stream()
+                    .map(Object::toString)
+                    .toList());
+        }
+        return value.toString();
     }
 }

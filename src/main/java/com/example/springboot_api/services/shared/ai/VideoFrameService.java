@@ -36,7 +36,7 @@ public class VideoFrameService {
 
     private static final int FRAME_WIDTH = 1920;
     private static final int FRAME_HEIGHT = 1080;
-    private static final String BRANDING = "NotebookAI";
+    private static final String BRANDING = "EduGenius Đại học Vinh";
 
     public VideoFrameService(AiImageGeneratorService imageGeneratorService) {
         this.imageGeneratorService = imageGeneratorService;

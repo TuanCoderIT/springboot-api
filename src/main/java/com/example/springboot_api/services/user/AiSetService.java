@@ -12,8 +12,11 @@ import com.example.springboot_api.common.exceptions.NotFoundException;
 import com.example.springboot_api.dto.user.chatbot.AiSetResponse;
 import com.example.springboot_api.mappers.AiSetMapper;
 import com.example.springboot_api.models.NotebookAiSet;
+import com.example.springboot_api.models.User;
+import com.example.springboot_api.repositories.admin.UserRepository;
 import com.example.springboot_api.repositories.shared.NotebookAiSetFileRepository;
 import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
+import com.example.springboot_api.services.shared.ai.AiTaskProgressService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,7 +30,9 @@ public class AiSetService {
 
     private final NotebookAiSetRepository aiSetRepository;
     private final NotebookAiSetFileRepository aiSetFileRepository;
+    private final UserRepository userRepository;
     private final AiSetMapper aiSetMapper;
+    private final AiTaskProgressService progressService;
 
     /**
      * Lấy danh sách AI Sets theo notebook.
@@ -85,8 +90,14 @@ public class AiSetService {
             throw new BadRequestException("Bạn chỉ có thể xóa AI Set do chính mình tạo");
         }
 
+        // Lấy user để notify
+        User deleter = userRepository.findById(userId).orElse(null);
+
         // Xóa các file liên kết (NotebookAiSetFile)
         aiSetFileRepository.deleteByAiSetId(aiSetId);
+
+        // Notify notebook members trước khi xóa
+        progressService.notifyDeleted(aiSet, deleter);
 
         // Xóa AI Set (cascade sẽ xóa quizzes, options, flashcards, etc.)
         aiSetRepository.delete(aiSet);

@@ -44,17 +44,6 @@ public class GeminiConfig {
      * Ưu tiên: ENV variable > application.yml
      */
     private String resolveApiKey() {
-        // 1. Check GOOGLE_API_KEY
-        String envKey = System.getenv("GOOGLE_API_KEY");
-        if (envKey != null && !envKey.isEmpty()) {
-            return envKey;
-        }
-
-        // 2. Check GEMINI_API_KEY
-        envKey = System.getenv("GEMINI_API_KEY");
-        if (envKey != null && !envKey.isEmpty()) {
-            return envKey;
-        }
 
         // 3. Check application.yml
         if (this.apiKey != null && !this.apiKey.isEmpty()) {

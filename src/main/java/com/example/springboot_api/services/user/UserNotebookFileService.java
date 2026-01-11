@@ -171,6 +171,18 @@ public class UserNotebookFileService {
         return notebookFileRepository.findFilesForUserByNotebookId(notebookId, userId, searchTerm);
     }
 
+    /**
+     * Lấy thông tin notebook file theo fileId
+     */
+    @Transactional(readOnly = true)
+    public NotebookFileResponse getFileById(UUID userId, UUID fileId) {
+        // Lấy file theo fileId
+        NotebookFile file = notebookFileRepository.findById(fileId)
+                .orElseThrow(() -> new NotFoundException("File không tồn tại"));
+
+        return toResponse(file);
+    }
+
     @Transactional(readOnly = true)
     public com.example.springboot_api.dto.user.notebook.UserNotebookFileDetailResponse getFileDetail(UUID userId,
             UUID notebookId, UUID fileId) {
