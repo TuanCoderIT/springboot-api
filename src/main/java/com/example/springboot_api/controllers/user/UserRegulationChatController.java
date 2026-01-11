@@ -1,7 +1,9 @@
 package com.example.springboot_api.controllers.user;
 
+import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -9,14 +11,20 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.example.springboot_api.common.exceptions.BadRequestException;
 import com.example.springboot_api.config.security.UserPrincipal;
+import com.example.springboot_api.dto.user.chatbot.ChatResponse;
 import com.example.springboot_api.dto.user.chatbot.ConversationItem;
 import com.example.springboot_api.dto.user.chatbot.ListConversationsResponse;
 import com.example.springboot_api.dto.user.chatbot.ListMessagesResponse;
+import com.example.springboot_api.dto.user.chatbot.RegulationChatRequest;
+import com.example.springboot_api.dto.user.chatbot.UploadedImageResponse;
 import com.example.springboot_api.services.user.ChatBotService;
 import com.example.springboot_api.services.user.UserRegulationService;
 
@@ -37,6 +45,58 @@ public class UserRegulationChatController {
 
     private final ChatBotService chatBotService;
     private final UserRegulationService regulationService;
+
+    /**
+     * Upload ảnh cho chat.
+     * POST /user/regulation/chat/images/upload
+     */
+    @PostMapping(value = "/images/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload ảnh cho chat")
+    public ResponseEntity<List<UploadedImageResponse>> uploadImages(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam("files") List<MultipartFile> files) {
+
+        // Validate: tối đa 3 ảnh
+        if (files == null || files.isEmpty()) {
+            throw new BadRequestException("Vui lòng chọn ít nhất 1 ảnh");
+        }
+        if (files.size() > 3) {
+            throw new BadRequestException("Tối đa 3 ảnh mỗi lần upload");
+        }
+
+        // Validate MIME type
+        List<String> allowedMimeTypes = List.of("image/jpeg", "image/png", "image/gif", "image/webp");
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            String mimeType = file.getContentType();
+            if (mimeType == null || !allowedMimeTypes.contains(mimeType.toLowerCase())) {
+                throw new BadRequestException(
+                        "Chỉ chấp nhận ảnh định dạng: jpeg, png, gif, webp. File không hợp lệ: "
+                                + file.getOriginalFilename());
+            }
+        }
+
+        List<UploadedImageResponse> result = chatBotService.uploadChatImages(files);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Gửi tin nhắn chat với bot.
+     * POST /user/regulation/chat
+     */
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Gửi tin nhắn chat")
+    public ResponseEntity<ChatResponse> chat(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestBody RegulationChatRequest request) {
+
+        UUID notebookId = regulationService.getRegulationNotebookId();
+
+        ChatResponse response = chatBotService.regulationChat(notebookId, user.getId(), request);
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * Tạo conversation mới.

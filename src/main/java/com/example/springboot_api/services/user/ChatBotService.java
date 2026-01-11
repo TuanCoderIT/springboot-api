@@ -33,7 +33,9 @@ import com.example.springboot_api.dto.user.chatbot.ListConversationsResponse;
 import com.example.springboot_api.dto.user.chatbot.ListMessagesResponse;
 import com.example.springboot_api.dto.user.chatbot.LlmModelResponse;
 import com.example.springboot_api.dto.user.chatbot.ModelResponse;
+import com.example.springboot_api.dto.user.chatbot.RegulationChatRequest;
 import com.example.springboot_api.dto.user.chatbot.SourceResponse;
+import com.example.springboot_api.dto.user.chatbot.UploadedImageResponse;
 import com.example.springboot_api.mappers.ChatBotMapper;
 import com.example.springboot_api.models.LlmModel;
 import com.example.springboot_api.models.Notebook;
@@ -122,7 +124,9 @@ public class ChatBotService {
         // Convert embedding sang PostgreSQL vector format
         String vectorString = convertEmbeddingToVectorString(embedding);
 
-        // Gọi SQL function rag_search_chunks
+        // Gọi SQL function rag_search_chunks (p_notebook_id, p_query_embedding,
+        // p_file_ids, p_limit)
+        // p_limit có default = 4, có thể bỏ qua
         return jdbcTemplate.query(con -> {
             Array fileIdArray = con.createArrayOf("uuid", fileIds.toArray());
 
@@ -131,7 +135,7 @@ public class ChatBotService {
                             "FROM public.rag_search_chunks(?, ?::vector, ?)");
 
             ps.setObject(1, notebookId);
-            ps.setString(2, vectorString); // PostgreSQL sẽ tự convert string sang vector
+            ps.setString(2, vectorString);
             ps.setArray(3, fileIdArray);
 
             return ps;
@@ -284,6 +288,273 @@ public class ChatBotService {
         }
         sb.append("]");
         return sb.toString();
+    }
+
+    /**
+     * Upload ảnh cho chat và thực hiện OCR.
+     * Ảnh được lưu vào storage và trả về thông tin để FE gửi kèm khi chat.
+     *
+     * @param files Danh sách file ảnh
+     * @return Danh sách UploadedImageResponse
+     */
+    public List<UploadedImageResponse> uploadChatImages(List<MultipartFile> files) {
+        List<UploadedImageResponse> result = new ArrayList<>();
+
+        if (files == null || files.isEmpty()) {
+            return result;
+        }
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+
+            try {
+                // Lưu file vào storage
+                String storageUrl = fileStorageService.storeFile(file);
+                if (storageUrl == null || storageUrl.trim().isEmpty()) {
+                    continue;
+                }
+
+                // Thực hiện OCR để lấy text từ ảnh
+                String ocrText = null;
+                try {
+                    ocrText = ocrService.extract(storageUrl);
+                } catch (Exception e) {
+                    // OCR failed - vẫn tiếp tục, chỉ không có OCR text
+                    ocrText = null;
+                }
+
+                // Tạo UUID cho ảnh (để FE reference)
+                String imageId = UUID.randomUUID().toString();
+
+                UploadedImageResponse imageResponse = UploadedImageResponse.builder()
+                        .id(imageId)
+                        .fileUrl(storageUrl)
+                        .fileName(file.getOriginalFilename())
+                        .mimeType(file.getContentType())
+                        .ocrText(ocrText)
+                        .build();
+
+                result.add(imageResponse);
+            } catch (Exception e) {
+                // Skip file nếu lỗi
+                continue;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Xử lý chat cho regulation với JSON request.
+     * Nhận ảnh đã upload từ FE (không upload lại).
+     *
+     * @param notebookId Notebook ID (regulation notebook)
+     * @param userId     User ID
+     * @param request    RegulationChatRequest chứa message, conversationId,
+     *                   fileIds, images
+     * @return ChatResponse
+     */
+    @Transactional
+    public ChatResponse regulationChat(UUID notebookId, UUID userId, RegulationChatRequest request) {
+        // Validate message
+        if (request.getMessage() == null || request.getMessage().trim().isEmpty()) {
+            throw new BadRequestException("Câu hỏi là bắt buộc. Vui lòng nhập câu hỏi.");
+        }
+
+        // Validate và lấy các entity cần thiết
+        Notebook notebook = notebookRepository.findById(notebookId)
+                .orElseThrow(() -> new NotFoundException("Notebook not found: " + notebookId));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
+
+        // Lấy hoặc tạo conversation
+        NotebookBotConversation conversation;
+        if (request.getConversationId() != null) {
+            conversation = conversationRepository.findById(request.getConversationId())
+                    .orElseThrow(() -> new NotFoundException("Conversation not found: " + request.getConversationId()));
+        } else {
+            // Tạo conversation mới
+            conversation = NotebookBotConversation.builder()
+                    .notebook(notebook)
+                    .createdBy(user)
+                    .title("New Conversation")
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+            conversation = conversationRepository.save(conversation);
+        }
+
+        // Lấy LlmModel mặc định
+        LlmModel llmModel = llmModelRepository.findDefaultModel();
+        if (llmModel == null) {
+            llmModel = llmModelRepository.findByIsActiveTrueOrderByIsDefaultDescDisplayNameAsc()
+                    .stream().findFirst().orElse(null);
+        }
+
+        // Lưu message của user vào database
+        NotebookBotMessage userMessage = NotebookBotMessage.builder()
+                .notebook(notebook)
+                .conversation(conversation)
+                .user(user)
+                .role("user")
+                .content(request.getMessage())
+                .mode("RAG") // Regulation chat luôn dùng RAG
+                .llmModel(llmModel)
+                .createdAt(OffsetDateTime.now())
+                .build();
+
+        userMessage = messageRepository.save(userMessage);
+
+        // Cập nhật conversation: updatedAt và title nếu là title mặc định
+        updateConversationAfterMessage(conversation, userMessage.getContent());
+
+        // Thu thập OCR text từ danh sách ảnh đã upload
+        StringBuilder imageTextsBuilder = new StringBuilder();
+        List<String> fileTypes = new ArrayList<>();
+
+        // Xử lý ảnh đã upload (từ FE gửi lên)
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            for (UploadedImageResponse image : request.getImages()) {
+                if (image == null) {
+                    continue;
+                }
+
+                // Thu thập OCR text
+                if (image.getOcrText() != null && !image.getOcrText().trim().isEmpty()) {
+                    if (imageTextsBuilder.length() > 0) {
+                        imageTextsBuilder.append("\n\n");
+                    }
+                    imageTextsBuilder.append(image.getOcrText());
+                }
+
+                // Lưu thông tin file vào database
+                NotebookBotMessageFile messageFile = NotebookBotMessageFile.builder()
+                        .message(userMessage)
+                        .fileType("image")
+                        .fileUrl(image.getFileUrl())
+                        .mimeType(image.getMimeType())
+                        .fileName(image.getFileName())
+                        .ocrText(image.getOcrText())
+                        .createdAt(OffsetDateTime.now())
+                        .build();
+
+                messageFileRepository.save(messageFile);
+                fileTypes.add("image");
+            }
+        }
+
+        // Tiền xử lý: Tạo text từ câu hỏi và text từ hình ảnh
+        String queryText = request.getMessage().trim();
+        String imageTexts = imageTextsBuilder.toString().trim();
+
+        // Kết hợp queryText và imageTexts thành prompt
+        String combinedQueryText;
+        if (!imageTexts.isEmpty()) {
+            combinedQueryText = String.format(
+                    "%s\n\n[Câu hỏi bổ sung từ hình ảnh: %s]",
+                    queryText, imageTexts);
+        } else {
+            combinedQueryText = queryText;
+        }
+
+        // Biến tổng hợp để lưu dữ liệu đầu vào cho LLM
+        Map<String, Object> llmInputData = new HashMap<>();
+        llmInputData.put("mode", "RAG");
+        llmInputData.put("queryText", combinedQueryText);
+        llmInputData.put("originalQueryText", queryText);
+        llmInputData.put("imageTexts", imageTexts);
+
+        // Xử lý RAG mode với fileIds từ request (tài liệu quy chế đã chọn)
+        List<UUID> ragFileIds = request.getFileIds();
+        if (ragFileIds != null && !ragFileIds.isEmpty()) {
+            processRagMode(notebookId, combinedQueryText, ragFileIds, llmInputData);
+        }
+
+        // Lấy chat history
+        String chatHistory = getChatHistory(conversation.getId(), userId);
+
+        // Chuẩn bị prompt và gọi LLM
+        String llmPrompt = buildLlmPrompt(llmInputData, chatHistory);
+
+        // Gọi LLM model
+        String llmResponse;
+        if (llmModel == null) {
+            throw new BadRequestException("Không tìm thấy model LLM nào.");
+        }
+
+        String modelCode = llmModel.getCode();
+        if ("gemini".equalsIgnoreCase(modelCode)) {
+            llmResponse = aiModelService.callGeminiModel(llmPrompt);
+        } else if ("groq".equalsIgnoreCase(modelCode)) {
+            llmResponse = aiModelService.callGroqModel(llmPrompt);
+        } else {
+            llmResponse = aiModelService.callGeminiModel(llmPrompt); // Fallback to Gemini
+        }
+
+        // Parse JSON response từ LLM
+        Map<String, Object> llmResponseJson = parseLlmResponse(llmResponse);
+
+        // Extract answer
+        Object answerObj = llmResponseJson.get("answer");
+        String answer = "";
+        if (answerObj != null) {
+            answer = answerObj instanceof String ? (String) answerObj : answerObj.toString();
+        }
+
+        // Tạo NotebookBotMessage với role = "assistant"
+        NotebookBotMessage assistantMessage = NotebookBotMessage.builder()
+                .notebook(notebook)
+                .conversation(conversation)
+                .user(null)
+                .role("assistant")
+                .content(answer)
+                .mode("RAG")
+                .llmModel(llmModel)
+                .createdAt(OffsetDateTime.now())
+                .build();
+
+        assistantMessage = messageRepository.save(assistantMessage);
+
+        // Lưu sources
+        saveSources(assistantMessage, llmResponseJson, llmInputData);
+
+        // Flush để đảm bảo dữ liệu được ghi
+        entityManager.flush();
+
+        // Query sources từ database
+        List<NotebookBotMessageSource> savedSources = messageSourceRepository
+                .findByMessageId(assistantMessage.getId());
+
+        // Build response
+        ChatResponse resp = new ChatResponse();
+        resp.setId(assistantMessage.getId());
+        resp.setConversationId(conversation.getId());
+        resp.setContent(answer);
+        resp.setMode("RAG");
+        resp.setRole(assistantMessage.getRole());
+        resp.setCreatedAt(assistantMessage.getCreatedAt());
+
+        // Set model
+        if (llmModel != null) {
+            resp.setModel(ModelResponse.builder()
+                    .id(llmModel.getId())
+                    .code(llmModel.getCode())
+                    .provider(llmModel.getProvider())
+                    .build());
+        }
+
+        // Set sources
+        Set<NotebookBotMessageSource> sourcesSet = savedSources != null
+                ? new LinkedHashSet<>(savedSources)
+                : new LinkedHashSet<>();
+        resp.setSources(buildSourcesResponse(sourcesSet, llmInputData));
+
+        // Set files
+        resp.setFiles(new ArrayList<>());
+
+        return resp;
     }
 
     @Transactional
