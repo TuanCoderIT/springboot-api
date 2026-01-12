@@ -43,7 +43,17 @@ public class OcrService {
         }
 
         if (os.contains("win")) {
-            return "tesseract.exe"; // yêu cầu set PATH
+            // Chocolatey installation path
+            String chocoPath = "C:\\ProgramData\\chocolatey\\bin\\tesseract.exe";
+            if (Files.exists(Path.of(chocoPath))) {
+                return chocoPath;
+            }
+            // Standard installation path
+            String standardPath = "C:\\Program Files\\Tesseract-OCR\\tesseract.exe";
+            if (Files.exists(Path.of(standardPath))) {
+                return standardPath;
+            }
+            return "tesseract.exe";
         }
 
         return "tesseract";

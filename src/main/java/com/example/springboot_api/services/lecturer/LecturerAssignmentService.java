@@ -22,10 +22,14 @@ import com.example.springboot_api.dto.lecturer.RequestTeachingRequest;
 import com.example.springboot_api.dto.shared.PagedResponse;
 import com.example.springboot_api.mappers.LecturerMapper;
 import com.example.springboot_api.models.Class;
+import com.example.springboot_api.models.Notebook;
+import com.example.springboot_api.models.NotebookMember;
 import com.example.springboot_api.models.Subject;
 import com.example.springboot_api.models.TeachingAssignment;
 import com.example.springboot_api.models.Term;
 import com.example.springboot_api.models.User;
+import com.example.springboot_api.repositories.admin.NotebookMemberRepository;
+import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.admin.SubjectRepository;
 import com.example.springboot_api.repositories.admin.TeachingAssignmentRepository;
 import com.example.springboot_api.repositories.admin.TermRepository;
@@ -50,6 +54,8 @@ public class LecturerAssignmentService {
         private final ClassMemberRepository classMemberRepo;
         private final CurrentUserProvider userProvider;
         private final LecturerMapper lecturerMapper;
+        private final NotebookRepository notebookRepo;
+        private final NotebookMemberRepository notebookMemberRepo;
 
         // Repositories để count tài liệu
         private final com.example.springboot_api.repositories.shared.NotebookFileRepository fileRepo;
@@ -137,11 +143,15 @@ public class LecturerAssignmentService {
 
                 OffsetDateTime now = OffsetDateTime.now();
 
-                // Tạo yêu cầu với approvalStatus = PENDING
+                // Tạo Notebook cho Teaching Assignment
+                Notebook notebook = createNotebookForAssignment(subject, term, lecturer, now);
+
+                // Tạo yêu cầu với approvalStatus = PENDING và gắn notebook
                 TeachingAssignment ta = TeachingAssignment.builder()
                                 .term(term)
                                 .subject(subject)
                                 .lecturer(lecturer)
+                                .notebook(notebook)
                                 .status("ACTIVE")
                                 .approvalStatus("PENDING")
                                 .createdBy("LECTURER")
@@ -151,6 +161,38 @@ public class LecturerAssignmentService {
 
                 TeachingAssignment saved = assignmentRepo.save(ta);
                 return lecturerMapper.toLecturerAssignmentResponse(saved, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+        }
+
+        /**
+         * Tạo Notebook mới cho Teaching Assignment.
+         */
+        private Notebook createNotebookForAssignment(Subject subject, Term term, User lecturer, OffsetDateTime now) {
+                Notebook notebook = Notebook.builder()
+                                .title(subject.getName() + " - " + term.getName())
+                                .description("Notebook cho môn " + subject.getName())
+                                .type("assignment")
+                                .visibility("private")
+                                .createdBy(lecturer)
+                                .createdAt(now)
+                                .updatedAt(now)
+                                .build();
+
+                notebook = notebookRepo.save(notebook);
+
+                // Thêm giảng viên làm owner của notebook
+                NotebookMember lecturerMember = NotebookMember.builder()
+                                .notebook(notebook)
+                                .user(lecturer)
+                                .role("owner")
+                                .status("approved")
+                                .joinedAt(now)
+                                .createdAt(now)
+                                .updatedAt(now)
+                                .build();
+
+                notebookMemberRepo.save(lecturerMember);
+
+                return notebook;
         }
 
         /**

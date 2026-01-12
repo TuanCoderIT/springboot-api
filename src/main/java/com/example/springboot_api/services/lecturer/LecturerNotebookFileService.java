@@ -43,9 +43,9 @@ public class LecturerNotebookFileService {
     /**
      * Upload files vào notebook
      */
-    @Transactional
-    public List<LecturerNotebookFileResponse> uploadFiles(UUID lecturerId, UUID notebookId, 
-                                                         FileUploadRequest request, List<MultipartFile> files) throws IOException {
+    // @Transactional <-- Bỏ Transactional để file được lưu ngay lập tức
+    public List<LecturerNotebookFileResponse> uploadFiles(UUID lecturerId, UUID notebookId,
+            FileUploadRequest request, List<MultipartFile> files) throws IOException {
         // Kiểm tra notebook tồn tại
         Notebook notebook = notebookRepository.findById(notebookId)
                 .orElseThrow(() -> new NotFoundException("Notebook không tồn tại"));
@@ -64,12 +64,13 @@ public class LecturerNotebookFileService {
         List<NotebookFile> uploadedFiles = new java.util.ArrayList<>();
 
         for (MultipartFile file : files) {
-            if (file.isEmpty()) continue;
+            if (file.isEmpty())
+                continue;
 
             // Validate và normalize MIME type
             String normalizedMimeType = getValidatedAndNormalizedMimeType(file);
 
-            // Lưu file vào storage
+            // Lưu file vào storage (IO operation - tốt nhất là không nằm trong Transaction)
             String storageUrl = fileStorageService.storeFile(file);
 
             // Tạo NotebookFile entity
@@ -89,10 +90,11 @@ public class LecturerNotebookFileService {
                     .updatedAt(java.time.OffsetDateTime.now())
                     .build();
 
+            // Lưu vào DB (commit ngay lập tức vì không có @Transactional)
             NotebookFile savedFile = notebookFileRepository.save(newFile);
             uploadedFiles.add(savedFile);
 
-            // Bắt đầu AI processing
+            // Bắt đầu AI processing ngay lập tức (Async thread sẽ thấy record ngay)
             fileProcessingTaskService.startAIProcessing(savedFile);
         }
 
@@ -113,18 +115,8 @@ public class LecturerNotebookFileService {
             throw new BadRequestException("File không thuộc notebook này");
         }
 
-        // TODO: Kiểm tra lecturer có quyền xóa file này không
-        // Có thể xóa nếu:
-        // 1. Lecturer là người upload file
-        // 2. Lecturer có quyền quản lý notebook này
-        
-        // Xóa file chunks
         fileChunkRepository.deleteByFileId(fileId);
-
-        // Xóa file từ storage
         fileStorageService.deleteFile(file.getStorageUrl());
-
-        // Xóa file record
         notebookFileRepository.delete(file);
     }
 
@@ -158,14 +150,13 @@ public class LecturerNotebookFileService {
     public List<LecturerNotebookFileResponse> getFilesByNotebook(UUID lecturerId, UUID notebookId, String search) {
         // TODO: Kiểm tra lecturer có quyền truy cập notebook này không
         // Hiện tại giả định lecturer có quyền truy cập tất cả notebooks
-        
+
         List<NotebookFile> files = notebookFileRepository.findByNotebookIdAndStatusInAndSearch(
-            notebookId, 
-            List.of("done", "approved"), 
-            search,
-            org.springframework.data.domain.PageRequest.of(0, 100)
-        ).getContent();
-        
+                notebookId,
+                List.of("done", "approved"),
+                search,
+                org.springframework.data.domain.PageRequest.of(0, 100)).getContent();
+
         return files.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -175,15 +166,15 @@ public class LecturerNotebookFileService {
      * Lấy tất cả files mà lecturer có thể truy cập
      */
     @Transactional(readOnly = true)
-    public List<LecturerNotebookFileResponse> getAllAccessibleFiles(UUID lecturerId, String search, 
-                                                                   UUID notebookId, int limit) {
+    public List<LecturerNotebookFileResponse> getAllAccessibleFiles(UUID lecturerId, String search,
+            UUID notebookId, int limit) {
         // TODO: Implement logic để lấy files từ tất cả notebooks mà lecturer có quyền
         // Hiện tại sử dụng logic đơn giản
-        
+
         if (notebookId != null) {
             return getFilesByNotebook(lecturerId, notebookId, search);
         }
-        
+
         // Tạm thời return empty list - cần implement logic phức tạp hơn
         return List.of();
     }
@@ -194,25 +185,25 @@ public class LecturerNotebookFileService {
     @Transactional(readOnly = true)
     public List<LecturerNotebookSummary> getAccessibleNotebooks(UUID lecturerId) {
         List<LecturerNotebookSummary> result = new java.util.ArrayList<>();
-        
+
         log.info("Getting accessible notebooks for lecturer: {}", lecturerId);
-        
+
         // 1. Lấy class notebooks mà lecturer dạy
         List<Notebook> classNotebooks = notebookRepository.findClassNotebooksByLecturerId(lecturerId);
         log.info("Found {} class notebooks for lecturer", classNotebooks.size());
         for (Notebook notebook : classNotebooks) {
             result.add(toNotebookSummary(notebook));
         }
-        
+
         // 2. Lấy personal notebooks của lecturer (nếu có)
-        org.springframework.data.domain.Page<Notebook> personalNotebooks = 
-            notebookRepository.findPersonalNotebooksByUserId(lecturerId, null, 
-                org.springframework.data.domain.PageRequest.of(0, 100));
+        org.springframework.data.domain.Page<Notebook> personalNotebooks = notebookRepository
+                .findPersonalNotebooksByUserId(lecturerId, null,
+                        org.springframework.data.domain.PageRequest.of(0, 100));
         log.info("Found {} personal notebooks for lecturer", personalNotebooks.getTotalElements());
         for (Notebook notebook : personalNotebooks.getContent()) {
             result.add(toNotebookSummary(notebook));
         }
-        
+
         log.info("Returning {} notebooks for lecturer", result.size());
         return result;
     }
@@ -240,7 +231,7 @@ public class LecturerNotebookFileService {
     private LecturerNotebookFileResponse toResponse(NotebookFile file) {
         // Lấy content preview
         String contentPreview = getContentPreview(file.getId());
-        
+
         // Lấy chunks count
         Long chunksCount = fileChunkRepository.countByFileId(file.getId());
 
@@ -342,7 +333,8 @@ public class LecturerNotebookFileService {
                     String content = (String) chunks.get(i)[2];
                     if (content != null) {
                         summary.append(content);
-                        if (i < count - 1) summary.append("\n\n");
+                        if (i < count - 1)
+                            summary.append("\n\n");
                     }
                 }
                 String fullSummary = summary.toString();
@@ -379,9 +371,8 @@ public class LecturerNotebookFileService {
         // Đếm tổng số files và files ready
         Long totalFiles = notebookFileRepository.countByNotebookId(notebook.getId());
         Long readyFiles = notebookFileRepository.countByNotebookIdAndStatusIn(
-            notebook.getId(), 
-            List.of("done", "approved")
-        );
+                notebook.getId(),
+                List.of("done", "approved"));
 
         LecturerNotebookSummary.LecturerNotebookSummaryBuilder builder = LecturerNotebookSummary.builder()
                 .id(notebook.getId())
@@ -396,9 +387,9 @@ public class LecturerNotebookFileService {
             // TODO: Lấy thông tin class từ notebook metadata hoặc relationship
             // Hiện tại để null, có thể implement sau
             builder.classId(null)
-                   .className(null)
-                   .subjectCode(null)
-                   .subjectName(null);
+                    .className(null)
+                    .subjectCode(null)
+                    .subjectName(null);
         }
 
         return builder.build();
