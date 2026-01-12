@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.springboot_api.models.NotebookAiSet;
 import com.example.springboot_api.repositories.shared.NotebookAiSetRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Service quản lý status của NotebookAiSet.
  * Tách riêng để tái sử dụng trong nhiều generation services.
+ * 
+ * Tự động push WebSocket events khi status thay đổi.
  */
 @Service
 @RequiredArgsConstructor
@@ -22,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AiSetStatusService {
 
     private final NotebookAiSetRepository aiSetRepository;
+    private final AiTaskProgressService progressService;
 
     /**
      * Cập nhật status của NotebookAiSet.
@@ -49,6 +53,9 @@ public class AiSetStatusService {
             }
             aiSetRepository.save(aiSet);
             log.debug("Updated AiSet {} status to: {}", aiSetId, status);
+
+            // Push WebSocket events
+            pushWebSocketEvents(aiSet, status, errorMessage, outputStats);
         });
     }
 
@@ -86,5 +93,35 @@ public class AiSetStatusService {
             aiSet.setUpdatedAt(OffsetDateTime.now());
             aiSetRepository.save(aiSet);
         });
+    }
+
+    /**
+     * Push WebSocket events dựa trên status thay đổi.
+     */
+    private void pushWebSocketEvents(NotebookAiSet aiSet, String status, String errorMessage,
+            Map<String, Object> outputStats) {
+        try {
+            switch (status) {
+                case "processing" -> {
+                    // Gửi cho Task Owner: đang xử lý
+                    progressService.sendProgress(aiSet.getId(), "processing", 10, "Đang xử lý...");
+                }
+                case "done" -> {
+                    // Gửi cho Task Owner: hoàn thành
+                    progressService.sendDone(aiSet.getId(), aiSet.getSetType(), outputStats);
+                    // Notify tất cả Notebook Members
+                    progressService.notifyDone(aiSet);
+                }
+                case "failed" -> {
+                    // Gửi cho Task Owner: thất bại
+                    progressService.sendFailed(aiSet.getId(), errorMessage);
+                }
+                default -> {
+                    // Các status khác (queued, pending)
+                }
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ [WS] Failed to push events for {}: {}", aiSet.getId(), e.getMessage());
+        }
     }
 }

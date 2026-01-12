@@ -19,6 +19,7 @@ public class SourceResponse {
 
     // RAG fields (null nếu sourceType = "WEB")
     private UUID fileId;
+    private String fileName; // Tên file gốc
     private Integer chunkIndex;
     private String content; // Nội dung chunk
     private Double similarity;
@@ -32,4 +33,3 @@ public class SourceResponse {
     private String imageUrl;
     private String favicon;
 }
-

@@ -158,10 +158,17 @@ public class GeminiTtsService {
 
         String apiKey = getApiKey();
 
-        String expertVoiceName = (expertVoice != null && !expertVoice.isBlank()) ? expertVoice : "Kore";
+        String expertVoiceName = (expertVoice != null && !expertVoice.isBlank()) ? expertVoice : "Orus";
         String hostVoice = "Puck";
 
-        script = prepareTtsText(script);
+        // KHÔNG gọi prepareTtsText() vì nó xóa newlines,
+        // khiến Gemini TTS không phân biệt được Host vs Expert
+        // Chỉ trim và loại bỏ multiple spaces, GIỮ NGUYÊN newlines
+        script = script.trim().replaceAll(" +", " ");
+
+        log.info("🎙️ [TTS] Multi-speaker voices: Host={}, Expert={}", hostVoice, expertVoiceName);
+        log.debug("🎙️ [TTS] Script:\n{}", script);
+
         String conversationPrompt = "TTS the following conversation between Host and Expert:\n" + script;
 
         try {

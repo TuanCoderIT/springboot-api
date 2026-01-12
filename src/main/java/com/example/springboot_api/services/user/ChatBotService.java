@@ -44,6 +44,7 @@ import com.example.springboot_api.models.NotebookBotConversationState;
 import com.example.springboot_api.models.NotebookBotMessage;
 import com.example.springboot_api.models.NotebookBotMessageFile;
 import com.example.springboot_api.models.NotebookBotMessageSource;
+import com.example.springboot_api.models.NotebookFile;
 import com.example.springboot_api.models.User;
 import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.admin.UserRepository;
@@ -53,6 +54,7 @@ import com.example.springboot_api.repositories.shared.NotebookBotConversationSta
 import com.example.springboot_api.repositories.shared.NotebookBotMessageFileRepository;
 import com.example.springboot_api.repositories.shared.NotebookBotMessageRepository;
 import com.example.springboot_api.repositories.shared.NotebookBotMessageSourceRepository;
+import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.shared.FileStorageService;
 import com.example.springboot_api.services.shared.ai.AIModelService;
 import com.example.springboot_api.services.shared.ai.EmbeddingService;
@@ -86,6 +88,7 @@ public class ChatBotService {
     private final NotebookBotMessageSourceRepository messageSourceRepository;
     private final LlmModelRepository llmModelRepository;
     private final NotebookRepository notebookRepository;
+    private final NotebookFileRepository notebookFileRepository;
     private final UserRepository userRepository;
     private final EntityManager entityManager;
     private final ChatBotMapper chatBotMapper;
@@ -397,6 +400,24 @@ public class ChatBotService {
                     .createdAt(OffsetDateTime.now())
                     .build();
             conversation = conversationRepository.save(conversation);
+
+            // Set conversation mới thành active
+            NotebookBotConversationState state = conversationStateRepository
+                    .findByUserIdAndNotebookId(userId, notebookId)
+                    .orElse(null);
+
+            if (state == null) {
+                state = NotebookBotConversationState.builder()
+                        .user(user)
+                        .notebook(notebook)
+                        .conversation(conversation)
+                        .lastOpenedAt(OffsetDateTime.now())
+                        .build();
+            } else {
+                state.setConversation(conversation);
+                state.setLastOpenedAt(OffsetDateTime.now());
+            }
+            conversationStateRepository.save(state);
         }
 
         // Lấy LlmModel mặc định
@@ -422,6 +443,12 @@ public class ChatBotService {
 
         // Cập nhật conversation: updatedAt và title nếu là title mặc định
         updateConversationAfterMessage(conversation, userMessage.getContent());
+
+        // Kiểm tra câu hỏi về bản thân assistant
+        String messageLower = request.getMessage().trim().toLowerCase();
+        if (isAboutAssistantQuestion(messageLower)) {
+            return handleAssistantIntroductionResponse(notebook, conversation, userMessage, llmModel);
+        }
 
         // Thu thập OCR text từ danh sách ảnh đã upload
         StringBuilder imageTextsBuilder = new StringBuilder();
@@ -1404,11 +1431,31 @@ public class ChatBotService {
                     Integer chunkIndex = chunkIndexObj instanceof Integer ? (Integer) chunkIndexObj
                             : ((Number) chunkIndexObj).intValue();
 
+                    // Lookup content từ ragChunks để lưu vào snippet
+                    String snippet = null;
+                    for (Map<String, Object> chunk : ragChunks) {
+                        String chunkFileId = (String) chunk.get("file_id");
+                        Object chunkIdxObj = chunk.get("chunk_index");
+                        if (fileIdStr.equals(chunkFileId) && chunkIndex.equals(chunkIdxObj)) {
+                            snippet = (String) chunk.get("content");
+                            break;
+                        }
+                    }
+
+                    // Lookup fileName từ NotebookFile để lưu vào title
+                    String title = null;
+                    NotebookFile file = notebookFileRepository.findById(fileId).orElse(null);
+                    if (file != null) {
+                        title = file.getOriginalFilename();
+                    }
+
                     messageSource = NotebookBotMessageSource.builder()
                             .message(assistantMessage)
                             .sourceType("RAG")
                             .fileId(fileId)
                             .chunkIndex(chunkIndex)
+                            .title(title)
+                            .snippet(snippet)
                             .score(score)
                             .provider(provider != null ? provider : "rag")
                             .createdAt(OffsetDateTime.now())
@@ -1535,9 +1582,13 @@ public class ChatBotService {
                 .map(this::convertToChatResponse)
                 .collect(Collectors.toList());
 
-        // Lấy cursorNext (UUID của message cũ nhất trong response)
+        // Lấy cursorNext (UUID của message cũ nhất trong response) - trước khi đảo
+        // ngược
         String nextCursor = chatResponses.isEmpty() ? null
                 : chatResponses.get(chatResponses.size() - 1).getId().toString();
+
+        // Đảo ngược để hiển thị từ cũ đến mới (ASC) cho FE
+        Collections.reverse(chatResponses);
 
         return new ListMessagesResponse(chatResponses, nextCursor, hasMore);
     }
@@ -1884,5 +1935,91 @@ public class ChatBotService {
 
         // Conversation không active, không cần trả về gì
         return null;
+    }
+
+    /**
+     * Kiểm tra xem câu hỏi có phải là câu hỏi về bản thân assistant không
+     */
+    private boolean isAboutAssistantQuestion(String messageLower) {
+        if (messageLower == null || messageLower.trim().isEmpty()) {
+            return false;
+        }
+
+        // Các pattern phổ biến để hỏi về bản thân assistant
+        String[] patterns = {
+                "bạn là ai",
+                "bạn là gì",
+                "bạn là",
+                "bạn tên gì",
+                "who are you",
+                "what are you",
+                "what is your name",
+                "giới thiệu về bạn",
+                "bạn là ai vậy",
+                "bạn là cái gì"
+        };
+
+        for (String pattern : patterns) {
+            if (messageLower.contains(pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Xử lý và trả về câu trả lời giới thiệu về assistant
+     */
+    private ChatResponse handleAssistantIntroductionResponse(
+            Notebook notebook,
+            NotebookBotConversation conversation,
+            NotebookBotMessage userMessage,
+            LlmModel llmModel) {
+
+        String assistantResponse = "Tôi là trợ lý EduGenius của trường Đại học Vinh để hỗ trợ trả lời các câu hỏi về quy chế, quy định của trường.";
+
+        // Tạo NotebookBotMessage với role = "assistant"
+        NotebookBotMessage assistantMessage = NotebookBotMessage.builder()
+                .notebook(notebook)
+                .conversation(conversation)
+                .user(null)
+                .role("assistant")
+                .content(assistantResponse)
+                .mode("RAG")
+                .llmModel(llmModel)
+                .createdAt(OffsetDateTime.now())
+                .build();
+
+        assistantMessage = messageRepository.save(assistantMessage);
+
+        // Flush để đảm bảo dữ liệu được ghi
+        entityManager.flush();
+
+        // Build response
+        ChatResponse resp = new ChatResponse();
+        resp.setId(assistantMessage.getId());
+        resp.setConversationId(conversation.getId());
+        resp.setContent(assistantResponse);
+        resp.setMode("RAG");
+        resp.setRole(assistantMessage.getRole());
+        resp.setCreatedAt(assistantMessage.getCreatedAt());
+
+        // Set model
+        if (llmModel != null) {
+            resp.setModel(ModelResponse.builder()
+                    .id(llmModel.getId())
+                    .code(llmModel.getCode())
+                    .provider(llmModel.getProvider())
+                    .build());
+        }
+
+        // Set sources (rỗng cho câu trả lời giới thiệu)
+        resp.setSources(new ArrayList<>());
+
+        // Set files (rỗng)
+        resp.setFiles(new ArrayList<>());
+
+        return resp;
     }
 }

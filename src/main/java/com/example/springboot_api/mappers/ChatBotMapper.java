@@ -22,6 +22,8 @@ import com.example.springboot_api.models.NotebookBotConversation;
 import com.example.springboot_api.models.NotebookBotMessage;
 import com.example.springboot_api.models.NotebookBotMessageFile;
 import com.example.springboot_api.models.NotebookBotMessageSource;
+import com.example.springboot_api.models.NotebookFile;
+import com.example.springboot_api.repositories.shared.NotebookFileRepository;
 import com.example.springboot_api.services.user.ChatBotService.RagChunk;
 import com.example.springboot_api.utils.UrlNormalizer;
 
@@ -36,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 public class ChatBotMapper {
 
     private final UrlNormalizer urlNormalizer;
+    private final NotebookFileRepository notebookFileRepository;
 
     /**
      * Convert LlmModel entity sang LlmModelResponse DTO.
@@ -230,24 +233,50 @@ public class ChatBotMapper {
      */
     private SourceResponse toRagSourceResponse(NotebookBotMessageSource source,
             List<Map<String, Object>> ragChunks) {
-        // Tìm chunk tương ứng trong ragChunks để lấy content, similarity, distance
-        Map<String, Object> matchingChunk = ragChunks.stream()
-                .filter(chunk -> source.getFileId() != null
+        // Luôn truy vấn file_id để lấy originalFilename từ NotebookFile
+        String fileName = null;
+        if (source.getFileId() != null) {
+            NotebookFile file = notebookFileRepository.findById(source.getFileId()).orElse(null);
+            if (file != null) {
+                fileName = file.getOriginalFilename();
+            }
+        }
+        // Fallback về title từ database nếu không tìm thấy file
+        if (fileName == null) {
+            fileName = source.getTitle();
+        }
+
+        // Ưu tiên lấy content từ database (snippet), fallback sang ragChunks
+        String content = source.getSnippet();
+        Double similarity = null;
+        Double distance = null;
+
+        // Nếu database không có snippet, lookup từ ragChunks (cho response đầu tiên sau
+        // khi chat)
+        if (content == null && ragChunks != null && !ragChunks.isEmpty()) {
+            for (Map<String, Object> chunk : ragChunks) {
+                if (source.getFileId() != null
                         && source.getFileId().toString().equals(chunk.get("file_id"))
                         && source.getChunkIndex() != null
-                        && source.getChunkIndex().equals(chunk.get("chunk_index")))
-                .findFirst()
-                .orElse(null);
+                        && source.getChunkIndex().equals(chunk.get("chunk_index"))) {
+                    content = (String) chunk.get("content");
+                    similarity = extractDoubleValue(chunk, "similarity");
+                    distance = extractDoubleValue(chunk, "distance");
+                    break;
+                }
+            }
+        }
 
         return SourceResponse.builder()
                 .sourceType("RAG")
                 .fileId(source.getFileId())
+                .fileName(fileName)
                 .chunkIndex(source.getChunkIndex())
                 .score(source.getScore())
                 .provider(source.getProvider() != null ? source.getProvider() : "rag")
-                .content(matchingChunk != null ? (String) matchingChunk.get("content") : null)
-                .similarity(extractDoubleValue(matchingChunk, "similarity"))
-                .distance(extractDoubleValue(matchingChunk, "distance"))
+                .content(content)
+                .similarity(similarity)
+                .distance(distance)
                 // WEB fields = null
                 .webIndex(null)
                 .url(null)

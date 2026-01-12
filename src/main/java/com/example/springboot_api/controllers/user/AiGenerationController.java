@@ -23,6 +23,7 @@ import com.example.springboot_api.dto.user.flashcard.FlashcardListResponse;
 import com.example.springboot_api.dto.user.quiz.QuizListResponse;
 import com.example.springboot_api.dto.user.suggestion.SuggestionResponse;
 import com.example.springboot_api.dto.user.summary.SummaryResponse;
+import com.example.springboot_api.dto.user.timeline.TimelineResponse;
 import com.example.springboot_api.services.user.AiSetService;
 import com.example.springboot_api.services.user.AudioService;
 import com.example.springboot_api.services.user.FlashcardService;
@@ -30,6 +31,7 @@ import com.example.springboot_api.services.user.MindmapService;
 import com.example.springboot_api.services.user.QuizService;
 import com.example.springboot_api.services.user.SuggestionService;
 import com.example.springboot_api.services.user.SummaryService;
+import com.example.springboot_api.services.user.TimelineService;
 import com.example.springboot_api.services.user.VideoService;
 
 import lombok.RequiredArgsConstructor;
@@ -54,6 +56,7 @@ public class AiGenerationController {
     private final SuggestionService suggestionService;
     private final SummaryService summaryService;
     private final VideoService videoService;
+    private final TimelineService timelineService;
 
     // ================================
     // QUIZ GENERATION
@@ -593,6 +596,74 @@ public class AiGenerationController {
         }
 
         SummaryResponse response = summaryService.getSummaryByAiSetId(user.getId(), notebookId, aiSetId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ================================
+    // TIMELINE GENERATION
+    // ================================
+
+    /**
+     * Tạo timeline từ các notebook files (chạy nền).
+     * POST /user/notebooks/{notebookId}/ai/timeline/generate
+     *
+     * @param user                   Current authenticated user
+     * @param notebookId             Notebook ID
+     * @param fileIds                Danh sách file IDs
+     * @param mode                   Mode: "time" (ưu tiên mốc thời gian) hoặc
+     *                               "logic" (tiến trình logic)
+     * @param maxEvents              Số events tối đa (default 25)
+     * @param additionalRequirements Yêu cầu bổ sung (optional)
+     * @return Map chứa aiSetId để track tiến trình
+     */
+    @PostMapping("/timeline/generate")
+    public ResponseEntity<Map<String, Object>> generateTimeline(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @RequestParam List<UUID> fileIds,
+            @RequestParam(required = false, defaultValue = "logic") String mode,
+            @RequestParam(required = false, defaultValue = "25") Integer maxEvents,
+            @RequestParam(required = false) String additionalRequirements) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BadRequestException("Danh sách file IDs không được để trống");
+        }
+
+        Map<String, Object> result = timelineService.generateTimeline(
+                notebookId, user.getId(), fileIds, mode, maxEvents, additionalRequirements);
+
+        if (result.containsKey("error")) {
+            throw new BadRequestException((String) result.get("error"));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy timeline theo AI Set ID.
+     * GET /user/notebooks/{notebookId}/ai/timeline/{aiSetId}
+     *
+     * @param user       Current authenticated user
+     * @param notebookId Notebook ID
+     * @param aiSetId    AI Set ID chứa timeline
+     * @return TimelineResponse
+     */
+    @GetMapping("/timeline/{aiSetId}")
+    public ResponseEntity<TimelineResponse> getTimeline(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID notebookId,
+            @PathVariable UUID aiSetId) {
+
+        if (user == null) {
+            throw new RuntimeException("User chưa đăng nhập.");
+        }
+
+        TimelineResponse response = timelineService.getTimelineByAiSetId(user.getId(), notebookId, aiSetId);
 
         return ResponseEntity.ok(response);
     }
