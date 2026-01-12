@@ -15,10 +15,12 @@ import com.example.springboot_api.dto.admin.assignment.AssignmentResponse;
 import com.example.springboot_api.dto.admin.assignment.CreateAssignmentRequest;
 import com.example.springboot_api.mappers.AssignmentMapper;
 import com.example.springboot_api.models.Notebook;
+import com.example.springboot_api.models.NotebookMember;
 import com.example.springboot_api.models.Subject;
 import com.example.springboot_api.models.TeachingAssignment;
 import com.example.springboot_api.models.Term;
 import com.example.springboot_api.models.User;
+import com.example.springboot_api.repositories.admin.NotebookMemberRepository;
 import com.example.springboot_api.repositories.admin.NotebookRepository;
 import com.example.springboot_api.repositories.admin.SubjectRepository;
 import com.example.springboot_api.repositories.admin.TeachingAssignmentRepository;
@@ -36,6 +38,7 @@ public class AdminAssignmentService {
     private final SubjectRepository subjectRepo;
     private final UserRepository userRepo;
     private final NotebookRepository notebookRepo;
+    private final NotebookMemberRepository notebookMemberRepo;
     private final AssignmentMapper assignmentMapper;
     private final CurrentUserProvider userProvider;
 
@@ -62,17 +65,7 @@ public class AdminAssignmentService {
         OffsetDateTime now = OffsetDateTime.now();
 
         // Tạo Notebook cho assignment (vì mặc định là APPROVED)
-        String notebookTitle = subject.getName() + " - " + term.getName();
-        Notebook notebook = Notebook.builder()
-                .title(notebookTitle)
-                .description("Tài liệu giảng dạy cho phân công: " + notebookTitle)
-                .type("assignment")
-                .visibility("private")
-                .createdBy(teacher)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
-        notebookRepo.save(notebook);
+        Notebook notebook = createNotebookWithOwner(subject, term, teacher, now);
 
         TeachingAssignment ta = TeachingAssignment.builder()
                 .term(term)
@@ -106,20 +99,9 @@ public class AdminAssignmentService {
 
         // Tự động tạo Notebook khi approve (nếu chưa có)
         if ("APPROVED".equals(req.getStatus()) && ta.getNotebook() == null) {
-            String notebookTitle = ta.getSubject().getName() + " - " + ta.getTerm().getName();
             OffsetDateTime now = OffsetDateTime.now();
-
-            Notebook notebook = Notebook.builder()
-                    .title(notebookTitle)
-                    .description("Tài liệu giảng dạy cho phân công: " + notebookTitle)
-                    .type("assignment")
-                    .visibility("private")
-                    .createdBy(ta.getLecturer())
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build();
-            notebookRepo.save(notebook);
-
+            Notebook notebook = createNotebookWithOwner(
+                    ta.getSubject(), ta.getTerm(), ta.getLecturer(), now);
             ta.setNotebook(notebook);
         }
 
@@ -127,6 +109,38 @@ public class AdminAssignmentService {
         Long classCount = assignmentRepo.countClassesByAssignmentId(id);
         Long studentCount = assignmentRepo.countStudentsByAssignmentId(id);
         return assignmentMapper.toAssignmentResponse(saved, classCount, studentCount);
+    }
+
+    /**
+     * Tạo Notebook mới kèm NotebookMember (owner) cho giảng viên.
+     */
+    private Notebook createNotebookWithOwner(Subject subject, Term term, User teacher, OffsetDateTime now) {
+        String notebookTitle = subject.getName() + " - " + term.getName();
+        
+        Notebook notebook = Notebook.builder()
+                .title(notebookTitle)
+                .description("Tài liệu giảng dạy cho môn " + subject.getName())
+                .type("assignment")
+                .visibility("private")
+                .createdBy(teacher)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        notebook = notebookRepo.save(notebook);
+
+        // Thêm giảng viên làm owner của notebook
+        NotebookMember lecturerMember = NotebookMember.builder()
+                .notebook(notebook)
+                .user(teacher)
+                .role("owner")
+                .status("approved")
+                .joinedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        notebookMemberRepo.save(lecturerMember);
+
+        return notebook;
     }
 
     @Transactional

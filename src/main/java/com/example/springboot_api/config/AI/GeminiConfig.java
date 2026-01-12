@@ -41,15 +41,13 @@ public class GeminiConfig {
     }
 
     /**
-     * Ưu tiên: ENV variable > application.yml
+     * Chỉ đọc API key từ application.yml
      */
     private String resolveApiKey() {
 
-        // 3. Check application.yml
         if (this.apiKey != null && !this.apiKey.isEmpty()) {
             return this.apiKey;
         }
-
         return null;
     }
 }

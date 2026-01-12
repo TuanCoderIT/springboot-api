@@ -7,13 +7,13 @@ import java.util.UUID;
 
 @Data
 public class ManualClassCreateRequest {
-    
+
     @NotBlank(message = "Tên lớp không được để trống")
     private String className;
-    
-    @NotNull(message = "ID môn học không được để trống")
-    private UUID subjectId;
-    
+
+    @NotNull(message = "ID phân công không được để trống")
+    private UUID assignmentId;
+
     private String room;
     private Integer dayOfWeek;
     private String periods;
