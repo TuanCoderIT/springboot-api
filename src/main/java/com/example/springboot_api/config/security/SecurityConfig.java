@@ -53,6 +53,9 @@ public class SecurityConfig {
                 .requestMatchers("/user/ai-images/**").permitAll()
                 .requestMatchers("/user/slides/**").permitAll()
 
+                // Test Code Exercises (TODO: remove sau khi test xong)
+                .requestMatchers("/user/notebooks/**").permitAll()
+
                 // ========== PHÂN QUYỀN ==========
                 .requestMatchers("/admin/**").hasRole("ADMIN") // ROLE_ADMIN
                 .requestMatchers("/lecturer/**").hasRole("TEACHER") // ROLE_TEACHER

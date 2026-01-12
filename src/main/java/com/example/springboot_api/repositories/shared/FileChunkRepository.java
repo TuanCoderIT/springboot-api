@@ -33,4 +33,7 @@ public interface FileChunkRepository extends JpaRepository<FileChunk, UUID> {
 
         @Query("SELECT COUNT(fc) FROM File_Chunk fc WHERE fc.file.id = :fileId")
         long countByFileId(@Param("fileId") UUID fileId);
+
+        @Query("SELECT fc.content FROM File_Chunk fc WHERE fc.file.id IN :fileIds AND fc.content IS NOT NULL ORDER BY fc.file.id, fc.chunkIndex")
+        List<String> findContentByFileIds(@Param("fileIds") List<UUID> fileIds);
 }
