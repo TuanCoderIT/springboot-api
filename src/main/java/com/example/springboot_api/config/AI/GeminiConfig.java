@@ -44,6 +44,7 @@ public class GeminiConfig {
      * Chỉ đọc API key từ application.yml
      */
     private String resolveApiKey() {
+
         if (this.apiKey != null && !this.apiKey.isEmpty()) {
             return this.apiKey;
         }

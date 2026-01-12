@@ -72,6 +72,22 @@ public class UserNotebookFileController {
     }
 
     /**
+     * Lấy thông tin notebook file theo fileId
+     * 
+     * GET /user/files/{fileId}
+     */
+    @GetMapping("/user/files/{fileId}")
+    public NotebookFileResponse getFileById(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID fileId) {
+
+        if (user == null)
+            throw new RuntimeException("User chưa đăng nhập.");
+
+        return userNotebookFileService.getFileById(user.getId(), fileId);
+    }
+
+    /**
      * Lấy danh sách file theo notebookId:
      * - File có status = 'done' (đã duyệt và xử lý xong)
      * - File của user hiện tại với các status khác (pending, failed, rejected,

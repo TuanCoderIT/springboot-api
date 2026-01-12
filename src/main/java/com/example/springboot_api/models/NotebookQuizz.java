@@ -3,6 +3,7 @@ package com.example.springboot_api.models;
 import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -65,7 +66,7 @@ public class NotebookQuizz implements Serializable {
 
     private User createdBy;
 
-    private Object embedding;
+    private List<Double> embedding;
 
     private Map<String, Object> metadata;
 
@@ -113,8 +114,8 @@ public class NotebookQuizz implements Serializable {
         return createdBy;
     }
 
-    @Column(name = COLUMN_EMBEDDING_NAME)
-    public Object getEmbedding() {
+    @Column(name = COLUMN_EMBEDDING_NAME, columnDefinition = "vector")
+    public List<Double> getEmbedding() {
         return embedding;
     }
 
